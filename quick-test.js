@@ -11,7 +11,7 @@ async function quickTest() {
 
     try {
         console.log('访问单词闪卡应用...');
-        await page.goto('http://localhost:9000/standalone.html', { timeout: 60000 });
+        await page.goto('http://localhost:9001/standalone.html', { timeout: 60000 });
 
         console.log('等待页面加载完成...');
         await page.waitForSelector('#mastered-count', { timeout: 5000 });

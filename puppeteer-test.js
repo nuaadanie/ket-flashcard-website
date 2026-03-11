@@ -31,7 +31,7 @@ async function runTests() {
     await page.setViewport({ width: 1920, height: 1080 });
 
     // 通过服务器访问 standalone.html 文件
-    const testURL = 'http://localhost:9000/standalone.html';
+    const testURL = 'http://localhost:9001/standalone.html';
 
     console.log('=== 访问 standalone.html 文件 ===');
     await page.goto(testURL, { waitUntil: 'networkidle2', timeout: 60000 });

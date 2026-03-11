@@ -23,7 +23,7 @@ async function main() {
 
   try {
     // 导航到服务器上的 standalone.html 文件
-    await page.goto('http://localhost:9000/standalone.html', {
+    await page.goto('http://localhost:9001/standalone.html', {
       waitUntil: 'domcontentloaded',
       timeout: 120000
     });
