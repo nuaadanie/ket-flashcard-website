@@ -11,56 +11,45 @@ const cssContent = fs.readFileSync('css/style.css', 'utf8');
 const appJSContent = fs.readFileSync('js/app.js', 'utf8');
 
 // 修改 JavaScript 代码，使用直接嵌入的数据而非 fetch 请求
+// 替换 WordManager.load() 方法，使用嵌入的数据
 let modifiedJSContent = appJSContent.replace(
-    `async function loadWords() {
-    try {
-        const res = await fetch('data/words.json');
-        const data = await res.json();
-        // 明确取words字段
-        words = Array.isArray(data.words) ? data.words : [];
-        console.log(\`✅ 加载了\${words.length}个单词\`);
-        // 初始化主题进度
-        const topics = [...new Set(words.map(w => w.topic || '未分类'))];
-        topics.forEach(topic => {
-            if (!storage.topicProgress[topic]) {
-                storage.topicProgress[topic] = { currentIndex: 0, total: 0 };
-            }
-        });
-        // 不要在这里调用saveStorage，避免覆盖刚刚加载的本地存储数据
-        // saveStorage();
-    } catch (e) {
-        console.error('加载词汇失败:', e);
-        // 加载失败时用测试数据
-        words = [
-            { id: 1, word: 'happy', phonetic: '/ˈhæpi/', meaning: 'adj. 开心的', level: '黑1', topic: '形容词' },
-            { id: 2, word: 'sad', phonetic: '/sæd/', meaning: 'adj. 难过的', level: '黑1', topic: '形容词' }
-        ];
-    }
-}`,
-    `function loadWords() {
-    try {
-        // 直接从嵌入的数据中获取
-        words = Array.isArray(wordData.words) ? wordData.words : [];
-        console.log(\`✅ 加载了\${words.length}个单词\`);
-        // 初始化主题进度
-        const topics = [...new Set(words.map(w => w.topic || '未分类'))];
-        topics.forEach(topic => {
-            if (!storage.topicProgress[topic]) {
-                storage.topicProgress[topic] = { currentIndex: 0, total: 0 };
-            }
-        });
-        // 不要在这里调用saveStorage，避免覆盖刚刚加载的本地存储数据
-        // saveStorage();
-    } catch (e) {
-        console.error('加载词汇失败:', e);
-        // 加载失败时用测试数据
-        words = [
-            { id: 1, word: 'happy', phonetic: '/ˈhæpi/', meaning: 'adj. 开心的', level: '黑1', topic: '形容词' },
-            { id: 2, word: 'sad', phonetic: '/sæd/', meaning: 'adj. 难过的', level: '黑1', topic: '形容词' }
-        ];
-    }
-}`
+    `async load() {
+        try {
+            const res = await fetch('data/words.json');
+            const data = await res.json();
+            appState.words = Array.isArray(data.words) ? data.words : [];
+            console.log(\`✅ 加载了${appState.words.length}个单词\`);
+            this.initializeTopicProgress();
+        } catch (e) {
+            console.error('加载词汇失败:', e);
+            appState.words = [
+                { id: 1, word: 'happy', phonetic: '/ˈhæpi/', meaning: 'adj. 开心的', level: '黑1', topic: '形容词' },
+                { id: 2, word: 'sad', phonetic: '/sæd/', meaning: 'adj. 难过的', level: '黑1', topic: '形容词' }
+            ];
+        }
+    }`,
+    `load() {
+        try {
+            // 直接从嵌入的数据中获取
+            appState.words = Array.isArray(wordData.words) ? wordData.words : [];
+            console.log('✅ 加载了' + appState.words.length + '个单词');
+            this.initializeTopicProgress();
+        } catch (e) {
+            console.error('加载词汇失败:', e);
+            appState.words = [
+                { id: 1, word: 'happy', phonetic: '/ˈhæpi/', meaning: 'adj. 开心的', level: '黑1', topic: '形容词' },
+                { id: 2, word: 'sad', phonetic: '/sæd/', meaning: 'adj. 难过的', level: '黑1', topic: '形容词' }
+            ];
+        }
+    }`
 );
+
+// 检查替换是否成功
+if (modifiedJSContent === appJSContent) {
+    console.warn('⚠️ 未能替换 WordManager.load() 方法，可能代码结构已更改');
+} else {
+    console.log('✅ 成功替换 WordManager.load() 方法');
+}
 
 // 创建完整的独立 HTML 文件
 const standaloneHTML = `<!DOCTYPE html>
