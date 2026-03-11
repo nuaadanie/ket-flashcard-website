@@ -12,13 +12,12 @@ const appJSContent = fs.readFileSync('js/app.js', 'utf8');
 
 // 修改 JavaScript 代码，使用直接嵌入的数据而非 fetch 请求
 // 替换 WordManager.load() 方法，使用嵌入的数据
-let modifiedJSContent = appJSContent.replace(
-    `async load() {
+const searchStr = `async load() {
         try {
             const res = await fetch('data/words.json');
             const data = await res.json();
             appState.words = Array.isArray(data.words) ? data.words : [];
-            console.log(\`✅ 加载了${appState.words.length}个单词\`);
+            console.log(\`✅ 加载了\${appState.words.length}个单词\`);
             this.initializeTopicProgress();
         } catch (e) {
             console.error('加载词汇失败:', e);
@@ -27,8 +26,9 @@ let modifiedJSContent = appJSContent.replace(
                 { id: 2, word: 'sad', phonetic: '/sæd/', meaning: 'adj. 难过的', level: '黑1', topic: '形容词' }
             ];
         }
-    }`,
-    `load() {
+    }`;
+
+const replaceStr = `load() {
         try {
             // 直接从嵌入的数据中获取
             appState.words = Array.isArray(wordData.words) ? wordData.words : [];
@@ -41,8 +41,9 @@ let modifiedJSContent = appJSContent.replace(
                 { id: 2, word: 'sad', phonetic: '/sæd/', meaning: 'adj. 难过的', level: '黑1', topic: '形容词' }
             ];
         }
-    }`
-);
+    }`;
+
+let modifiedJSContent = appJSContent.replace(searchStr, replaceStr);
 
 // 检查替换是否成功
 if (modifiedJSContent === appJSContent) {

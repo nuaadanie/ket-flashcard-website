@@ -19176,12 +19176,11 @@ const StorageManager = {
 
 // 词汇数据管理
 const WordManager = {
-    async load() {
+    load() {
         try {
-            const res = await fetch('data/words.json');
-            const data = await res.json();
-            appState.words = Array.isArray(data.words) ? data.words : [];
-            console.log(`✅ 加载了${appState.words.length}个单词`);
+            // 直接从嵌入的数据中获取
+            appState.words = Array.isArray(wordData.words) ? wordData.words : [];
+            console.log('✅ 加载了' + appState.words.length + '个单词');
             this.initializeTopicProgress();
         } catch (e) {
             console.error('加载词汇失败:', e);
