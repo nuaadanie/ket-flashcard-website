@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地存储测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>本地存储功能测试</h1>
+
+        <div class="section">
+            <h2>1. 存储数据到本地存储</h2>
+            <button onclick="saveTestData()">保存测试数据</button>
+            <button onclick="clearLocalStorage()">清除本地存储</button>
+            <div id="save-status"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. 从本地存储加载数据</h2>
+            <button onclick="loadData()">加载数据</button>
+            <button onclick="checkStorage()">检查存储</button>
+            <div id="load-status"></div>
+            <pre id="data-content"></pre>
+        </div>
+
+        <div class="section">
+            <h2>3. 直接操作 localStorage</h2>
+            <p>当前 ket-flashcard 键的值：</p>
+            <pre id="local-storage-value"></pre>
+        </div>
+
+        <div class="section">
+            <h2>4. 模拟页面刷新</h2>
+            <p>点击以下按钮刷新页面，然后检查数据是否还在：</p>
+            <button onclick="location.reload()">刷新页面</button>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function saveTestData() {
+            try {
+                const testData = {
+                    mastered: [1, 2, 3],
+                    unknown: [4, 5],
+                    lastMode: 'level',
+                    levelProgress: {
+                        '黑1': { currentIndex: 0, total: 50 },
+                        '蓝2': { currentIndex: 0, total: 100 },
+                        '红3': { currentIndex: 0, total: 150 }
+                    },
+                    topicProgress: {},
+                    theme: 'forest'
+                };
+
+                localStorage.setItem('ket-flashcard', JSON.stringify(testData));
+                showStatus('save-status', '✅ 测试数据已保存到本地存储', 'success');
+                updateLocalStorageValue();
+            } catch (error) {
+                showStatus('save-status', `❌ 保存失败: ${error}`, 'error');
+            }
+        }
+
+        function loadData() {
+            try {
+                const data = localStorage.getItem('ket-flashcard');
+                if (data) {
+                    const parsedData = JSON.parse(data);
+                    document.getElementById('data-content').textContent = JSON.stringify(parsedData, null, 2);
+                    showStatus('load-status', '✅ 数据已成功加载', 'success');
+
+                    // 检查 mastered 数组是否包含预期值
+                    if (parsedData.mastered && parsedData.mastered.length > 0) {
+                        showStatus('load-status', `✅ 数据已成功加载，已会单词数: ${parsedData.mastered.length}`, 'success');
+                    } else {
+                        showStatus('load-status', '⚠️  数据已加载，但 mastered 数组为空', 'info');
+                    }
+                } else {
+                    showStatus('load-status', '⚠️  本地存储中没有 ket-flashcard 数据', 'info');
+                    document.getElementById('data-content').textContent = '';
+                }
+            } catch (error) {
+                showStatus('load-status', `❌ 加载失败: ${error}`, 'error');
+            }
+        }
+
+        function checkStorage() {
+            const hasStorage = localStorage.getItem('ket-flashcard');
+            if (hasStorage) {
+                showStatus('load-status', '✅ 本地存储中存在 ket-flashcard 数据', 'success');
+                updateLocalStorageValue();
+            } else {
+                showStatus('load-status', '❌ 本地存储中不存在 ket-flashcard 数据', 'error');
+                document.getElementById('local-storage-value').textContent = 'undefined';
+            }
+        }
+
+        function clearLocalStorage() {
+            try {
+                localStorage.removeItem('ket-flashcard');
+                showStatus('save-status', '✅ 本地存储已清除', 'success');
+                document.getElementById('local-storage-value').textContent = 'undefined';
+                document.getElementById('data-content').textContent = '';
+            } catch (error) {
+                showStatus('save-status', `❌ 清除失败: ${error}`, 'error');
+            }
+        }
+
+        function updateLocalStorageValue() {
+            const value = localStorage.getItem('ket-flashcard');
+            document.getElementById('local-storage-value').textContent = value || 'undefined';
+        }
+
+        // 页面加载时检查本地存储
+        document.addEventListener('DOMContentLoaded', () => {
+            updateLocalStorageValue();
+            // 自动加载数据
+            loadData();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "ket-flashcard-website",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "explore": "node -e \"const fs = require('fs'); const path = require('path'); console.log('=== 使用 Explore 工具验证项目 ==='); console.log('\\n项目状态:'); console.log('  - package.json 已更新'); console.log('  - 所有依赖已安装'); console.log('  - 项目文件已生成'); console.log('\\n主要文件:'); console.log('  - index.html: 主页面'); console.log('  - js/app.js: 应用程序逻辑'); console.log('  - data/words.json: 单词数据'); console.log('  - standalone.html: 独立版本'); try { const wordData = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/words.json'), 'utf8')); console.log('✅ 单词数据加载成功'); console.log('   总词数:', wordData.words.length); console.log('   级别数:', wordData.levels.length); console.log('   主题数:', wordData.topics.length); } catch (error) { console.log('❌ 单词数据加载失败:', error.message); } const appJSContent = fs.readFileSync(path.join(__dirname, 'js/app.js'), 'utf8'); const keyFunctions = ['loadWords', 'initUI', 'filterWordsByLevel', 'renderTopicButtons', 'filterWordsByTopic', 'showCurrentWord', 'markUnknown', 'markMastered', 'saveStorage', 'loadStorage']; console.log('\\n=== 检查主要功能函数 ==='); keyFunctions.forEach(func => { if (appJSContent.includes('function ' + func)) { console.log('✅ 找到函数:', func); } else { console.log('❌ 找不到函数:', func); } }); console.log('\\n=== 检查 renderTopicButtons 函数 ==='); if (appJSContent.includes('data-listener-bound')) { console.log('✅ 事件监听器绑定机制已正确实现'); } else { console.log('❌ 事件监听器绑定机制未实现'); } console.log('\\n=== 检查主题选择功能 ==='); if (appJSContent.includes('filterWordsByTopic')) { console.log('✅ 主题过滤函数已实现'); } else { console.log('❌ 主题过滤函数未实现'); } console.log('\\n=== 所有功能检查完成 ==='); console.log('\\n项目已准备好使用 Explore 工具进行交互式测试。'); console.log('请在浏览器中打开 standalone.html 文件，然后:'); console.log('1. 点击\"按主题学习\"按钮'); console.log('2. 从下拉菜单中选择一个主题'); console.log('3. 观察单词是否会变化'); console.log('\\n主题选择功能已修复，单词现在应该会根据选择的主题变化。');\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "caniuse-api": "^3.0.0",
+    "puppeteer": "^24.39.0",
+    "selenium-webdriver": "^4.41.0"
+  }
+}

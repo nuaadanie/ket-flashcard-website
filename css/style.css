@@ -1,0 +1,143 @@
+/* 背景主题 */
+.theme-forest {
+    background: linear-gradient(to bottom right, #d1fae5, #a7f3d0);
+}
+
+.theme-ocean {
+    background: linear-gradient(to bottom right, #dbeafe, #93c5fd);
+}
+
+.theme-desert {
+    background: linear-gradient(to bottom right, #fef3c7, #fde68a);
+}
+
+/* 护眼主题 */
+.theme-eye-care-green {
+    background: linear-gradient(to bottom right, #e8f5e9, #c8e6c9);
+}
+
+.theme-eye-care-blue {
+    background: linear-gradient(to bottom right, #e3f2fd, #bbdefb);
+}
+
+.theme-eye-care-yellow {
+    background: linear-gradient(to bottom right, #fff9c4, #fff59d);
+}
+
+.theme-eye-care-gray {
+    background: linear-gradient(to bottom right, #f5f5f5, #e0e0e0);
+}
+
+/* 闪卡动画 - 翻页效果 */
+.flashcard-enter {
+    transform: rotateY(-90deg);
+    opacity: 0;
+}
+
+.flashcard-enter-active {
+    transform: rotateY(0);
+    opacity: 1;
+    transition: all 500ms ease-out;
+}
+
+.flashcard-exit {
+    transform: rotateY(0);
+    opacity: 1;
+}
+
+.flashcard-exit-active {
+    transform: rotateY(90deg);
+    opacity: 0;
+    transition: all 500ms ease-in;
+}
+
+/* 播放按钮动画 */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* 按钮样式 */
+.level-btn.active {
+    transform: scale(1.1);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.topic-btn.active {
+    background-color: #10b981;
+    color: white;
+}
+
+/* 滚动容器样式 */
+#topic-selector .flex {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+#topic-selector .flex::-webkit-scrollbar {
+    width: 6px;
+}
+
+#topic-selector .flex::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+#topic-selector .flex::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+#topic-selector .flex::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* 单词本样式 */
+.vocab-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+
+.vocab-content {
+    background: white;
+    border-radius: 24px;
+    padding: 2rem;
+    max-width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    width: 800px;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+    nav .container {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    #flashcard {
+        padding: 2rem 1rem;
+    }
+    
+    #word {
+        font-size: 3rem;
+    }
+    
+    .operation-buttons {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}

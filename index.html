@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KET单词闪卡</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gradient-to-br from-green-100 to-green-200 min-h-screen transition-colors duration-500">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-white/80 backdrop-blur-sm shadow-lg p-4">
+        <div class="container mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="text-2xl font-bold text-green-700">
+                <i class="fa fa-book mr-2"></i>KET单词闪卡
+            </div>
+            
+            <!-- 学习模式切换 -->
+            <div class="flex bg-gray-100 rounded-lg p-1">
+                <button class="mode-btn px-4 py-2 rounded-lg bg-green-500 text-white font-medium" data-mode="level">
+                    按级别学习
+                </button>
+                <button class="mode-btn px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200" data-mode="topic">
+                    按主题学习
+                </button>
+            </div>
+            
+            <!-- 实时统计 -->
+            <div class="flex items-center gap-4 text-sm">
+                <span>总词数: <span id="total-count">0</span></span>
+                <span class="flex items-center gap-1">
+                    进度: <span id="progress-percent">0%</span>
+                    <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-green-500 w-0 transition-all"></div>
+                    </div>
+                </span>
+                <span class="text-green-600">已会: <span id="mastered-count">0</span></span>
+                <span class="text-red-600">不会: <span id="unknown-count">0</span></span>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="flex gap-2">
+                <button id="vocab-btn" class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                    <i class="fa fa-list mr-1"></i>单词本
+                </button>
+                <button id="theme-btn" class="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
+                    <i class="fa fa-paint-brush mr-1"></i>换背景
+                </button>
+                <button id="export-btn" class="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+                    <i class="fa fa-download mr-1"></i>导出PDF
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 级别/主题选择器 -->
+        <div id="selector-panel" class="mb-8 text-center">
+            <div id="level-selector" class="flex justify-center gap-4">
+                <button class="level-btn px-6 py-3 rounded-lg bg-black text-white font-bold text-lg">黑1</button>
+                <button class="level-btn px-6 py-3 rounded-lg bg-blue-500 text-white font-bold text-lg">蓝2</button>
+                <button class="level-btn px-6 py-3 rounded-lg bg-red-500 text-white font-bold text-lg">红3</button>
+            </div>
+            <div id="topic-selector" class="hidden justify-center">
+                <select id="topic-dropdown" class="px-6 py-3 rounded-lg border-2 border-gray-300 text-lg font-medium focus:outline-none focus:border-green-500">
+                    <option value="">请选择主题</option>
+                    <!-- 主题选项动态生成 -->
+                </select>
+            </div>
+        </div>
+
+        <!-- 闪卡区域 -->
+        <div id="flashcard-container" class="flex justify-center items-center min-h-[400px]">
+            <div id="flashcard" class="w-full max-w-xl bg-white rounded-3xl shadow-2xl p-8 transform transition-all duration-300">
+                <div class="flex justify-between items-start mb-4">
+                    <span id="level-tag" class="px-3 py-1 rounded-full text-white text-sm font-medium bg-black">黑1</span>
+                    <span id="topic-tag" class="px-3 py-1 rounded-full text-white text-sm font-medium bg-green-500">形容词</span>
+                </div>
+                <div id="phonetic" class="text-center text-gray-500 text-lg mb-4">/ˈhæpi/</div>
+                <div id="word" class="text-center text-6xl font-bold text-gray-800 mb-6">happy</div>
+                <div id="meaning" class="text-center text-2xl text-gray-600 mb-8">adj. 开心的，快乐的</div>
+                <div class="flex justify-end">
+                    <button id="play-btn" class="w-14 h-14 rounded-full bg-orange-500 text-white text-2xl flex items-center justify-center hover:bg-orange-600 transition-all">
+                        <i class="fa fa-play"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="flex justify-center gap-8 mt-8">
+            <button id="unknown-btn" class="px-8 py-4 bg-red-500 text-white rounded-xl text-xl font-bold hover:bg-red-600 transition-all transform hover:scale-105">
+                <i class="fa fa-times mr-2"></i>不会
+            </button>
+            <button id="play-btn-large" class="px-8 py-4 bg-blue-500 text-white rounded-xl text-xl font-bold hover:bg-blue-600 transition-all transform hover:scale-105">
+                <i class="fa fa-volume-up mr-2"></i>发音
+            </button>
+            <button id="mastered-btn" class="px-8 py-4 bg-green-500 text-white rounded-xl text-xl font-bold hover:bg-green-600 transition-all transform hover:scale-105">
+                <i class="fa fa-check mr-2"></i>会了
+            </button>
+        </div>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

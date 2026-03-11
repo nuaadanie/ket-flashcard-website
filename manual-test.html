@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手动测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            margin: 0 0 10px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        pre {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>KET单词闪卡 - 本地存储手动测试</h1>
+
+    <div class="test-section">
+        <h2>1. 测试页面访问</h2>
+        <p>点击按钮打开单词闪卡应用页面进行手动测试</p>
+        <button onclick="openApp()">打开单词闪卡应用</button>
+        <button onclick="checkLocalStorage()">检查本地存储</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 测试本地存储操作</h2>
+        <p>直接在当前页面测试本地存储功能</p>
+        <button onclick="setTestStorage()">设置测试数据</button>
+        <button onclick="getStorageData()">获取存储数据</button>
+        <button onclick="clearStorageData()">清除存储数据</button>
+        <button onclick="checkStorageSize()">检查存储大小</button>
+
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        let testResults = document.getElementById('test-results');
+
+        function openApp() {
+            window.open('http://localhost:8081', '_blank');
+        }
+
+        function addResult(type, message, data = null) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<strong>${message}</strong>`;
+
+            if (data) {
+                const dataPre = document.createElement('pre');
+                dataPre.textContent = JSON.stringify(data, null, 2);
+                resultDiv.appendChild(dataPre);
+            }
+
+            testResults.appendChild(resultDiv);
+            testResults.scrollTop = testResults.scrollHeight;
+        }
+
+        function checkLocalStorage() {
+            try {
+                const ketFlashcard = localStorage.getItem('ket-flashcard');
+                if (ketFlashcard) {
+                    const data = JSON.parse(ketFlashcard);
+                    addResult('success', '本地存储数据已找到：', data);
+                    if (data.mastered) {
+                        addResult('info', `已会单词数: ${data.mastered.length}`);
+                    }
+                    if (data.unknown) {
+                        addResult('info', `不会单词数: ${data.unknown.length}`);
+                    }
+                } else {
+                    addResult('info', '本地存储中尚未有 ket-flashcard 数据');
+                }
+            } catch (error) {
+                addResult('error', '获取存储数据时出错：' + error);
+            }
+        }
+
+        function setTestStorage() {
+            try {
+                const testData = {
+                    mastered: [1, 2, 3],
+                    unknown: [4, 5, 6],
+                    lastMode: 'level',
+                    levelProgress: {
+                        '黑1': { currentIndex: 5, total: 50 },
+                        '蓝2': { currentIndex: 10, total: 100 },
+                        '红3': { currentIndex: 15, total: 150 }
+                    },
+                    topicProgress: {},
+                    theme: 'forest'
+                };
+
+                localStorage.setItem('ket-flashcard', JSON.stringify(testData));
+                addResult('success', '测试数据已设置到本地存储');
+            } catch (error) {
+                addResult('error', '设置存储数据时出错：' + error);
+            }
+        }
+
+        function getStorageData() {
+            try {
+                const ketFlashcard = localStorage.getItem('ket-flashcard');
+                if (ketFlashcard) {
+                    const data = JSON.parse(ketFlashcard);
+                    addResult('success', '存储数据为：', data);
+                } else {
+                    addResult('error', '未找到 ket-flashcard 存储数据');
+                }
+            } catch (error) {
+                addResult('error', '解析存储数据时出错：' + error);
+            }
+        }
+
+        function clearStorageData() {
+            try {
+                localStorage.removeItem('ket-flashcard');
+                addResult('success', '本地存储数据已清除');
+            } catch (error) {
+                addResult('error', '清除存储数据时出错：' + error);
+            }
+        }
+
+        function checkStorageSize() {
+            try {
+                let totalSize = 0;
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        totalSize += key.length + localStorage[key].length;
+                    }
+                }
+                const kbSize = (totalSize / 1024).toFixed(2);
+                addResult('info', `本地存储总大小：${kbSize} KB`);
+                addResult('info', `存储项目数：${localStorage.length}`);
+            } catch (error) {
+                addResult('error', '检查存储大小时出错：' + error);
+            }
+        }
+
+        // 页面加载时检查存储状态
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('测试页面已加载');
+            checkLocalStorage();
+        });
+    </script>
+</body>
+</html>
