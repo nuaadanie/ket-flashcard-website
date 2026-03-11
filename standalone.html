@@ -19297,12 +19297,14 @@ const SpeechService = {
             this.cancel();
 
             try {
+                // 处理 options 为 null 的情况
+                const opts = options || {};
                 const {
                     language = APP_CONFIG.SPEECH.DEFAULT_LANGUAGE,
                     rate = APP_CONFIG.SPEECH.DEFAULT_RATE,
                     pitch = APP_CONFIG.SPEECH.DEFAULT_PITCH,
                     volume = 1
-                } = options;
+                } = opts;
 
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = language;
