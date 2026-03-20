@@ -31,7 +31,7 @@ async function runTests() {
     await page.setViewport({ width: 1920, height: 1080 });
 
     // 通过服务器访问 standalone.html 文件
-    const testURL = 'http://localhost:9001/standalone.html';
+    const testURL = 'http://localhost:9002/standalone.html';
 
     console.log('=== 访问 standalone.html 文件 ===');
     await page.goto(testURL, { waitUntil: 'networkidle2', timeout: 60000 });
@@ -79,37 +79,50 @@ async function runTests() {
       // 测试选择主题
       for (let i = 0; i < testTopics.length; i++) {
         const topic = testTopics[i];
-        console.log(`\\n=== 测试主题: ${topic} ===`);
+        console.log(`\n=== 测试主题: ${topic} ===`);
 
         try {
           // 选择主题
-          await page.select('#topic-dropdown', topic);
+          await page.select("#topic-dropdown", topic);
           await new Promise(resolve => setTimeout(resolve, 1000));
 
           // 验证单词是否显示
           const wordText = await page.evaluate(() => {
-            return document.getElementById('word').textContent;
+            return document.getElementById("word").textContent;
           });
 
           const meaningText = await page.evaluate(() => {
-            return document.getElementById('meaning').textContent;
+            return document.getElementById("meaning").textContent;
           });
 
           const topicTagText = await page.evaluate(() => {
-            return document.getElementById('topic-tag').textContent;
+            return document.getElementById("topic-tag").textContent;
           });
 
           console.log(`✅ 单词显示: ${wordText}`);
           console.log(`✅ 单词含义: ${meaningText}`);
 
           if (topicTagText === topic) {
-            console.log('✅ 主题标签验证成功');
+            console.log("✅ 主题标签验证成功");
           } else {
             console.log(`❌ 主题标签验证失败，预期: "${topic}"，实际: "${topicTagText}"`);
           }
 
         } catch (error) {
           console.log(`❌ 主题测试失败: ${error.message}`);
+          // 如果发生框架分离错误，重新创建页面
+          if (error.message.includes("Target closed") || error.message.includes("Attempted to use detached Frame")) {
+            console.log("🔄 框架分离，重新创建页面");
+            await page.close();
+            page = await browser.newPage();
+            await page.setViewport({ width: 1920, height: 1080 });
+            await page.goto(testURL, { waitUntil: "networkidle2", timeout: 60000 });
+            // 再次切换到主题模式
+            await page.click('[data-mode="topic"]');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // 继续下一个主题测试
+            continue;
+          }
         }
       }
 
