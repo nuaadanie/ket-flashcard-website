@@ -17,6 +17,7 @@ class StorageService {
   List<int> readArticles = [];
   String accent = 'us'; // 'us' 美式, 'uk' 英式
   int voice = 0; // 0=女声, 1=男声, 3=情感男声, 4=情感女声
+  String? statsFilter; // 当前统计筛选状态
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -68,6 +69,7 @@ class StorageService {
           [];
       accent = data['accent'] as String? ?? 'us';
       voice = data['voice'] as int? ?? 0;
+      statsFilter = data['statsFilter'] as String?;
     } catch (e) {
       // ignore corrupt data
     }
@@ -87,6 +89,7 @@ class StorageService {
       'readArticles': readArticles,
       'accent': accent,
       'voice': voice,
+      'statsFilter': statsFilter,
     });
     await _prefs.setString(_key, data);
   }

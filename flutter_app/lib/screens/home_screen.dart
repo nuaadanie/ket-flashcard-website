@@ -15,7 +15,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   final StorageService _storage = StorageService();
   final SpeechService _speech = SpeechService();
 
@@ -40,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _cardAnimController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -61,9 +62,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _currentTopic = _storage.lastTopic;
     _themeIndex = appThemes.indexWhere((t) => t.name == _storage.theme);
     if (_themeIndex < 0) _themeIndex = 0;
+    _statsFilter = _storage.statsFilter;
     _filterWords();
     _cardAnimController.forward();
     setState(() {});
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _saveProgress();
+    }
   }
 
   Future<void> _loadWords() async {
@@ -107,7 +116,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _saveProgress() {
-    if (_statsFilter != null) return; // 筛选模式不保存进度
+    _storage.statsFilter = _statsFilter;
+    if (_statsFilter != null) {
+      // 筛选模式只保存筛选状态，不保存卡片进度
+      _storage.save();
+      return;
+    }
     if (_currentMode == 'level') {
       _storage.levelProgress[_currentLevel] = _currentIndex;
     } else {
@@ -439,6 +453,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cardAnimController.dispose();
     _speech.dispose();
     super.dispose();
