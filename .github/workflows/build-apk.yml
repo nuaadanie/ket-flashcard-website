@@ -30,10 +30,3 @@ jobs:
           name: app-release-apk
           path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
-
-      - name: Upload split APKs
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-split-apks
-          path: flutter_app/build/app/outputs/flutter-apk/*.apk
-          retention-days: 30
