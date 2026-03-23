@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ket_flashcard/main.dart';
+import 'package:ket_flashcard/screens/main_screen.dart';
 
 void main() {
   setUp(() {
@@ -37,13 +37,48 @@ void main() {
     );
   });
 
-  testWidgets('App renders and shows bottom navigation tabs',
+  testWidgets('Shows loading indicator then main page after init',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const KetFlashcardApp());
-    // Wait for async init (storage, speech) to complete
+    await tester.pumpWidget(
+      const MaterialApp(home: MainScreen()),
+    );
+
+    // Before init completes, should show loading indicator
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    // Let async init complete
     await tester.pumpAndSettle();
 
-    // Verify bottom nav labels exist
+    // After init, loading indicator should be gone
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('Bottom navigation has two tabs',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: MainScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('单词'), findsOneWidget);
+    expect(find.text('阅读'), findsOneWidget);
+  });
+
+  testWidgets('Can switch between tabs',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: MainScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    // Default tab is 单词 (index 0)
+    expect(find.text('单词'), findsOneWidget);
+
+    // Tap on 阅读 tab
+    await tester.tap(find.text('阅读'));
+    await tester.pumpAndSettle();
+
+    // Both tabs should still be visible in the nav bar
     expect(find.text('单词'), findsOneWidget);
     expect(find.text('阅读'), findsOneWidget);
   });

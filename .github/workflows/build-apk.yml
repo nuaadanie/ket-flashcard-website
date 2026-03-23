@@ -21,6 +21,9 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Run tests
+        run: cd flutter_app && flutter test
+
       - name: Build APK
         run: cd flutter_app && flutter build apk --release
 
