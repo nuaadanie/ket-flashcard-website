@@ -23,7 +23,6 @@ jobs:
 
       - name: Run tests
         run: cd flutter_app && flutter test
-        continue-on-error: true
 
       - name: Build APK
         run: cd flutter_app && flutter build apk --release
