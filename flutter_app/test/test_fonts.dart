@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -72,6 +73,9 @@ class _FakeHttpClient implements http.Client {
 class _FakeAssetManifest implements AssetManifest {
   @override
   List<String> listAssets() => <String>[];
+
+  @override
+  List<AssetMetadata>? getAssetVariants(String key) => null;
 
   @override
   Future<void> loadFromAssetBundle(AssetBundle bundle) async {}
