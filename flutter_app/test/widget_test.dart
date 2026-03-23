@@ -6,7 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ket_flashcard/main.dart';
 
+import 'test_fonts.dart';
+
 void main() {
+  setUpAll(() async {
+    await loadTestFonts();
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
 
