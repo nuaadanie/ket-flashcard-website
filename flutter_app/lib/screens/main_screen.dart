@@ -71,20 +71,74 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentTab,
-        onTap: (i) => setState(() => _currentTab = i),
-        selectedItemColor: Colors.green[700],
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.style),
-            label: '单词',
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: stichSurfaceContainer, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildNavItem(0, '🎴', '单词'),
+                _buildNavItem(1, '📚', '阅读'),
+              ],
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_stories),
-            label: '阅读',
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, String emoji, String label) {
+    final active = _currentTab == index;
+    return GestureDetector(
+      onTap: () => setState(() => _currentTab = index),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? stichPrimary.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: active ? FontWeight.bold : FontWeight.w500,
+                color: active ? stichPrimary : Colors.grey[500],
+              ),
+            ),
+            if (active) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: stichPrimary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

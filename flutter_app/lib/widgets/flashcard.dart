@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
 
@@ -108,7 +109,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
         ),
         Text(
           widget.word.word,
-          style: TextStyle(
+          style: GoogleFonts.inter(
             fontSize: wordSize,
             fontWeight: FontWeight.bold,
             color: const Color(0xFF1F2937),
@@ -125,7 +126,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
               width: playSize,
               height: playSize,
               decoration: BoxDecoration(
-                color: widget.isPlaying ? Colors.orange[300] : Colors.orange,
+                color: widget.isPlaying ? stichTertiary.withOpacity(0.7) : stichTertiary,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -142,8 +143,11 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
     final card = GestureDetector(
       onTap: () => setState(() => _meaningVisible = !_meaningVisible),
       child: Card(
-        elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 12,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(48),
+          side: const BorderSide(color: stichSurfaceContainer, width: 4),
+        ),
         clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: cardPadding,
@@ -166,7 +170,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Text(
         text,

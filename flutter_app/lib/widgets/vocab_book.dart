@@ -150,7 +150,10 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(48),
+        side: const BorderSide(color: stichSurfaceContainer, width: 3),
+      ),
       insetPadding: EdgeInsets.symmetric(
         horizontal: isLandscape ? 24 : 16,
         vertical: isLandscape ? 8 : 24,
@@ -179,7 +182,7 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : IconButton(
-                        icon: const Icon(Icons.picture_as_pdf, color: Colors.orange),
+                        icon: const Icon(Icons.picture_as_pdf, color: stichTertiary),
                         tooltip: '导出PDF',
                         onPressed: _exportPdf,
                       ),
@@ -232,9 +235,16 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
           width: 90,
           child: DropdownButtonFormField<String>(
             value: _levelFilter.isEmpty ? null : _levelFilter,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               isDense: true,
             ),
             hint: const Text('级别', style: TextStyle(fontSize: 12)),
@@ -251,9 +261,16 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
         Expanded(
           child: DropdownButtonFormField<String>(
             value: _topicFilter.isEmpty ? null : _topicFilter,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               isDense: true,
             ),
             isExpanded: true,
@@ -290,10 +307,17 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
         Expanded(
           child: DropdownButtonFormField<String>(
             value: _levelFilter.isEmpty ? null : _levelFilter,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: '级别',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             items: [
               const DropdownMenuItem(value: '', child: Text('所有级别')),
@@ -307,10 +331,17 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
         Expanded(
           child: DropdownButtonFormField<String>(
             value: _topicFilter.isEmpty ? null : _topicFilter,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: '主题',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(24),
+                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             isExpanded: true,
             items: [
@@ -348,7 +379,7 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Text(w.level,
                 style: TextStyle(
@@ -369,12 +400,12 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
                 const SizedBox(width: 4),
                 GestureDetector(
                   onTap: () => widget.speech.speak(w.word),
-                  child: const Icon(Icons.volume_up, color: Colors.blue, size: 18),
+                  child: const Icon(Icons.volume_up, color: stichSecondary, size: 18),
                 ),
               ],
             )
           : IconButton(
-              icon: const Icon(Icons.volume_up, color: Colors.blue),
+              icon: const Icon(Icons.volume_up, color: stichSecondary),
               onPressed: () => widget.speech.speak(w.word),
             ),
     );
@@ -390,8 +421,8 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
           vertical: compact ? 6 : 8,
         ),
         decoration: BoxDecoration(
-          color: active ? Colors.green : Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
+          color: active ? stichPrimary : Colors.grey[200],
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Text(
           label,

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'models/app_theme.dart';
 import 'screens/main_screen.dart';
 
 void main() {
@@ -16,7 +18,15 @@ class KetFlashcardApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: 'Roboto',
+        textTheme: GoogleFonts.quicksandTextTheme(),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: stichPrimary,
+          primary: stichPrimary,
+          secondary: stichSecondary,
+          tertiary: stichTertiary,
+          surface: stichSurface,
+        ),
+        scaffoldBackgroundColor: stichSurface,
       ),
       home: const MainScreen(),
     );

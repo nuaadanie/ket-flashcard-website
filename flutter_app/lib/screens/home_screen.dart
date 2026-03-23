@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
 import '../services/storage_service.dart';
@@ -149,6 +150,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(48),
+          side: const BorderSide(color: stichSurfaceContainer, width: 3),
+        ),
         title: const Text('🎉 恭喜完成！'),
         content: Text(
           _currentMode == 'level'
@@ -305,10 +310,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(48),
+                side: const BorderSide(color: stichSurfaceContainer, width: 3),
+              ),
               title: const Row(
                 children: [
-                  Icon(Icons.record_voice_over, color: Colors.teal),
+                  Icon(Icons.record_voice_over, color: stichSecondary),
                   SizedBox(width: 8),
                   Text('语音设置', style: TextStyle(fontSize: 18)),
                 ],
@@ -397,9 +405,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? Colors.teal : Colors.grey[100],
+          color: active ? stichSecondary : Colors.grey[100],
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: active ? Colors.teal : Colors.grey[300]!),
+          border: Border.all(color: active ? stichSecondary : Colors.grey[300]!),
         ),
         child: Text(
           label,
@@ -461,19 +469,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   @override
   Widget build(BuildContext context) {
-    final theme = appThemes[_themeIndex];
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: theme.gradientColors,
-          ),
-        ),
+        color: stichSurface,
         child: SafeArea(
           child: isLandscape
               ? _buildLandscapeLayout()
@@ -540,7 +541,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                       margin: const EdgeInsets.fromLTRB(8, 4, 4, 0),
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(24),
                       ),
                       padding: const EdgeInsets.all(3),
                       child: Row(
@@ -592,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                       _actionBtnCompact(
                         icon: Icons.volume_up,
                         label: '发音',
-                        color: Colors.blue,
+                        color: stichSecondary,
                         onTap: _playWord,
                         isPad: isTablet,
                       ),
@@ -600,7 +601,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                       _actionBtnCompact(
                         icon: Icons.check,
                         label: '会了',
-                        color: Colors.green,
+                        color: stichPrimary,
                         onTap: _markMastered,
                         isPad: isTablet,
                       ),
@@ -647,7 +648,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: active ? color : color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: color, width: active ? 2 : 1),
         ),
         child: Text(
@@ -674,10 +675,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       padding: EdgeInsets.symmetric(horizontal: isPad ? 20 : 12, vertical: isPad ? 6 : 2),
       child: Row(
         children: [
-          Icon(Icons.menu_book, color: const Color(0xFF15803D), size: titleIconSize),
+          Icon(Icons.menu_book, color: stichPrimary, size: titleIconSize),
           const SizedBox(width: 6),
           Text('KET闪卡',
-              style: TextStyle(fontSize: titleSize, fontWeight: FontWeight.bold, color: const Color(0xFF15803D))),
+              style: GoogleFonts.fredoka(fontSize: titleSize, fontWeight: FontWeight.bold, color: stichPrimary)),
           const SizedBox(width: 12),
           // 横屏统计合并到顶栏
           _statChip('✅${stats['mastered']}', 'mastered', Colors.green),
@@ -693,7 +694,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               child: LinearProgressIndicator(
                 value: progress,
                 backgroundColor: Colors.grey[300],
-                valueColor: const AlwaysStoppedAnimation(Colors.green),
+                valueColor: const AlwaysStoppedAnimation(stichPrimary),
                 minHeight: isPad ? 7 : 5,
               ),
             ),
@@ -701,7 +702,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           const SizedBox(width: 4),
           Text('${(progress * 100).round()}%', style: TextStyle(fontSize: isPad ? 14 : 12)),
           IconButton(
-            icon: Icon(Icons.book, color: Colors.blue, size: barIconSize),
+            icon: Icon(Icons.book, color: stichSecondary, size: barIconSize),
             tooltip: '单词本',
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(minWidth: isPad ? 44 : 36, minHeight: isPad ? 44 : 36),
@@ -711,14 +712,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             ),
           ),
           IconButton(
-            icon: Icon(Icons.palette, color: Colors.purple, size: barIconSize),
+            icon: Icon(Icons.palette, color: stichTertiary, size: barIconSize),
             tooltip: '换背景',
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(minWidth: isPad ? 44 : 36, minHeight: isPad ? 44 : 36),
             onPressed: _toggleTheme,
           ),
           IconButton(
-            icon: Icon(Icons.record_voice_over, color: Colors.teal, size: barIconSize),
+            icon: Icon(Icons.record_voice_over, color: stichSecondary, size: barIconSize),
             tooltip: '语音设置',
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(minWidth: isPad ? 44 : 36, minHeight: isPad ? 44 : 36),
@@ -734,10 +735,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          const Icon(Icons.menu_book, color: Color(0xFF15803D), size: 28),
+          Icon(Icons.menu_book, color: stichPrimary, size: 28),
           const SizedBox(width: 8),
-          const Text('KET闪卡',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF15803D))),
+          Text('KET闪卡',
+              style: GoogleFonts.fredoka(fontSize: 20, fontWeight: FontWeight.bold, color: stichPrimary)),
           const Spacer(),
           Text('${_storage.mastered.length}/${_allWords.length}',
               style: const TextStyle(fontSize: 13, color: Colors.grey)),
@@ -749,7 +750,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               child: LinearProgressIndicator(
                 value: progress,
                 backgroundColor: Colors.grey[300],
-                valueColor: const AlwaysStoppedAnimation(Colors.green),
+                valueColor: const AlwaysStoppedAnimation(stichPrimary),
                 minHeight: 6,
               ),
             ),
@@ -757,7 +758,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           const SizedBox(width: 8),
           Text('${(progress * 100).round()}%', style: const TextStyle(fontSize: 13)),
           IconButton(
-            icon: const Icon(Icons.book, color: Colors.blue),
+            icon: const Icon(Icons.book, color: stichSecondary),
             tooltip: '单词本',
             onPressed: () => showDialog(
               context: context,
@@ -765,12 +766,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.palette, color: Colors.purple),
+            icon: const Icon(Icons.palette, color: stichTertiary),
             tooltip: '换背景',
             onPressed: _toggleTheme,
           ),
           IconButton(
-            icon: const Icon(Icons.record_voice_over, color: Colors.teal),
+            icon: const Icon(Icons.record_voice_over, color: stichSecondary),
             tooltip: '语音设置',
             onPressed: _showVoiceSettings,
           ),
@@ -812,8 +813,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: active ? Colors.green : Colors.grey[200],
-          borderRadius: BorderRadius.circular(10),
+          color: active ? stichPrimary : Colors.grey[200],
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Text(label,
             style: TextStyle(
@@ -849,7 +850,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: active
                       ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]
                       : [],
@@ -872,7 +873,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         value: _currentTopic.isEmpty ? null : _currentTopic,
         decoration: InputDecoration(
           filled: true, fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(24),
+            borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+          ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
         isExpanded: true,
@@ -915,7 +923,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             padding: EdgeInsets.symmetric(vertical: isPad ? 14 : 10),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(24),
               boxShadow: active ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8)] : [],
               border: active ? Border.all(color: Colors.white, width: 2) : null,
             ),
@@ -933,7 +941,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       value: _currentTopic.isEmpty ? null : _currentTopic,
       decoration: InputDecoration(
         filled: true, fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         isDense: true,
       ),
@@ -986,7 +1001,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           style: TextStyle(
             fontSize: isPad ? 15 : 13,
             fontWeight: active ? FontWeight.bold : FontWeight.normal,
-            color: active ? Colors.green[700] : Colors.grey[600],
+            color: active ? stichPrimary : Colors.grey[600],
           ),
         ),
       ),
@@ -1019,7 +1034,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               padding: EdgeInsets.symmetric(vertical: isPad ? 14 : 10, horizontal: 12),
               decoration: BoxDecoration(
                 color: active ? color : Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(24),
                 border: active ? null : Border.all(color: Colors.grey[300]!),
                 boxShadow: active
                     ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))]
@@ -1082,8 +1097,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             child: Container(
               padding: EdgeInsets.symmetric(vertical: isPad ? 12 : 8, horizontal: 10),
               decoration: BoxDecoration(
-                color: active ? Colors.green : Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                color: active ? stichPrimary : Colors.white,
+                borderRadius: BorderRadius.circular(24),
                 border: active ? null : Border.all(color: Colors.grey[300]!),
               ),
               child: Row(
@@ -1178,10 +1193,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _actionBtn(icon: Icons.arrow_back, label: '上一个', color: Colors.grey[600]!, onTap: _goBack, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: radius),
-              _actionBtn(icon: Icons.close, label: '不会', color: Colors.red, onTap: _markUnknown, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: radius),
-              _actionBtn(icon: Icons.volume_up, label: '发音', color: Colors.blue, onTap: _playWord, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: radius),
-              _actionBtn(icon: Icons.check, label: '会了', color: Colors.green, onTap: _markMastered, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: radius),
+              _actionBtn(icon: Icons.arrow_back, label: '上一个', color: Colors.grey[600]!, onTap: _goBack, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: 32),
+              _actionBtn(icon: Icons.close, label: '不会', color: Colors.red, onTap: _markUnknown, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: 32),
+              _actionBtn(icon: Icons.volume_up, label: '发音', color: stichSecondary, onTap: _playWord, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: 32),
+              _actionBtn(icon: Icons.check, label: '会了', color: stichPrimary, onTap: _markMastered, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: 32),
             ],
           ),
         );
@@ -1228,7 +1243,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         padding: EdgeInsets.symmetric(vertical: isPad ? 14 : 10),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(isPad ? 14 : 10),
+          borderRadius: BorderRadius.circular(32),
           boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))],
         ),
         child: Column(

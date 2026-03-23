@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/article.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
@@ -90,7 +91,10 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(48),
+          side: const BorderSide(color: stichSurfaceContainer, width: 3),
+        ),
         contentPadding: const EdgeInsets.all(24),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -125,7 +129,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: const BoxDecoration(
-                    color: Colors.orange, shape: BoxShape.circle),
+                    color: stichTertiary, shape: BoxShape.circle),
                 child: const Icon(Icons.volume_up, color: Colors.white, size: 28),
               ),
             ),
@@ -137,18 +141,11 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = appThemes[widget.themeIndex];
     final color = levelColors[widget.article.level] ?? Colors.grey;
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: theme.gradientColors,
-          ),
-        ),
+        color: stichSurface,
         child: SafeArea(
           child: Column(
             children: [
@@ -181,7 +178,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
           Expanded(
             child: Text(
               widget.article.title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: GoogleFonts.fredoka(fontSize: 18, fontWeight: FontWeight.bold),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -201,7 +198,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
           IconButton(
             icon: Icon(
               _isPlaying ? Icons.stop : Icons.play_circle_fill,
-              color: Colors.orange,
+              color: stichTertiary,
               size: 32,
             ),
             tooltip: _isPlaying ? '停止朗读' : '朗读全文',
@@ -229,10 +226,10 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(32),
           border: expanded
-              ? Border.all(color: Colors.green.withOpacity(0.5), width: 1.5)
-              : null,
+              ? Border.all(color: stichSurfaceContainer, width: 2.5)
+              : Border.all(color: stichSurfaceContainer.withOpacity(0.5), width: 1.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +244,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                   child: Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Icon(Icons.volume_up,
-                        color: Colors.orange[400], size: 20),
+                        color: stichTertiary, size: 20),
                   ),
                 ),
               ],
@@ -260,7 +257,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.08),
+                    color: stichSecondary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -332,7 +329,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 2),
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: Colors.orange[400]!, width: 2),
+                bottom: BorderSide(color: stichTertiary, width: 2),
               ),
             ),
             child: Text(
@@ -340,7 +337,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
               style: TextStyle(
                 fontSize: _fontSize,
                 fontWeight: FontWeight.bold,
-                color: Colors.orange[800],
+                color: const Color(0xFFb8860b),
                 height: 1.6,
               ),
             ),

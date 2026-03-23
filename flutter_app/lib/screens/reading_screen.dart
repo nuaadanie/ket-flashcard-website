@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/article.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
@@ -61,19 +62,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = appThemes[widget.themeIndex];
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: theme.gradientColors,
-          ),
-        ),
+        color: stichSurface,
         child: SafeArea(
           child: Column(
             children: [
@@ -98,18 +92,18 @@ class _ReadingScreenState extends State<ReadingScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          const Icon(Icons.auto_stories, color: Color(0xFF15803D), size: 28),
+          const Icon(Icons.auto_stories, color: stichPrimary, size: 28),
           const SizedBox(width: 8),
-          const Text('KET阅读',
-              style: TextStyle(
+          Text('KET阅读',
+              style: GoogleFonts.fredoka(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF15803D))),
+                  color: stichPrimary)),
           const Spacer(),
           Text('${_filtered.length} 篇文章',
               style: TextStyle(fontSize: 13, color: Colors.grey[600])),
           IconButton(
-            icon: const Icon(Icons.palette, color: Colors.purple),
+            icon: const Icon(Icons.palette, color: stichTertiary),
             tooltip: '换背景',
             onPressed: widget.onThemeToggle,
           ),
@@ -136,8 +130,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                 decoration: BoxDecoration(
                   color: active ? color : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: active ? null : Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(24),
+                  border: active ? null : Border.all(color: stichSurfaceContainer, width: 2),
                   boxShadow: active
                       ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8)]
                       : [],
@@ -197,8 +191,11 @@ class _ReadingScreenState extends State<ReadingScreen> {
         );
       },
       child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(48),
+          side: const BorderSide(color: stichSurfaceContainer, width: 3),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -230,7 +227,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
                 ),
               ),
               if (isRead)
-                const Icon(Icons.check_circle, color: Colors.green, size: 22),
+                const Icon(Icons.check_circle, color: stichSecondary, size: 22),
             ],
           ),
         ),
