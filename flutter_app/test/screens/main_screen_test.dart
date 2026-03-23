@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ket_flashcard/screens/main_screen.dart';
@@ -9,15 +8,11 @@ import 'package:ket_flashcard/screens/main_screen.dart';
 import '../test_fonts.dart';
 
 void main() {
-  setUpAll(() async {
-    await loadTestFonts();
-  });
-
   setUp(() {
     SharedPreferences.setMockInitialValues({});
 
-    // Disable google_fonts runtime font fetching in tests
-    GoogleFonts.config.allowRuntimeFetching = false;
+    // Mock google_fonts HTTP fetching with fake TTF bytes
+    setupGoogleFontsMocks();
 
     // Mock path_provider for SpeechService.init()
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
