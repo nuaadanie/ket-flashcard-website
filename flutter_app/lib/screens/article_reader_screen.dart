@@ -144,6 +144,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     final color = levelColors[widget.article.level] ?? Colors.grey;
 
     return Scaffold(
+      primary: true,
       body: Container(
         color: stichSurface,
         child: SafeArea(

@@ -6,6 +6,7 @@ class Word {
   final String level;
   final String topic;
   final List<String> syllables;
+  final String example;
 
   Word({
     required this.id,
@@ -15,6 +16,7 @@ class Word {
     required this.level,
     required this.topic,
     this.syllables = const [],
+    this.example = '',
   });
 
   factory Word.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class Word {
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      example: json['example'] as String? ?? '',
     );
   }
 }

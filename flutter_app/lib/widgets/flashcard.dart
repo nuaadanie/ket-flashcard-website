@@ -8,6 +8,7 @@ class FlashcardWidget extends StatefulWidget {
   final Word word;
   final bool isPlaying;
   final VoidCallback onPlay;
+  final VoidCallback? onPlayExample;
   final bool expandVertical;
   final bool isPad;
 
@@ -16,6 +17,7 @@ class FlashcardWidget extends StatefulWidget {
     required this.word,
     required this.isPlaying,
     required this.onPlay,
+    this.onPlayExample,
     this.expandVertical = false,
     this.isPad = false,
   });
@@ -64,6 +66,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
   }
 
   void _flip() {
+    if (_flipController.isAnimating) return;
     if (_isFront) {
       _flipController.forward();
       _isFront = false;
@@ -146,6 +149,8 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
           style: TextStyle(
             fontSize: meaningSize,
             color: Colors.grey[350],
+            decoration: TextDecoration.underline,
+            decorationColor: Colors.grey[350],
           ),
           textAlign: TextAlign.center,
         ),
@@ -190,10 +195,23 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
           style: TextStyle(fontSize: meaningSize, color: Colors.grey[700]),
           textAlign: TextAlign.center,
         ),
+        if (widget.word.example.isNotEmpty) ...[
+          SizedBox(height: widget.isPad ? 12 : 8),
+          Text(
+            widget.word.example,
+            style: TextStyle(
+              fontSize: meaningSize - 4,
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
         Align(
           alignment: Alignment.centerRight,
           child: GestureDetector(
-            onTap: widget.isPlaying ? null : widget.onPlay,
+            onTap: widget.isPlaying ? null : (widget.onPlayExample ?? widget.onPlay),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: playSize,
@@ -247,6 +265,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
 
   Widget _buildCardFace(EdgeInsets padding, Widget content) {
     return Card(
+      color: Colors.white,
       elevation: 12,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(48),

@@ -16,6 +16,7 @@ class AchievementDialog extends StatelessWidget {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(48),
         side: const BorderSide(color: stichSurfaceContainer, width: 3),

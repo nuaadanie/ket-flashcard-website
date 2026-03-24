@@ -321,6 +321,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (mounted) setState(() => _isPlaying = false);
   }
 
+  Future<void> _playExample() async {
+    if (_filteredWords.isEmpty || _isPlaying) return;
+    final example = _filteredWords[_currentIndex].example;
+    if (example.isEmpty) {
+      // Fall back to playing the word
+      return _playWord();
+    }
+    setState(() => _isPlaying = true);
+    await _speech.speak(example);
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) setState(() => _isPlaying = false);
+  }
+
   void _showVoiceSettings() {
     showDialog(
       context: context,
@@ -330,6 +343,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
+              backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(48),
                 side: const BorderSide(color: stichSurfaceContainer, width: 3),
@@ -1239,6 +1253,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             word: _filteredWords[_currentIndex],
             isPlaying: _isPlaying,
             onPlay: _playWord,
+            onPlayExample: _playExample,
             expandVertical: shouldExpand,
             isPad: isPad,
           ),
