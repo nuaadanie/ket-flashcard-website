@@ -506,11 +506,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: isLandscape
-            ? _buildLandscapeLayout()
-            : _buildPortraitLayout(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: appThemes[_themeIndex].gradientColors,
+          ),
+        ),
+        child: SafeArea(
+          child: isLandscape
+              ? _buildLandscapeLayout()
+              : _buildPortraitLayout(),
+        ),
       ),
     );
   }

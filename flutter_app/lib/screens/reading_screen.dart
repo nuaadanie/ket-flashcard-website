@@ -66,20 +66,28 @@ class _ReadingScreenState extends State<ReadingScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            _buildLevelTabs(),
-            Expanded(
-              child: _filtered.isEmpty
-                  ? const Center(child: Text('加载中...'))
-                  : isLandscape
-                      ? _buildLandscapeList()
-                      : _buildPortraitList(),
-            ),
-          ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: appThemes[widget.themeIndex].gradientColors,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(),
+              _buildLevelTabs(),
+              Expanded(
+                child: _filtered.isEmpty
+                    ? const Center(child: Text('加载中...'))
+                    : isLandscape
+                        ? _buildLandscapeList()
+                        : _buildPortraitList(),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -59,27 +59,17 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: appThemes[_themeIndex].gradientColors,
+      body: IndexedStack(
+        index: _currentTab,
+        children: [
+          const HomeScreen(),
+          ReadingScreen(
+            storage: _storage,
+            speech: _speech,
+            themeIndex: _themeIndex,
+            onThemeToggle: _toggleTheme,
           ),
-        ),
-        child: IndexedStack(
-          index: _currentTab,
-          children: [
-            const HomeScreen(),
-            ReadingScreen(
-              storage: _storage,
-              speech: _speech,
-              themeIndex: _themeIndex,
-              onThemeToggle: _toggleTheme,
-            ),
-          ],
-        ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -88,7 +78,7 @@ class _MainScreenState extends State<MainScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: stichSurfaceContainer, width: 2),
+              border: Border.all(color: stichSurfaceContainer, width: 3),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.08),
