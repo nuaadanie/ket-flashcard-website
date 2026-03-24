@@ -100,6 +100,17 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                       widget.word.meaning,
                       style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                     ),
+                    if (widget.word.example.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.word.example,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),
