@@ -144,23 +144,21 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     final color = levelColors[widget.article.level] ?? Colors.grey;
 
     return Scaffold(
-      body: Container(
-        color: stichSurface,
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(color),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                  itemCount: widget.article.paragraphs.length,
-                  itemBuilder: (ctx, i) =>
-                      _buildParagraph(i, widget.article.paragraphs[i]),
-                ),
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildTopBar(color),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                itemCount: widget.article.paragraphs.length,
+                itemBuilder: (ctx, i) =>
+                    _buildParagraph(i, widget.article.paragraphs[i]),
               ),
-              _buildBottomBar(),
-            ],
-          ),
+            ),
+            _buildBottomBar(),
+          ],
         ),
       ),
     );
