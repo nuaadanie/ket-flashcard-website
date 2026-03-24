@@ -132,33 +132,28 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
             ),
           ],
         ),
-        GestureDetector(
-          onTap: _singleTap,
-          onDoubleTap: _doubleTap,
-          child: Text(
-            _showLevel == 0 ? '释义' : widget.word.meaning,
-            style: TextStyle(
-              fontSize: meaningSize,
-              color: _showLevel == 0 ? Colors.grey[350] : Colors.grey[700],
-              decoration: _showLevel == 0 ? TextDecoration.underline : null,
-              decorationColor: Colors.grey[350],
-            ),
-            textAlign: TextAlign.center,
+        Text(
+          _showLevel == 0 ? '释义' : widget.word.meaning,
+          style: TextStyle(
+            fontSize: meaningSize,
+            color: _showLevel == 0 ? Colors.grey[350] : Colors.grey[700],
+            decoration: _showLevel == 0 ? TextDecoration.underline : null,
+            decorationColor: Colors.grey[350],
           ),
+          textAlign: TextAlign.center,
         ),
-        if (_showLevel == 2 && widget.word.example.isNotEmpty) ...[
-          SizedBox(height: widget.isPad ? 12 : 8),
+        if (_showLevel == 2 && widget.word.example.isNotEmpty)
           Text(
             widget.word.example,
             style: TextStyle(
               fontSize: meaningSize - 4,
               color: Colors.grey[500],
               fontStyle: FontStyle.italic,
-              height: 1.4,
             ),
             textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
-        ],
         Align(
           alignment: Alignment.centerRight,
           child: GestureDetector(
@@ -182,7 +177,11 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
       ],
     );
 
-    final card = _buildCardFace(cardPadding, frontContent);
+    final card = GestureDetector(
+      onTap: _singleTap,
+      onDoubleTap: _doubleTap,
+      child: _buildCardFace(cardPadding, frontContent),
+    );
 
     if (widget.expandVertical) {
       return Padding(
