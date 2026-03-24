@@ -62,12 +62,14 @@ class _MainScreenState extends State<MainScreen> {
       body: IndexedStack(
         index: _currentTab,
         children: [
-          const HomeScreen(),
+          HomeScreen(
+            themeIndex: _themeIndex,
+            onThemeToggle: _toggleTheme,
+          ),
           ReadingScreen(
             storage: _storage,
             speech: _speech,
             themeIndex: _themeIndex,
-            onThemeToggle: _toggleTheme,
           ),
         ],
       ),
@@ -77,7 +79,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(0),
               border: Border.all(color: stichSurfaceContainer, width: 3),
               boxShadow: [
                 BoxShadow(

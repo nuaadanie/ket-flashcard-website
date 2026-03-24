@@ -14,7 +14,14 @@ import '../widgets/word_of_day_card.dart';
 import '../widgets/achievement_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int themeIndex;
+  final VoidCallback onThemeToggle;
+
+  const HomeScreen({
+    super.key,
+    required this.themeIndex,
+    required this.onThemeToggle,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -30,7 +37,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   String _currentMode = 'level';
   String _currentLevel = '黑1';
   String _currentTopic = '';
-  int _themeIndex = 0;
   bool _isPlaying = false;
 
   // 需求1: 操作历史栈，用于"上一个"撤销
@@ -65,8 +71,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     _currentMode = _storage.lastMode;
     _currentLevel = _storage.lastLevel;
     _currentTopic = _storage.lastTopic;
-    _themeIndex = appThemes.indexWhere((t) => t.name == _storage.theme);
-    if (_themeIndex < 0) _themeIndex = 0;
     _statsFilter = _storage.statsFilter;
     _filterWords();
     _cardAnimController.forward();
@@ -317,14 +321,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (mounted) setState(() => _isPlaying = false);
   }
 
-  void _toggleTheme() {
-    setState(() {
-      _themeIndex = (_themeIndex + 1) % appThemes.length;
-      _storage.theme = appThemes[_themeIndex].name;
-      _storage.save();
-    });
-  }
-
   void _showVoiceSettings() {
     showDialog(
       context: context,
@@ -511,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: appThemes[_themeIndex].gradientColors,
+            colors: appThemes[widget.themeIndex].gradientColors,
           ),
         ),
         child: SafeArea(
@@ -786,7 +782,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             tooltip: '换背景',
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(minWidth: isPad ? 44 : 36, minHeight: isPad ? 44 : 36),
-            onPressed: _toggleTheme,
+            onPressed: widget.onThemeToggle,
           ),
           IconButton(
             icon: Icon(Icons.record_voice_over, color: stichSecondary, size: barIconSize),
@@ -846,7 +842,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           IconButton(
             icon: const Icon(Icons.palette, color: stichTertiary),
             tooltip: '换背景',
-            onPressed: _toggleTheme,
+            onPressed: widget.onThemeToggle,
           ),
           IconButton(
             icon: const Icon(Icons.record_voice_over, color: stichSecondary),

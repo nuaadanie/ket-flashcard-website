@@ -13,14 +13,12 @@ class ReadingScreen extends StatefulWidget {
   final StorageService storage;
   final SpeechService speech;
   final int themeIndex;
-  final VoidCallback onThemeToggle;
 
   const ReadingScreen({
     super.key,
     required this.storage,
     required this.speech,
     required this.themeIndex,
-    required this.onThemeToggle,
   });
 
   @override
@@ -108,11 +106,6 @@ class _ReadingScreenState extends State<ReadingScreen> {
           const Spacer(),
           Text('${_filtered.length} 篇文章',
               style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-          IconButton(
-            icon: const Icon(Icons.palette, color: stichTertiary),
-            tooltip: '换背景',
-            onPressed: widget.onThemeToggle,
-          ),
         ],
       ),
     );
