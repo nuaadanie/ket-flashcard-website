@@ -100,9 +100,9 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                   if (widget.word.example.isNotEmpty)
                     Text(
                       widget.word.example,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[500],
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF6B7280),
                         fontStyle: FontStyle.italic,
                       ),
                       overflow: TextOverflow.ellipsis,
