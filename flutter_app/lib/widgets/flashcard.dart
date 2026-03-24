@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/word.dart';
@@ -8,7 +7,6 @@ class FlashcardWidget extends StatefulWidget {
   final Word word;
   final bool isPlaying;
   final VoidCallback onPlay;
-  final VoidCallback? onPlayExample;
   final bool expandVertical;
   final bool isPad;
 
@@ -17,7 +15,6 @@ class FlashcardWidget extends StatefulWidget {
     required this.word,
     required this.isPlaying,
     required this.onPlay,
-    this.onPlayExample,
     this.expandVertical = false,
     this.isPad = false,
   });
@@ -26,33 +23,13 @@ class FlashcardWidget extends StatefulWidget {
   State<FlashcardWidget> createState() => FlashcardWidgetState();
 }
 
-class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProviderStateMixin {
-  late AnimationController _flipController;
-  late Animation<double> _flipAnim;
-  bool _isFront = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _flipController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-    _flipAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _flipController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _flipController.dispose();
-    super.dispose();
-  }
+class FlashcardWidgetState extends State<FlashcardWidget> {
+  // 0 = front (word only), 1 = single tap (meaning), 2 = double tap (meaning + example)
+  int _showLevel = 0;
 
   void resetMeaning() {
     if (mounted) {
-      _flipController.reverse();
-      _isFront = true;
+      setState(() => _showLevel = 0);
     }
   }
 
@@ -60,20 +37,20 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
   void didUpdateWidget(FlashcardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.word.id != widget.word.id) {
-      _flipController.reset();
-      _isFront = true;
+      _showLevel = 0;
     }
   }
 
-  void _flip() {
-    if (_flipController.isAnimating) return;
-    if (_isFront) {
-      _flipController.forward();
-      _isFront = false;
-    } else {
-      _flipController.reverse();
-      _isFront = true;
-    }
+  void _singleTap() {
+    setState(() {
+      _showLevel = _showLevel >= 1 ? 0 : 1;
+    });
+  }
+
+  void _doubleTap() {
+    setState(() {
+      _showLevel = 2;
+    });
   }
 
   @override
@@ -131,29 +108,57 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
             Flexible(child: _buildTag(widget.word.topic, Colors.green, tagFontSize, tagHPad, tagVPad)),
           ],
         ),
-        Text(
-          widget.word.phonetic,
-          style: TextStyle(fontSize: phoneticSize, color: Colors.grey[600]),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Flexible(
+              child: Text(
+                widget.word.word,
+                style: GoogleFonts.inter(
+                  fontSize: wordSize,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1F2937),
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              widget.word.phonetic,
+              style: TextStyle(fontSize: phoneticSize, color: Colors.grey[600]),
+            ),
+          ],
         ),
-        Text(
-          widget.word.word,
-          style: GoogleFonts.inter(
-            fontSize: wordSize,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F2937),
+        GestureDetector(
+          onTap: _singleTap,
+          onDoubleTap: _doubleTap,
+          child: Text(
+            _showLevel == 0 ? '释义' : widget.word.meaning,
+            style: TextStyle(
+              fontSize: meaningSize,
+              color: _showLevel == 0 ? Colors.grey[350] : Colors.grey[700],
+              decoration: _showLevel == 0 ? TextDecoration.underline : null,
+              decorationColor: Colors.grey[350],
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
         ),
-        Text(
-          '释义',
-          style: TextStyle(
-            fontSize: meaningSize,
-            color: Colors.grey[350],
-            decoration: TextDecoration.underline,
-            decorationColor: Colors.grey[350],
+        if (_showLevel == 2 && widget.word.example.isNotEmpty) ...[
+          SizedBox(height: widget.isPad ? 12 : 8),
+          Text(
+            widget.word.example,
+            style: TextStyle(
+              fontSize: meaningSize - 4,
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
+        ],
         Align(
           alignment: Alignment.centerRight,
           child: GestureDetector(
@@ -177,82 +182,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
       ],
     );
 
-    final backContent = Column(
-      mainAxisSize: widget.expandVertical ? MainAxisSize.max : MainAxisSize.min,
-      mainAxisAlignment: widget.expandVertical
-          ? MainAxisAlignment.spaceEvenly
-          : MainAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildTag(widget.word.level, levelColor, tagFontSize, tagHPad, tagVPad),
-            Flexible(child: _buildTag(widget.word.topic, Colors.green, tagFontSize, tagHPad, tagVPad)),
-          ],
-        ),
-        Text(
-          widget.word.meaning,
-          style: TextStyle(fontSize: meaningSize, color: Colors.grey[700]),
-          textAlign: TextAlign.center,
-        ),
-        if (widget.word.example.isNotEmpty) ...[
-          SizedBox(height: widget.isPad ? 12 : 8),
-          Text(
-            widget.word.example,
-            style: TextStyle(
-              fontSize: meaningSize - 4,
-              color: Colors.grey[500],
-              fontStyle: FontStyle.italic,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-        Align(
-          alignment: Alignment.centerRight,
-          child: GestureDetector(
-            onTap: widget.isPlaying ? null : (widget.onPlayExample ?? widget.onPlay),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: playSize,
-              height: playSize,
-              decoration: BoxDecoration(
-                color: widget.isPlaying ? stichTertiary.withOpacity(0.7) : stichTertiary,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                widget.isPlaying ? Icons.hourglass_top : Icons.play_arrow,
-                color: Colors.white,
-                size: playIconSize,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-
-    final card = GestureDetector(
-      onTap: _flip,
-      child: AnimatedBuilder(
-        animation: _flipAnim,
-        builder: (context, child) {
-          final angle = _flipAnim.value * pi;
-          final isFrontVisible = angle < pi / 2;
-          return Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..rotateY(angle),
-            child: isFrontVisible
-                ? _buildCardFace(cardPadding, frontContent)
-                : Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()..rotateY(pi),
-                    child: _buildCardFace(cardPadding, backContent),
-                  ),
-          );
-        },
-      ),
-    );
+    final card = _buildCardFace(cardPadding, frontContent);
 
     if (widget.expandVertical) {
       return Padding(
