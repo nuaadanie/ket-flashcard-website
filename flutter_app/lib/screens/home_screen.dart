@@ -618,53 +618,66 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   ],
                 ),
               ),
-              // 右侧：按钮
+              // 右侧：按钮，对齐中间卡片上边界
               SizedBox(
                 width: rightWidth,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 8, left: 4, top: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      _actionBtnCompact(
-                        icon: Icons.arrow_back,
-                        label: '上一个',
-                        color: Colors.grey[600]!,
-                        onTap: _goBack,
-                        isPad: isTablet,
-                      ),
-                      SizedBox(height: isTablet ? 16 : 10),
-                      _actionBtnCompact(
-                        icon: Icons.close,
-                        label: '不会',
-                        color: Colors.red,
-                        onTap: _markUnknown,
-                        isPad: isTablet,
-                      ),
-                      SizedBox(height: isTablet ? 16 : 10),
-                      _actionBtnCompact(
-                        icon: Icons.volume_up,
-                        label: '发音',
-                        color: stichSecondary,
-                        onTap: _playWord,
-                        isPad: isTablet,
-                      ),
-                      SizedBox(height: isTablet ? 16 : 10),
-                      _actionBtnCompact(
-                        icon: Icons.check,
-                        label: '会了',
-                        color: stichPrimary,
-                        onTap: _markMastered,
-                        isPad: isTablet,
-                      ),
-                      const SizedBox(height: 8),
-                      if (_filteredWords.isNotEmpty)
-                        Text(
-                          '${_currentIndex + 1}/${_filteredWords.length}',
-                          style: TextStyle(fontSize: isTablet ? 14 : 11, color: Colors.grey[600]),
+                child: Column(
+                  children: [
+                    if (wotd != null)
+                      Opacity(
+                        opacity: 0,
+                        child: IgnorePointer(
+                          child: WordOfDayCard(word: wotd, speech: _speech),
                         ),
-                    ],
-                  ),
+                      ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8, left: 4),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            _actionBtnCompact(
+                              icon: Icons.arrow_back,
+                              label: '上一个',
+                              color: Colors.grey[600]!,
+                              onTap: _goBack,
+                              isPad: isTablet,
+                            ),
+                            SizedBox(height: isTablet ? 16 : 10),
+                            _actionBtnCompact(
+                              icon: Icons.close,
+                              label: '不会',
+                              color: Colors.red,
+                              onTap: _markUnknown,
+                              isPad: isTablet,
+                            ),
+                            SizedBox(height: isTablet ? 16 : 10),
+                            _actionBtnCompact(
+                              icon: Icons.volume_up,
+                              label: '发音',
+                              color: stichSecondary,
+                              onTap: _playWord,
+                              isPad: isTablet,
+                            ),
+                            SizedBox(height: isTablet ? 16 : 10),
+                            _actionBtnCompact(
+                              icon: Icons.check,
+                              label: '会了',
+                              color: stichPrimary,
+                              onTap: _markMastered,
+                              isPad: isTablet,
+                            ),
+                            const SizedBox(height: 8),
+                            if (_filteredWords.isNotEmpty)
+                              Text(
+                                '${_currentIndex + 1}/${_filteredWords.length}',
+                                style: TextStyle(fontSize: isTablet ? 14 : 11, color: Colors.grey[600]),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
