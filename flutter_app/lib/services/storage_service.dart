@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/word.dart';
 
 class StorageService {
   static const _key = 'ket-flashcard';
@@ -18,6 +19,10 @@ class StorageService {
   String accent = 'us'; // 'us' 美式, 'uk' 英式
   int voice = 0; // 0=女声, 1=男声, 3=情感男声, 4=情感女声
   String? statsFilter; // 当前统计筛选状态
+  int currentStreak = 0;
+  int bestStreak = 0;
+  String? lastStudyDate; // "2026-03-23"
+  List<String> unlockedAchievements = [];
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -70,6 +75,13 @@ class StorageService {
       accent = data['accent'] as String? ?? 'us';
       voice = data['voice'] as int? ?? 0;
       statsFilter = data['statsFilter'] as String?;
+      currentStreak = data['currentStreak'] as int? ?? 0;
+      bestStreak = data['bestStreak'] as int? ?? 0;
+      lastStudyDate = data['lastStudyDate'] as String?;
+      unlockedAchievements = (data['unlockedAchievements'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [];
     } catch (e) {
       // ignore corrupt data
     }
@@ -90,6 +102,10 @@ class StorageService {
       'accent': accent,
       'voice': voice,
       'statsFilter': statsFilter,
+      'currentStreak': currentStreak,
+      'bestStreak': bestStreak,
+      'lastStudyDate': lastStudyDate,
+      'unlockedAchievements': unlockedAchievements,
     });
     await _prefs.setString(_key, data);
   }
@@ -106,4 +122,59 @@ class StorageService {
 
   bool isMastered(int wordId) => mastered.contains(wordId);
   bool isUnknown(int wordId) => unknown.contains(wordId);
+
+  void recordStudyDay() {
+    final today = DateTime.now();
+    final todayStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    if (lastStudyDate == todayStr) return;
+    if (lastStudyDate != null) {
+      final diff = today.difference(DateTime.parse(lastStudyDate!)).inDays;
+      if (diff == 1) {
+        currentStreak++;
+      } else if (diff > 1) {
+        currentStreak = 1;
+      }
+    } else {
+      currentStreak = 1;
+    }
+    lastStudyDate = todayStr;
+    if (currentStreak > bestStreak) bestStreak = currentStreak;
+    save();
+  }
+
+  List<String> checkAchievements(List<Word> allWords) {
+    final newlyUnlocked = <String>[];
+
+    void check(String id) {
+      if (!unlockedAchievements.contains(id)) {
+        unlockedAchievements.add(id);
+        newlyUnlocked.add(id);
+      }
+    }
+
+    final masteredCount = mastered.length;
+    if (masteredCount >= 1) check('first_word');
+    if (masteredCount >= 10) check('words_10');
+    if (masteredCount >= 50) check('words_50');
+    if (masteredCount >= 100) check('words_100');
+    if (masteredCount >= 500) check('words_500');
+    if (masteredCount >= 1000) check('words_1000');
+
+    if (currentStreak >= 3) check('streak_3');
+    if (currentStreak >= 7) check('streak_7');
+    if (currentStreak >= 30) check('streak_30');
+
+    final levelIds = {'黑1': 'level1_done', '蓝2': 'level2_done', '红3': 'level3_done'};
+    for (final entry in levelIds.entries) {
+      final levelWords = allWords.where((w) => w.level == entry.key).toList();
+      if (levelWords.isNotEmpty &&
+          levelWords.every((w) => mastered.contains(w.id))) {
+        check(entry.value);
+      }
+    }
+
+    if (newlyUnlocked.isNotEmpty) save();
+    return newlyUnlocked;
+  }
 }

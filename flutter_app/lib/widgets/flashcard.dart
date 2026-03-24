@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/word.dart';
@@ -23,18 +24,52 @@ class FlashcardWidget extends StatefulWidget {
   State<FlashcardWidget> createState() => FlashcardWidgetState();
 }
 
-class FlashcardWidgetState extends State<FlashcardWidget> {
-  bool _meaningVisible = false;
+class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _flipController;
+  late Animation<double> _flipAnim;
+  bool _isFront = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _flipController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _flipAnim = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _flipController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _flipController.dispose();
+    super.dispose();
+  }
 
   void resetMeaning() {
-    if (mounted) setState(() => _meaningVisible = false);
+    if (mounted) {
+      _flipController.reverse();
+      _isFront = true;
+    }
   }
 
   @override
   void didUpdateWidget(FlashcardWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.word.id != widget.word.id) {
-      _meaningVisible = false;
+      _flipController.reset();
+      _isFront = true;
+    }
+  }
+
+  void _flip() {
+    if (_isFront) {
+      _flipController.forward();
+      _isFront = false;
+    } else {
+      _flipController.reverse();
+      _isFront = true;
     }
   }
 
@@ -80,17 +115,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
           : const EdgeInsets.fromLTRB(24, 24, 24, 16);
     }
 
-    // 同样字体大小，隐藏时灰色，显示时正常色
-    final meaningWidget = Text(
-      _meaningVisible ? widget.word.meaning : '释义',
-      style: TextStyle(
-        fontSize: meaningSize,
-        color: _meaningVisible ? Colors.grey[700] : Colors.grey[350],
-      ),
-      textAlign: TextAlign.center,
-    );
-
-    final content = Column(
+    final frontContent = Column(
       mainAxisSize: widget.expandVertical ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: widget.expandVertical
           ? MainAxisAlignment.spaceEvenly
@@ -116,7 +141,55 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
           ),
           textAlign: TextAlign.center,
         ),
-        meaningWidget,
+        Text(
+          '释义',
+          style: TextStyle(
+            fontSize: meaningSize,
+            color: Colors.grey[350],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: widget.isPlaying ? null : widget.onPlay,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: playSize,
+              height: playSize,
+              decoration: BoxDecoration(
+                color: widget.isPlaying ? stichTertiary.withOpacity(0.7) : stichTertiary,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                widget.isPlaying ? Icons.hourglass_top : Icons.play_arrow,
+                color: Colors.white,
+                size: playIconSize,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final backContent = Column(
+      mainAxisSize: widget.expandVertical ? MainAxisSize.max : MainAxisSize.min,
+      mainAxisAlignment: widget.expandVertical
+          ? MainAxisAlignment.spaceEvenly
+          : MainAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildTag(widget.word.level, levelColor, tagFontSize, tagHPad, tagVPad),
+            Flexible(child: _buildTag(widget.word.topic, Colors.green, tagFontSize, tagHPad, tagVPad)),
+          ],
+        ),
+        Text(
+          widget.word.meaning,
+          style: TextStyle(fontSize: meaningSize, color: Colors.grey[700]),
+          textAlign: TextAlign.center,
+        ),
         Align(
           alignment: Alignment.centerRight,
           child: GestureDetector(
@@ -141,18 +214,25 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
     );
 
     final card = GestureDetector(
-      onTap: () => setState(() => _meaningVisible = !_meaningVisible),
-      child: Card(
-        elevation: 12,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(48),
-          side: const BorderSide(color: stichSurfaceContainer, width: 4),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: cardPadding,
-          child: content,
-        ),
+      onTap: _flip,
+      child: AnimatedBuilder(
+        animation: _flipAnim,
+        builder: (context, child) {
+          final angle = _flipAnim.value * pi;
+          final isFrontVisible = angle < pi / 2;
+          return Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..rotateY(angle),
+            child: isFrontVisible
+                ? _buildCardFace(cardPadding, frontContent)
+                : Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()..rotateY(pi),
+                    child: _buildCardFace(cardPadding, backContent),
+                  ),
+          );
+        },
       ),
     );
 
@@ -163,6 +243,21 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
       );
     }
     return card;
+  }
+
+  Widget _buildCardFace(EdgeInsets padding, Widget content) {
+    return Card(
+      elevation: 12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(48),
+        side: const BorderSide(color: stichSurfaceContainer, width: 4),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: padding,
+        child: content,
+      ),
+    );
   }
 
   Widget _buildTag(String text, Color color, double fontSize, double hPad, double vPad) {

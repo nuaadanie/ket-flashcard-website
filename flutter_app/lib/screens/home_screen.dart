@@ -4,10 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
+import '../models/achievement.dart';
 import '../services/storage_service.dart';
 import '../services/speech_service.dart';
 import '../widgets/flashcard.dart';
 import '../widgets/vocab_book.dart';
+import '../widgets/streak_badge.dart';
+import '../widgets/word_of_day_card.dart';
+import '../widgets/achievement_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -225,6 +229,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       previousIndex: _currentIndex,
     ));
     _storage.markAsMastered(word.id);
+    _storage.recordStudyDay();
+    _checkAndNotifyAchievements();
     _saveProgress();
     _nextWord();
   }
@@ -244,8 +250,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       previousIndex: _currentIndex,
     ));
     _storage.markAsUnknown(word.id);
+    _storage.recordStudyDay();
+    _checkAndNotifyAchievements();
     _saveProgress();
     _nextWord();
+  }
+
+  void _checkAndNotifyAchievements() {
+    final newAchievements = _storage.checkAchievements(_allWords);
+    for (final id in newAchievements) {
+      final a = achievements.firstWhere((a) => a.id == id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🎉 解锁成就：${a.title}'),
+            backgroundColor: stichSecondary,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   // 需求1: 上一个（撤销）
@@ -455,6 +479,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     return {'mastered': mastered, 'unknown': unknown, 'unlearned': unlearned};
   }
 
+  Word? _getWordOfDay() {
+    if (_allWords.isEmpty) return null;
+    final today = DateTime.now();
+    final seed = today.year * 10000 + today.month * 100 + today.day;
+    final unmastered = _allWords.where((w) => !_storage.isMastered(w.id)).toList();
+    if (unmastered.isEmpty) return null;
+    return unmastered[seed % unmastered.length];
+  }
+
   List<String> get _topics {
     return _allWords.map((w) => w.topic).toSet().toList()..sort();
   }
@@ -489,10 +522,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     final progress = _allWords.isEmpty
         ? 0.0
         : _storage.mastered.length / _allWords.length;
+    final wotd = _getWordOfDay();
     return Column(
       children: [
         _buildTopBar(progress),
+        StreakBadge(
+          currentStreak: _storage.currentStreak,
+          bestStreak: _storage.bestStreak,
+        ),
         _buildStatsBar(),
+        if (wotd != null)
+          WordOfDayCard(word: wotd, speech: _speech),
         _buildModeSelector(),
         if (_currentMode == 'level') _buildLevelSelector(),
         if (_currentMode == 'topic') _buildTopicSelector(),
@@ -520,6 +560,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     final progress = _allWords.isEmpty
         ? 0.0
         : _storage.mastered.length / _allWords.length;
+    final wotd = _getWordOfDay();
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 900;
     final leftWidth = isTablet ? 160.0 : 130.0;
@@ -565,7 +606,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 ),
               ),
               // 中间：闪卡填满
-              Expanded(child: _buildCardArea(true)),
+              Expanded(
+                child: Column(
+                  children: [
+                    if (wotd != null)
+                      WordOfDayCard(word: wotd, speech: _speech),
+                    Expanded(child: _buildCardArea(true)),
+                  ],
+                ),
+              ),
               // 右侧：按钮
               SizedBox(
                 width: rightWidth,
@@ -686,6 +735,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           _statChip('❌${stats['unknown']}', 'unknown', Colors.red),
           const SizedBox(width: 4),
           _statChip('📝${stats['unlearned']}', 'unlearned', Colors.grey),
+          const SizedBox(width: 4),
+          StreakBadge(
+            currentStreak: _storage.currentStreak,
+            bestStreak: _storage.bestStreak,
+          ),
           const Spacer(),
           SizedBox(
             width: isPad ? 80 : 50,
@@ -709,6 +763,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             onPressed: () => showDialog(
               context: context,
               builder: (_) => VocabBookDialog(allWords: _allWords, storage: _storage, speech: _speech),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.emoji_events, color: stichTertiary, size: barIconSize),
+            tooltip: '成就',
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(minWidth: isPad ? 44 : 36, minHeight: isPad ? 44 : 36),
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => AchievementDialog(unlockedAchievements: _storage.unlockedAchievements),
             ),
           ),
           IconButton(
@@ -763,6 +827,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             onPressed: () => showDialog(
               context: context,
               builder: (_) => VocabBookDialog(allWords: _allWords, storage: _storage, speech: _speech),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.emoji_events, color: stichTertiary),
+            tooltip: '成就',
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => AchievementDialog(unlockedAchievements: _storage.unlockedAchievements),
             ),
           ),
           IconButton(
@@ -1161,15 +1233,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: FadeTransition(
           opacity: _cardAnim,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.8, end: 1.0).animate(_cardAnimController),
-            child: FlashcardWidget(
-              word: _filteredWords[_currentIndex],
-              isPlaying: _isPlaying,
-              onPlay: _playWord,
-              expandVertical: shouldExpand,
-              isPad: isPad,
-            ),
+          child: FlashcardWidget(
+            word: _filteredWords[_currentIndex],
+            isPlaying: _isPlaying,
+            onPlay: _playWord,
+            expandVertical: shouldExpand,
+            isPad: isPad,
           ),
         ),
       ),
