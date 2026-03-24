@@ -108,29 +108,18 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
             Flexible(child: _buildTag(widget.word.topic, Colors.green, tagFontSize, tagHPad, tagVPad)),
           ],
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Flexible(
-              child: Text(
-                widget.word.word,
-                style: GoogleFonts.inter(
-                  fontSize: wordSize,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1F2937),
-                ),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              widget.word.phonetic,
-              style: TextStyle(fontSize: phoneticSize, color: Colors.grey[600]),
-            ),
-          ],
+        Text(
+          widget.word.word,
+          style: GoogleFonts.inter(
+            fontSize: wordSize,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1F2937),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        Text(
+          widget.word.phonetic,
+          style: TextStyle(fontSize: phoneticSize, color: Colors.grey[600]),
         ),
         Text(
           _showLevel == 0 ? '释义' : widget.word.meaning,
