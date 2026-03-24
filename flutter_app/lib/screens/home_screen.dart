@@ -507,7 +507,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
     return Scaffold(
       body: Container(
-        color: stichSurface,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: appThemes[_themeIndex].gradientColors,
+          ),
+        ),
         child: SafeArea(
           child: isLandscape
               ? _buildLandscapeLayout()

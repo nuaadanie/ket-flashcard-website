@@ -54,8 +54,8 @@ const appThemes = [
 const stichPrimary = Color(0xFFff6b6b);     // 珊瑚红
 const stichSecondary = Color(0xFF1dd1a1);    // 薄荷绿
 const stichTertiary = Color(0xFFfeca57);     // 金黄
-const stichSurface = Color(0xFFfff9f0);      // 暖白背景
-const stichSurfaceContainer = Color(0xFFffeaa7); // 黄色边框
+const stichSurface = Color(0xFFffffff);      // 纯白背景
+const stichSurfaceContainer = Color(0xFFe5e7eb); // 浅灰边框
 const stichOnSurface = Color(0xFF2d3436);    // 深色文字
 
 const levelColors = {

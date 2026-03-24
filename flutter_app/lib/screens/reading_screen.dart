@@ -67,7 +67,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
     return Scaffold(
       body: Container(
-        color: stichSurface,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: appThemes[widget.themeIndex].gradientColors,
+          ),
+        ),
         child: SafeArea(
           child: Column(
             children: [
