@@ -67,12 +67,15 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        widget.word.word,
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1F2937),
+                      Flexible(
+                        child: Text(
+                          widget.word.word,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1F2937),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -94,8 +97,7 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                       ),
                     ],
                   ),
-                  if (widget.word.example.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                  if (widget.word.example.isNotEmpty)
                     Text(
                       widget.word.example,
                       style: TextStyle(
@@ -103,10 +105,11 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                         color: Colors.grey[500],
                         fontStyle: FontStyle.italic,
                       ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
-                  ],
                   if (_expanded) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       widget.word.meaning,
                       style: TextStyle(fontSize: 13, color: Colors.grey[700]),
