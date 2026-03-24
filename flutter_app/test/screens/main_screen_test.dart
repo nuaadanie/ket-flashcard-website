@@ -5,14 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ket_flashcard/screens/main_screen.dart';
 
-import '../test_fonts.dart';
-
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-
-    // Mock google_fonts HTTP fetching with fake TTF bytes
-    setupGoogleFontsMocks();
 
     // Mock path_provider for SpeechService.init()
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
