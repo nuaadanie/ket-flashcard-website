@@ -622,9 +622,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               SizedBox(
                 width: rightWidth,
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 8, left: 4),
+                  padding: const EdgeInsets.only(right: 8, left: 4, top: 4),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       _actionBtnCompact(
                         icon: Icons.arrow_back,
