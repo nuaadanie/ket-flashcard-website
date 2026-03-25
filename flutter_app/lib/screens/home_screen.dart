@@ -1,7 +1,7 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
 import '../models/achievement.dart';
@@ -12,6 +12,66 @@ import '../widgets/vocab_book.dart';
 import '../widgets/streak_badge.dart';
 import '../widgets/word_of_day_card.dart';
 import '../widgets/achievement_dialog.dart';
+
+/// Spring-scale pressable wrapper: scales down to 0.94 on press, springs back.
+class AnimatedPressable extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  const AnimatedPressable({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.onLongPress,
+  });
+
+  @override
+  State<AnimatedPressable> createState() => _AnimatedPressableState();
+}
+
+class _AnimatedPressableState extends State<AnimatedPressable>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 120),
+      vsync: this,
+    );
+    _scale = Tween<double>(begin: 1.0, end: kButtonScaleDown).animate(
+      CurvedAnimation(parent: _controller, curve: kAnimCurve),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails _) => _controller.forward();
+  void _onTapUp(TapUpDetails _) => _controller.reverse();
+  void _onTapCancel() => _controller.reverse();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
+      child: ScaleTransition(
+        scale: _scale,
+        child: widget.child,
+      ),
+    );
+  }
+}
 
 class HomeScreen extends StatefulWidget {
   final int themeIndex;
@@ -46,19 +106,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   String? _statsFilter;
 
   late AnimationController _cardAnimController;
-  late Animation<double> _cardAnim;
+  late Animation<Offset> _cardSlideAnim;
+  late Animation<double> _cardRotationAnim;
+
+  // Shake animation for "unknown" action
+  late AnimationController _shakeController;
+  late Animation<double> _shakeAnim;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Card slide-rotate animation (for mastered / next)
     _cardAnimController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-    _cardAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _cardAnimController, curve: Curves.easeOut),
+    _cardSlideAnim = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.3, -0.15),
+    ).animate(CurvedAnimation(
+      parent: _cardAnimController,
+      curve: kAnimCurve,
+    ));
+    _cardRotationAnim = Tween<double>(begin: 0, end: 0.08).animate(
+      CurvedAnimation(parent: _cardAnimController, curve: kAnimCurve),
     );
+
+    // Shake animation (for unknown)
+    _shakeController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _shakeAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -0.06), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.06, end: 0.06), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 0.06, end: -0.03), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -0.03, end: 0.0), weight: 1),
+    ]).animate(CurvedAnimation(parent: _shakeController, curve: Curves.easeOut));
+
     _init();
   }
 
@@ -91,7 +178,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   void _filterWords() {
-    // 先按级别/主题筛选
     List<Word> base;
     if (_currentMode == 'level') {
       base = _allWords.where((w) => w.level == _currentLevel).toList();
@@ -99,7 +185,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       base = _allWords.where((w) => w.topic == _currentTopic).toList();
     }
 
-    // 需求3: 再按统计筛选
     if (_statsFilter == 'mastered') {
       _filteredWords = base.where((w) => _storage.isMastered(w.id)).toList();
     } else if (_statsFilter == 'unknown') {
@@ -111,7 +196,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       _filteredWords = base;
     }
 
-    // 恢复进度
     if (_statsFilter == null) {
       if (_currentMode == 'level') {
         _currentIndex = _storage.levelProgress[_currentLevel] ?? 0;
@@ -127,7 +211,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   void _saveProgress() {
     _storage.statsFilter = _statsFilter;
     if (_statsFilter != null) {
-      // 筛选模式只保存筛选状态，不保存卡片进度
       _storage.save();
       return;
     }
@@ -142,13 +225,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     _storage.save();
   }
 
-  Future<void> _animateCard(VoidCallback action) async {
-    await _cardAnimController.reverse();
+  Future<void> _animateCard(VoidCallback action, {bool shake = false}) async {
+    if (shake) {
+      await _shakeController.forward();
+      _shakeController.reset();
+    } else {
+      await _cardAnimController.reverse();
+    }
     action();
     _cardAnimController.forward();
   }
 
-  // 需求4: 到达最后一个时的处理
   void _onReachEnd() {
     final levels = ['黑1', '蓝2', '红3'];
     final currentIdx = levels.indexOf(_currentLevel);
@@ -158,9 +245,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(48),
-          side: const BorderSide(color: stichSurfaceContainer, width: 3),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          side: microBorder(context),
         ),
         title: const Text('🎉 恭喜完成！'),
         content: Text(
@@ -208,7 +296,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           _currentIndex = _filteredWords.length - 1;
           if (_currentIndex < 0) _currentIndex = 0;
           _saveProgress();
-          // 需求4: 弹窗
           WidgetsBinding.instance.addPostFrameCallback((_) => _onReachEnd());
           return;
         }
@@ -219,8 +306,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   void _markMastered() {
     if (_filteredWords.isEmpty) return;
+    HapticFeedback.lightImpact();
     final word = _filteredWords[_currentIndex];
-    // 需求1: 记录操作历史
     String? prevState;
     if (_storage.isMastered(word.id)) {
       prevState = 'mastered';
@@ -241,6 +328,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   void _markUnknown() {
     if (_filteredWords.isEmpty) return;
+    HapticFeedback.lightImpact();
     final word = _filteredWords[_currentIndex];
     String? prevState;
     if (_storage.isMastered(word.id)) {
@@ -257,7 +345,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     _storage.recordStudyDay();
     _checkAndNotifyAchievements();
     _saveProgress();
-    _nextWord();
+    // Shake animation for "unknown"
+    _animateCard(() {
+      setState(() {
+        _currentIndex++;
+        if (_currentIndex >= _filteredWords.length) {
+          _currentIndex = _filteredWords.length - 1;
+          if (_currentIndex < 0) _currentIndex = 0;
+          _saveProgress();
+          WidgetsBinding.instance.addPostFrameCallback((_) => _onReachEnd());
+          return;
+        }
+        _saveProgress();
+      });
+    }, shake: true);
+    return;
   }
 
   void _checkAndNotifyAchievements() {
@@ -276,10 +378,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     }
   }
 
-  // 需求1: 上一个（撤销）
   void _goBack() {
+    HapticFeedback.lightImpact();
     if (_actionHistory.isEmpty) {
-      // 没有操作历史，简单回退
       if (_currentIndex > 0) {
         _animateCard(() {
           setState(() {
@@ -291,13 +392,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       return;
     }
     final record = _actionHistory.removeLast();
-    // 恢复之前的状态
     if (record.previousState == 'mastered') {
       _storage.markAsMastered(record.wordId);
     } else if (record.previousState == 'unknown') {
       _storage.markAsUnknown(record.wordId);
     } else {
-      // 之前没有标记，清除当前标记
       _storage.mastered.remove(record.wordId);
       _storage.unknown.remove(record.wordId);
     }
@@ -315,6 +414,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   Future<void> _playWord() async {
     if (_filteredWords.isEmpty || _isPlaying) return;
+    HapticFeedback.lightImpact();
     setState(() => _isPlaying = true);
     await _speech.speak(_filteredWords[_currentIndex].word);
     await Future.delayed(const Duration(milliseconds: 800));
@@ -330,10 +430,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
-              backgroundColor: Colors.white,
+              backgroundColor: surfaceColor(context),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(48),
-                side: const BorderSide(color: stichSurfaceContainer, width: 3),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                side: microBorder(context),
               ),
               title: const Row(
                 children: [
@@ -421,14 +521,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   Widget _voiceChip(String label, bool active, VoidCallback onTap) {
-    return GestureDetector(
+    return AnimatedPressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? stichSecondary : Colors.grey[100],
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: active ? stichSecondary : Colors.grey[300]!),
+          color: active ? stichSecondary : surfaceColor(context),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          border: active ? null : Border.fromSide(microBorder(context)),
         ),
         child: Text(
           label,
@@ -442,11 +542,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     );
   }
 
-  // 需求3: 点击统计条筛选
   void _toggleStatsFilter(String filter) {
     setState(() {
       if (_statsFilter == filter) {
-        _statsFilter = null; // 取消筛选
+        _statsFilter = null;
       } else {
         _statsFilter = filter;
       }
@@ -455,7 +554,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     _cardAnimController.forward(from: 0);
   }
 
-  // 需求3: 计算当前级别/主题下的统计
   Map<String, int> _getStats() {
     List<Word> base;
     if (_currentMode == 'level') {
@@ -493,6 +591,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cardAnimController.dispose();
+    _shakeController.dispose();
     _speech.dispose();
     super.dispose();
   }
@@ -508,7 +607,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: appThemes[widget.themeIndex].gradientColors,
+            colors: appThemes[widget.themeIndex].colorsFor(Theme.of(context).brightness),
           ),
         ),
         child: SafeArea(
@@ -585,7 +684,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                       margin: const EdgeInsets.fromLTRB(8, 4, 4, 0),
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(kBorderRadius),
                       ),
                       padding: const EdgeInsets.all(3),
                       child: Row(
@@ -647,7 +746,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                             _actionBtnCompact(
                               icon: Icons.close,
                               label: '不会',
-                              color: Colors.red,
+                              color: unknownText,
                               onTap: _markUnknown,
                               isPad: isTablet,
                             ),
@@ -695,26 +794,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _statChip('✅ ${stats['mastered']}', 'mastered', Colors.green),
+          _statChip('✅ ${stats['mastered']}', 'mastered', knowText, knowBg),
           const SizedBox(width: 8),
-          _statChip('❌ ${stats['unknown']}', 'unknown', Colors.red),
+          _statChip('❌ ${stats['unknown']}', 'unknown', unknownText, unknownBg),
           const SizedBox(width: 8),
-          _statChip('📝 ${stats['unlearned']}', 'unlearned', Colors.grey),
+          _statChip('📝 ${stats['unlearned']}', 'unlearned', Colors.grey[700]!, Colors.grey[200]!),
         ],
       ),
     );
   }
 
-  Widget _statChip(String label, String filter, Color color) {
+  Widget _statChip(String label, String filter, Color color, Color bgColor) {
     final active = _statsFilter == filter;
     return GestureDetector(
       onTap: () => _toggleStatsFilter(filter),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: active ? color : color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: color, width: active ? 2 : 1),
+          color: active ? color : bgColor,
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          border: Border.all(
+            color: active ? color : color.withOpacity(0.3),
+            width: active ? 1.5 : 0.8,
+          ),
         ),
         child: Text(
           label,
@@ -743,14 +846,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           Icon(Icons.menu_book, color: stichPrimary, size: titleIconSize),
           const SizedBox(width: 6),
           Text('KET闪卡',
-              style: GoogleFonts.fredoka(fontSize: titleSize, fontWeight: FontWeight.bold, color: stichPrimary)),
+              style: TextStyle(fontFamily: 'Quicksand', fontSize: titleSize, fontWeight: FontWeight.bold, color: stichPrimary)),
           const SizedBox(width: 12),
           // 横屏统计合并到顶栏
-          _statChip('✅${stats['mastered']}', 'mastered', Colors.green),
+          _statChip('✅${stats['mastered']}', 'mastered', knowText, knowBg),
           const SizedBox(width: 4),
-          _statChip('❌${stats['unknown']}', 'unknown', Colors.red),
+          _statChip('❌${stats['unknown']}', 'unknown', unknownText, unknownBg),
           const SizedBox(width: 4),
-          _statChip('📝${stats['unlearned']}', 'unlearned', Colors.grey),
+          _statChip('📝${stats['unlearned']}', 'unlearned', Colors.grey[700]!, Colors.grey[200]!),
           const SizedBox(width: 4),
           StreakBadge(
             currentStreak: _storage.currentStreak,
@@ -818,7 +921,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           Icon(Icons.menu_book, color: stichPrimary, size: 28),
           const SizedBox(width: 8),
           Text('KET闪卡',
-              style: GoogleFonts.fredoka(fontSize: 20, fontWeight: FontWeight.bold, color: stichPrimary)),
+              style: TextStyle(fontFamily: 'Quicksand', fontSize: 20, fontWeight: FontWeight.bold, color: stichPrimary)),
           const Spacer(),
           Text('${_storage.mastered.length}/${_allWords.length}',
               style: const TextStyle(fontSize: 13, color: Colors.grey)),
@@ -885,7 +988,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   Widget _modeBtn(String label, String mode) {
     final active = _currentMode == mode;
-    return GestureDetector(
+    return AnimatedPressable(
       onTap: () {
         setState(() {
           _currentMode = mode;
@@ -898,11 +1001,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         });
         _cardAnimController.forward(from: 0);
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           color: active ? stichPrimary : Colors.grey[200],
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          border: active ? null : Border.fromSide(microBorder(context)),
         ),
         child: Text(label,
             style: TextStyle(
@@ -922,8 +1027,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           final color = levelColors[level] ?? Colors.grey;
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: GestureDetector(
+            child: AnimatedPressable(
               onTap: () {
+                HapticFeedback.lightImpact();
                 _animateCard(() {
                   setState(() {
                     _currentLevel = level;
@@ -938,12 +1044,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: active
-                      ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]
-                      : [],
+                  borderRadius: BorderRadius.circular(kBorderRadius),
+                  border: active
+                      ? Border.all(color: Colors.white.withOpacity(0.4), width: 2)
+                      : null,
                 ),
-                transform: active ? (Matrix4.identity()..scale(1.1)) : Matrix4.identity(),
+                transform: active ? (Matrix4.identity()..scale(1.05)) : Matrix4.identity(),
                 child: Text(level,
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
@@ -960,14 +1066,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       child: DropdownButtonFormField<String>(
         value: _currentTopic.isEmpty ? null : _currentTopic,
         decoration: InputDecoration(
-          filled: true, fillColor: Colors.white,
+          filled: true, fillColor: surfaceColor(context),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-            borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+            borderRadius: BorderRadius.circular(kBorderRadius),
+            borderSide: microBorder(context),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-            borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+            borderRadius: BorderRadius.circular(kBorderRadius),
+            borderSide: microBorder(context),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
@@ -1011,9 +1117,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             padding: EdgeInsets.symmetric(vertical: isPad ? 14 : 10),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: active ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8)] : [],
-              border: active ? Border.all(color: Colors.white, width: 2) : null,
+              borderRadius: BorderRadius.circular(kBorderRadius),
+              border: active
+                  ? Border.all(color: Colors.white.withOpacity(0.4), width: 2)
+                  : null,
             ),
             child: Text(level,
                 textAlign: TextAlign.center,
@@ -1028,21 +1135,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     return DropdownButtonFormField<String>(
       value: _currentTopic.isEmpty ? null : _currentTopic,
       decoration: InputDecoration(
-        filled: true, fillColor: Colors.white,
+        filled: true, fillColor: surfaceColor(context),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          borderSide: microBorder(context),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          borderSide: microBorder(context),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         isDense: true,
       ),
       isExpanded: true,
       hint: const Text('选择主题', style: TextStyle(fontSize: 13)),
-      style: const TextStyle(fontSize: 13, color: Colors.black),
+      style: TextStyle(fontSize: 13, color: onSurfaceColor(context)),
       items: _topics.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
       onChanged: (v) {
         if (v == null) return;
@@ -1061,7 +1168,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   // ==================== 横屏左侧 Tab 风格 ====================
   Widget _tabItem(String label, String mode, bool isPad) {
     final active = _currentMode == mode;
-    return GestureDetector(
+    return AnimatedPressable(
       onTap: () {
         setState(() {
           _currentMode = mode;
@@ -1074,14 +1181,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         });
         _cardAnimController.forward(from: 0);
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(vertical: isPad ? 10 : 7),
         decoration: BoxDecoration(
-          color: active ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: active
-              ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4, offset: const Offset(0, 1))]
-              : [],
+          color: active ? surfaceColor(context) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: active ? Border.fromSide(microBorder(context)) : null,
         ),
         child: Text(
           label,
@@ -1102,13 +1208,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       children: ['黑1', '蓝2', '红3'].map((level) {
         final active = _currentLevel == level;
         final color = levelColors[level] ?? Colors.grey;
-        // 计算该级别的统计
         final words = _allWords.where((w) => w.level == level).toList();
         final masteredCount = words.where((w) => _storage.isMastered(w.id)).length;
         return Padding(
           padding: EdgeInsets.symmetric(vertical: isPad ? 4 : 3),
-          child: GestureDetector(
+          child: AnimatedPressable(
             onTap: () {
+              HapticFeedback.lightImpact();
               _animateCard(() {
                 setState(() {
                   _currentLevel = level;
@@ -1118,15 +1224,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 });
               });
             },
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               padding: EdgeInsets.symmetric(vertical: isPad ? 14 : 10, horizontal: 12),
               decoration: BoxDecoration(
-                color: active ? color : Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: active ? null : Border.all(color: Colors.grey[300]!),
-                boxShadow: active
-                    ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))]
-                    : [],
+                color: active ? color : surfaceColor(context),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                border: active ? null : Border.fromSide(microBorder(context)),
               ),
               child: Row(
                 children: [
@@ -1171,8 +1275,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         final masteredCount = words.where((w) => _storage.isMastered(w.id)).length;
         return Padding(
           padding: EdgeInsets.symmetric(vertical: isPad ? 3 : 2),
-          child: GestureDetector(
+          child: AnimatedPressable(
             onTap: () {
+              HapticFeedback.lightImpact();
               _animateCard(() {
                 setState(() {
                   _currentTopic = topic;
@@ -1182,12 +1287,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 });
               });
             },
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
               padding: EdgeInsets.symmetric(vertical: isPad ? 12 : 8, horizontal: 10),
               decoration: BoxDecoration(
-                color: active ? stichPrimary : Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: active ? null : Border.all(color: Colors.grey[300]!),
+                color: active ? stichPrimary : surfaceColor(context),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                border: active ? null : Border.fromSide(microBorder(context)),
               ),
               child: Row(
                 children: [
@@ -1241,20 +1347,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isPad = isLandscape ? screenWidth > 900 : (screenWidth > 600 || screenHeight > 900);
-    // pad竖屏也展开卡片填满竖向空间
     final shouldExpand = isLandscape || isPad;
 
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: FadeTransition(
-          opacity: _cardAnim,
-          child: FlashcardWidget(
-            word: _filteredWords[_currentIndex],
-            isPlaying: _isPlaying,
-            onPlay: _playWord,
-            expandVertical: shouldExpand,
-            isPad: isPad,
+        child: AnimatedBuilder(
+          animation: _shakeAnim,
+          builder: (context, child) {
+            return RotationTransition(
+              turns: _shakeAnim,
+              child: child,
+            );
+          },
+          child: FadeTransition(
+            opacity: _cardAnimController,
+            child: SlideTransition(
+              position: _cardSlideAnim,
+              child: RotationTransition(
+                turns: _cardRotationAnim,
+                child: FlashcardWidget(
+                  word: _filteredWords[_currentIndex],
+                  isPlaying: _isPlaying,
+                  onPlay: _playWord,
+                  expandVertical: shouldExpand,
+                  isPad: isPad,
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -1271,17 +1391,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         final vPad = compact ? 7.0 : 9.0;
         final iconSz = compact ? 15.0 : 17.0;
         final fontSz = compact ? 12.0 : 14.0;
-        final radius = compact ? 10.0 : 12.0;
 
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _actionBtn(icon: Icons.arrow_back, label: '上一个', color: Colors.grey[600]!, onTap: _goBack, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: 32),
-              _actionBtn(icon: Icons.close, label: '不会', color: Colors.red, onTap: _markUnknown, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: 32),
-              _actionBtn(icon: Icons.volume_up, label: '发音', color: stichSecondary, onTap: _playWord, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: 32),
-              _actionBtn(icon: Icons.check, label: '会了', color: stichPrimary, onTap: _markMastered, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz, radius: 32),
+              _actionBtn(icon: Icons.arrow_back, label: '上一个', color: Colors.grey[600]!, onTap: _goBack, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz),
+              _actionBtn(icon: Icons.close, label: '不会', color: unknownText, onTap: _markUnknown, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz),
+              _actionBtn(icon: Icons.volume_up, label: '发音', color: stichSecondary, onTap: _playWord, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz),
+              _actionBtn(icon: Icons.check, label: '会了', color: stichPrimary, onTap: _markMastered, hPad: hPad, vPad: vPad, iconSz: iconSz, fontSz: fontSz),
             ],
           ),
         );
@@ -1293,16 +1412,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     required IconData icon, required String label, required Color color,
     required VoidCallback onTap,
     double hPad = 12, double vPad = 9, double iconSz = 17,
-    double fontSz = 14, double radius = 12,
+    double fontSz = 14,
   }) {
-    return GestureDetector(
+    return AnimatedPressable(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(radius),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 3))],
+          borderRadius: BorderRadius.circular(kBorderRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1321,15 +1439,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     required Color color, required VoidCallback onTap,
     bool isPad = false,
   }) {
-    return GestureDetector(
+    return AnimatedPressable(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: isPad ? 14 : 10),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2))],
+          borderRadius: BorderRadius.circular(kBorderRadius),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1344,10 +1461,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 }
 
-// 需求1: 操作记录
 class _ActionRecord {
   final int wordId;
-  final String? previousState; // 'mastered', 'unknown', or null
+  final String? previousState;
   final int previousIndex;
 
   _ActionRecord({

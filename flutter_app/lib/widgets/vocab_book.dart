@@ -150,10 +150,10 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: surfaceColor(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(48),
-        side: const BorderSide(color: stichSurfaceContainer, width: 3),
+        borderRadius: BorderRadius.circular(kBorderRadius),
+        side: Border.fromSide(microBorder(context)),
       ),
       insetPadding: EdgeInsets.symmetric(
         horizontal: isLandscape ? 24 : 16,
@@ -238,18 +238,18 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
             value: _levelFilter.isEmpty ? null : _levelFilter,
             decoration: InputDecoration(
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                borderSide: Border.fromSide(microBorder(context)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                borderSide: Border.fromSide(microBorder(context)),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               isDense: true,
             ),
             hint: const Text('级别', style: TextStyle(fontSize: 12)),
-            style: const TextStyle(fontSize: 12, color: Colors.black),
+            style: TextStyle(fontSize: 12, color: onSurfaceColor(context)),
             items: [
               const DropdownMenuItem(value: '', child: Text('所有')),
               for (final l in ['黑1', '蓝2', '红3'])
@@ -264,19 +264,19 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
             value: _topicFilter.isEmpty ? null : _topicFilter,
             decoration: InputDecoration(
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                borderSide: Border.fromSide(microBorder(context)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                borderSide: Border.fromSide(microBorder(context)),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               isDense: true,
             ),
             isExpanded: true,
             hint: const Text('主题', style: TextStyle(fontSize: 12)),
-            style: const TextStyle(fontSize: 12, color: Colors.black),
+            style: TextStyle(fontSize: 12, color: onSurfaceColor(context)),
             items: [
               const DropdownMenuItem(value: '', child: Text('所有')),
               for (final t in topics)
@@ -311,12 +311,12 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
             decoration: InputDecoration(
               labelText: '级别',
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                borderSide: Border.fromSide(microBorder(context)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                borderSide: Border.fromSide(microBorder(context)),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
@@ -335,12 +335,12 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
             decoration: InputDecoration(
               labelText: '主题',
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                borderSide: Border.fromSide(microBorder(context)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: stichSurfaceContainer, width: 2),
+                borderRadius: BorderRadius.circular(kBorderRadius),
+                borderSide: Border.fromSide(microBorder(context)),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
@@ -380,7 +380,7 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(kBorderRadius),
             ),
             child: Text(w.level,
                 style: TextStyle(
@@ -423,7 +423,7 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
         ),
         decoration: BoxDecoration(
           color: active ? stichPrimary : Colors.grey[200],
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(kBorderRadius),
         ),
         child: Text(
           label,

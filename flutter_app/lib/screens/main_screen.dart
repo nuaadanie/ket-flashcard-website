@@ -28,7 +28,6 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _init() async {
     await _storage.init();
     await _speech.init();
-    // 从存储恢复语音设置
     _speech.accent = _storage.accent;
     _speech.voice = _storage.voice;
     _themeIndex = appThemes.indexWhere((t) => t.name == _storage.theme);
@@ -98,7 +97,8 @@ class _MainScreenState extends State<MainScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         decoration: BoxDecoration(
           color: active ? stichPrimary.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          border: active ? Border.all(color: stichPrimary.withOpacity(0.2), width: 1) : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'models/app_theme.dart';
 import 'screens/main_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
   runApp(const KetFlashcardApp());
 }
 
@@ -17,9 +15,10 @@ class KetFlashcardApp extends StatelessWidget {
     return MaterialApp(
       title: 'KET单词闪卡',
       debugShowCheckedModeBanner: false,
+      themeMode: ThemeMode.system,
       theme: ThemeData(
         useMaterial3: true,
-        textTheme: GoogleFonts.quicksandTextTheme(),
+        fontFamily: 'Quicksand',
         colorScheme: ColorScheme.fromSeed(
           seedColor: stichPrimary,
           primary: stichPrimary,
@@ -28,6 +27,19 @@ class KetFlashcardApp extends StatelessWidget {
           surface: stichSurface,
         ),
         scaffoldBackgroundColor: stichSurface,
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        fontFamily: 'Quicksand',
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: stichPrimary,
+          brightness: Brightness.dark,
+          primary: stichPrimary,
+          secondary: stichSecondary,
+          tertiary: stichTertiary,
+          surface: darkSurface,
+        ),
+        scaffoldBackgroundColor: darkSurface,
       ),
       home: const MainScreen(),
     );

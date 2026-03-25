@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../models/article.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
@@ -69,7 +69,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: appThemes[widget.themeIndex].gradientColors,
+            colors: appThemes[widget.themeIndex].colorsFor(Theme.of(context).brightness),
           ),
         ),
         child: SafeArea(
@@ -81,8 +81,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
                 child: _filtered.isEmpty
                     ? const Center(child: Text('加载中...'))
                     : isLandscape
-                        ? _buildLandscapeList()
-                        : _buildPortraitList(),
+                        ? _buildLandscapeGrid()
+                        : _buildPortraitGrid(),
               ),
             ],
           ),
@@ -99,7 +99,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
           const Icon(Icons.auto_stories, color: stichPrimary, size: 28),
           const SizedBox(width: 8),
           Text('KET阅读',
-              style: GoogleFonts.fredoka(
+              style: TextStyle(
+                  fontFamily: 'Quicksand',
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: stichPrimary)),
@@ -128,12 +129,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                 decoration: BoxDecoration(
-                  color: active ? color : Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: active ? null : Border.all(color: stichSurfaceContainer, width: 2),
-                  boxShadow: active
-                      ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8)]
-                      : [],
+                  color: active ? color : surfaceColor(context),
+                  borderRadius: BorderRadius.circular(kBorderRadius),
+                  border: active ? null : Border.fromSide(microBorder(context)),
                 ),
                 child: Text(level,
                     style: TextStyle(
@@ -149,22 +147,26 @@ class _ReadingScreenState extends State<ReadingScreen> {
     );
   }
 
-  Widget _buildPortraitList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
+  /// Bento Grid: portrait uses staggered 2-column masonry
+  Widget _buildPortraitGrid() {
+    return MasonryGridView.count(
+      padding: const EdgeInsets.all(12),
+      crossAxisCount: 2,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
       itemCount: _filtered.length,
       itemBuilder: (ctx, i) => _buildArticleCard(_filtered[i]),
     );
   }
 
-  Widget _buildLandscapeList() {
+  Widget _buildLandscapeGrid() {
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 3.0,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        crossAxisCount: 3,
+        childAspectRatio: 1.6,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
       ),
       itemCount: _filtered.length,
       itemBuilder: (ctx, i) => _buildArticleCard(_filtered[i]),
@@ -174,6 +176,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   Widget _buildArticleCard(Article article) {
     final color = levelColors[article.level] ?? Colors.grey;
     final isRead = widget.storage.readArticles.contains(article.id);
+
     return GestureDetector(
       onTap: () {
         Navigator.of(context, rootNavigator: true).push(
@@ -188,46 +191,80 @@ class _ReadingScreenState extends State<ReadingScreen> {
           ),
         );
       },
-      child: Card(
-        elevation: 8,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(48),
-          side: const BorderSide(color: stichSurfaceContainer, width: 3),
+      child: Container(
+        decoration: BoxDecoration(
+          color: surfaceColor(context),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          border: Border.fromSide(microBorder(context)),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.article, color: color, size: 28),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Level accent bar
+            Container(
+              height: 4,
+              color: color,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          article.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: onSurfaceColor(context),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isRead)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 6),
+                          child: Icon(Icons.check_circle,
+                              color: stichSecondary, size: 18),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(kBorderRadius),
+                        ),
+                        child: Text(
+                          article.level,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${article.paragraphs.length}段',
+                        style:
+                            TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(article.title,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${article.paragraphs.length} 段 · ${article.ketWordCount} 个KET单词',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ),
-              if (isRead)
-                const Icon(Icons.check_circle, color: stichSecondary, size: 22),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

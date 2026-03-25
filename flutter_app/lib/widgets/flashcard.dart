@@ -1,5 +1,5 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
 
@@ -23,13 +23,34 @@ class FlashcardWidget extends StatefulWidget {
   State<FlashcardWidget> createState() => FlashcardWidgetState();
 }
 
-class FlashcardWidgetState extends State<FlashcardWidget> {
-  // 0 = front (word only), 1 = single tap (meaning), 2 = double tap (meaning + example)
+class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProviderStateMixin {
+  // 0 = front (blurred), 1 = meaning, 2 = meaning + example
   int _showLevel = 0;
+  late AnimationController _blurController;
+  late Animation<double> _blurAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _blurController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _blurAnimation = Tween<double>(begin: 10.0, end: 0.0).animate(
+      CurvedAnimation(parent: _blurController, curve: kAnimCurve),
+    );
+  }
+
+  @override
+  void dispose() {
+    _blurController.dispose();
+    super.dispose();
+  }
 
   void resetMeaning() {
     if (mounted) {
       setState(() => _showLevel = 0);
+      _blurController.reset();
     }
   }
 
@@ -38,18 +59,26 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.word.id != widget.word.id) {
       _showLevel = 0;
+      _blurController.reset();
     }
   }
 
   void _singleTap() {
     setState(() {
-      _showLevel = _showLevel >= 1 ? 0 : 1;
+      if (_showLevel >= 1) {
+        _showLevel = 0;
+        _blurController.reverse();
+      } else {
+        _showLevel = 1;
+        _blurController.forward();
+      }
     });
   }
 
   void _doubleTap() {
     setState(() {
       _showLevel = 2;
+      _blurController.forward();
     });
   }
 
@@ -70,7 +99,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
     final EdgeInsets cardPadding;
 
     if (widget.isPad) {
-      wordSize = isLandscape ? 80.0 : 100.0;
+      wordSize = isLandscape ? 76.0 : 96.0;
       meaningSize = isLandscape ? 36.0 : 48.0;
       phoneticSize = isLandscape ? 32.0 : 36.0;
       playSize = isLandscape ? 64.0 : 72.0;
@@ -82,7 +111,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
           ? const EdgeInsets.fromLTRB(36, 24, 36, 24)
           : const EdgeInsets.fromLTRB(48, 48, 48, 36);
     } else {
-      wordSize = isLandscape ? 36.0 : 48.0;
+      wordSize = isLandscape ? 36.0 : 44.0; // spec: 44.0
       meaningSize = isLandscape ? 16.0 : 20.0;
       phoneticSize = isLandscape ? 14.0 : 16.0;
       playSize = isLandscape ? 36.0 : 44.0;
@@ -105,34 +134,55 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildTag(widget.word.level, levelColor, tagFontSize, tagHPad, tagVPad),
-            Flexible(child: _buildTag(widget.word.topic, Colors.green, tagFontSize, tagHPad, tagVPad)),
+            Flexible(child: _buildTag(widget.word.topic, stichSecondary, tagFontSize, tagHPad, tagVPad)),
           ],
         ),
         Text(
           widget.word.word,
-          style: GoogleFonts.inter(
+          style: TextStyle(
+            fontFamily: 'Inter',
             fontSize: wordSize,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F2937),
+            fontWeight: FontWeight.w900, // Black weight per spec
+            letterSpacing: -1.2,        // tight spacing per spec
+            color: onSurfaceColor(context),
           ),
           textAlign: TextAlign.center,
         ),
         Text(
           widget.word.phonetic,
-          style: TextStyle(fontSize: phoneticSize, color: Colors.grey[600]),
-        ),
-        Text(
-          _showLevel == 0 ? '释义' : widget.word.meaning,
           style: TextStyle(
-            fontSize: meaningSize,
-            color: _showLevel == 0 ? Colors.grey[350] : Colors.grey[700],
-            decoration: _showLevel == 0 ? TextDecoration.underline : null,
-            decorationColor: Colors.grey[350],
+            fontFamily: 'RobotoMono',    // monospace per spec
+            fontSize: phoneticSize,
+            color: Colors.grey[500],
           ),
-          textAlign: TextAlign.center,
         ),
-        if (_showLevel == 2 && widget.word.example.isNotEmpty)
-          Text(
+        // Meaning with blur mechanism per spec
+        AnimatedBuilder(
+          animation: _blurAnimation,
+          builder: (context, child) {
+            return ImageFiltered(
+              imageFilter: ImageFilter.blur(
+                sigmaX: _blurAnimation.value,
+                sigmaY: _blurAnimation.value,
+              ),
+              child: child,
+            );
+          },
+          child: Text(
+            widget.word.meaning,
+            style: TextStyle(
+              fontSize: meaningSize,
+              color: Colors.grey[700],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        // Example on double-tap
+        AnimatedOpacity(
+          opacity: _showLevel == 2 ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 250),
+          curve: kAnimCurve,
+          child: Text(
             widget.word.example,
             style: TextStyle(
               fontSize: meaningSize - 4,
@@ -143,6 +193,8 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
+        ),
+        const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
           child: GestureDetector(
@@ -152,7 +204,9 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
               width: playSize,
               height: playSize,
               decoration: BoxDecoration(
-                color: widget.isPlaying ? stichTertiary.withOpacity(0.7) : stichTertiary,
+                color: widget.isPlaying
+                    ? stichTertiary.withOpacity(0.7)
+                    : stichTertiary,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -182,12 +236,11 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
   }
 
   Widget _buildCardFace(EdgeInsets padding, Widget content) {
-    return Card(
-      color: Colors.white,
-      elevation: 12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(48),
-        side: const BorderSide(color: stichSurfaceContainer, width: 4),
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor(context), // ceramic white, no pure white
+        borderRadius: BorderRadius.circular(kBorderRadius), // 28.0
+        border: Border.fromSide(microBorder(context)), // 0.8px @ 4% opacity
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -202,7 +255,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> {
       padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(kBorderRadius),
       ),
       child: Text(
         text,

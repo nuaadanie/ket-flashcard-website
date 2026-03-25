@@ -22,14 +22,7 @@ class StreakBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: stichTertiary,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: stichTertiary.withOpacity(0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(kBorderRadius),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -54,9 +47,10 @@ class StreakBadge extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(48),
-          side: const BorderSide(color: stichSurfaceContainer, width: 3),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          side: Border.fromSide(microBorder(context)),
         ),
         title: const Text('🔥 连续学习'),
         content: Column(
@@ -66,7 +60,7 @@ class StreakBadge extends StatelessWidget {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text('最佳记录：$bestStreak 天',
-                style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                style: const TextStyle(fontSize: 16, color: Colors.grey)),
           ],
         ),
         actions: [

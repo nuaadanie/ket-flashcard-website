@@ -16,10 +16,10 @@ class AchievementDialog extends StatelessWidget {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: surfaceColor(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(48),
-        side: const BorderSide(color: stichSurfaceContainer, width: 3),
+        borderRadius: BorderRadius.circular(kBorderRadius),
+        side: Border.fromSide(microBorder(context)),
       ),
       insetPadding: EdgeInsets.symmetric(
         horizontal: isLandscape ? 24 : 16,
@@ -41,7 +41,7 @@ class AchievementDialog extends StatelessWidget {
                 const Spacer(),
                 Text(
                   '${unlockedAchievements.length}/${achievements.length}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
@@ -77,12 +77,9 @@ class AchievementDialog extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: unlocked ? Colors.white : Colors.grey[100],
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: unlocked ? stichSurfaceContainer : Colors.grey[300]!,
-          width: 2,
-        ),
+        color: unlocked ? surfaceColor(context) : surfaceColor(context).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(kBorderRadius),
+        border: Border.fromSide(microBorder(context)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -100,7 +97,7 @@ class AchievementDialog extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.bold,
-              color: unlocked ? const Color(0xFF1F2937) : Colors.grey[400],
+              color: unlocked ? onSurfaceColor(context) : Colors.grey[400],
             ),
             textAlign: TextAlign.center,
           ),

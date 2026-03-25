@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/article.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
@@ -83,7 +82,6 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
 
   void _showWordPopup(BuildContext context, String keyword) {
     final word = _findWord(keyword);
-    // 自动播放单词
     Future.delayed(const Duration(milliseconds: 300), () {
       widget.speech.speak(keyword);
     });
@@ -91,31 +89,42 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(48),
-          side: const BorderSide(color: stichSurfaceContainer, width: 3),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          side: microBorder(context),
         ),
         contentPadding: const EdgeInsets.all(24),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(keyword,
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: onSurfaceColor(context))),
             if (word != null && word.phonetic.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(word.phonetic,
-                  style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                  style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      fontSize: 18,
+                      color: Colors.grey[600])),
             ],
             if (word != null && word.meaning.isNotEmpty) ...[
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: stichTertiary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(kBorderRadius),
                 ),
                 child: Text(word.meaning,
-                    style: const TextStyle(fontSize: 20, color: Color(0xFF92400E))),
+                    style: TextStyle(
+                        fontSize: 20,
+                        color: onSurfaceColor(context),
+                        fontWeight: FontWeight.w500)),
               ),
             ],
             if (word != null) ...[
@@ -130,7 +139,8 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: const BoxDecoration(
                     color: stichTertiary, shape: BoxShape.circle),
-                child: const Icon(Icons.volume_up, color: Colors.white, size: 28),
+                child:
+                    const Icon(Icons.volume_up, color: Colors.white, size: 28),
               ),
             ),
           ],
@@ -146,7 +156,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     return Scaffold(
       primary: true,
       body: Container(
-        color: stichSurface,
+        color: surfaceColor(context),
         child: SafeArea(
           child: Column(
             children: [
@@ -179,7 +189,10 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
           Expanded(
             child: Text(
               widget.article.title,
-              style: GoogleFonts.fredoka(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -187,7 +200,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(kBorderRadius),
             ),
             child: Text(widget.article.level,
                 style: const TextStyle(
@@ -223,14 +236,12 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
         });
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
+        margin: const EdgeInsets.symmetric(vertical: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(32),
-          border: expanded
-              ? Border.all(color: stichSurfaceContainer, width: 2.5)
-              : Border.all(color: stichSurfaceContainer.withOpacity(0.5), width: 1.5),
+          color: surfaceColor(context),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          border: Border.fromSide(microBorder(context)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,7 +270,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: stichSecondary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(kBorderRadius),
                   ),
                   child: Text(
                     para.zh,
@@ -286,7 +297,9 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     if (para.keywords.isEmpty) {
       return Text(para.en,
           style: TextStyle(
-              fontSize: _fontSize, height: 1.6, color: const Color(0xFF1F2937)));
+              fontSize: _fontSize,
+              height: 1.7,
+              color: onSurfaceColor(context));
     }
 
     final text = para.en;
@@ -319,7 +332,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
         spans.add(TextSpan(
           text: text.substring(lastEnd, m.start),
           style: TextStyle(
-              fontSize: _fontSize, height: 1.6, color: const Color(0xFF1F2937)),
+              fontSize: _fontSize, height: 1.7, color: onSurfaceColor(context)),
         ));
       }
       final matched = text.substring(m.start, m.end);
@@ -328,7 +341,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
           onTap: () => _showWordPopup(context, m.keyword),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: stichTertiary, width: 2),
               ),
@@ -339,7 +352,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
                 fontSize: _fontSize,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFFb8860b),
-                height: 1.6,
+                height: 1.7,
               ),
             ),
           ),
@@ -351,7 +364,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
       spans.add(TextSpan(
         text: text.substring(lastEnd),
         style: TextStyle(
-            fontSize: _fontSize, height: 1.6, color: const Color(0xFF1F2937)),
+            fontSize: _fontSize, height: 1.7, color: onSurfaceColor(context)),
       ));
     }
 

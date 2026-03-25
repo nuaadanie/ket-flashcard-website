@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
 import '../services/speech_service.dart';
@@ -39,9 +38,9 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: stichSurfaceContainer, width: 2),
+          color: surfaceColor(context),
+          borderRadius: BorderRadius.circular(kBorderRadius),
+          border: Border.fromSide(microBorder(context)),
         ),
         child: Row(
           children: [
@@ -49,7 +48,7 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: stichTertiary,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(kBorderRadius),
               ),
               child: const Text(
                 '今日一词',
@@ -70,10 +69,11 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                       Flexible(
                         child: Text(
                           widget.word.word,
-                          style: GoogleFonts.inter(
+                          style: TextStyle(
+                            fontFamily: 'Inter',
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1F2937),
+                            fontWeight: FontWeight.w900,
+                            color: onSurfaceColor(context),
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -81,14 +81,18 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                       const SizedBox(width: 6),
                       Text(
                         widget.word.phonetic,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: const TextStyle(
+                          fontFamily: 'RobotoMono',
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
                       ),
                       const SizedBox(width: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
                           color: levelColor,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(kBorderRadius),
                         ),
                         child: Text(
                           widget.word.level,
@@ -100,9 +104,9 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                   if (widget.word.example.isNotEmpty)
                     Text(
                       widget.word.example,
-                      style: GoogleFonts.inter(
+                      style: const TextStyle(
                         fontSize: 13,
-                        color: const Color(0xFF6B7280),
+                        color: Colors.grey,
                         fontStyle: FontStyle.italic,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -112,7 +116,7 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
                     const SizedBox(height: 2),
                     Text(
                       widget.word.meaning,
-                      style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
                     ),
                   ],
                 ],
