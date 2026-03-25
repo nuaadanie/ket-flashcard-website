@@ -40,7 +40,7 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
         decoration: BoxDecoration(
           color: surfaceColor(context),
           borderRadius: BorderRadius.circular(kBorderRadius),
-          border: Border.fromSide(microBorder(context)),
+          border: Border.fromBorderSide(microBorder(context)),
         ),
         child: Row(
           children: [

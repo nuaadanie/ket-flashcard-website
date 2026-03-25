@@ -528,7 +528,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         decoration: BoxDecoration(
           color: active ? stichSecondary : surfaceColor(context),
           borderRadius: BorderRadius.circular(kBorderRadius),
-          border: active ? null : Border.fromSide(microBorder(context)),
+          border: active ? null : Border.fromBorderSide(microBorder(context)),
         ),
         child: Text(
           label,
@@ -1007,7 +1007,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         decoration: BoxDecoration(
           color: active ? stichPrimary : Colors.grey[200],
           borderRadius: BorderRadius.circular(kBorderRadius),
-          border: active ? null : Border.fromSide(microBorder(context)),
+          border: active ? null : Border.fromBorderSide(microBorder(context)),
         ),
         child: Text(label,
             style: TextStyle(
@@ -1187,7 +1187,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         decoration: BoxDecoration(
           color: active ? surfaceColor(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
-          border: active ? Border.fromSide(microBorder(context)) : null,
+          border: active ? Border.fromBorderSide(microBorder(context)) : null,
         ),
         child: Text(
           label,
@@ -1230,7 +1230,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               decoration: BoxDecoration(
                 color: active ? color : surfaceColor(context),
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                border: active ? null : Border.fromSide(microBorder(context)),
+                border: active ? null : Border.fromBorderSide(microBorder(context)),
               ),
               child: Row(
                 children: [
@@ -1293,7 +1293,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               decoration: BoxDecoration(
                 color: active ? stichPrimary : surfaceColor(context),
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                border: active ? null : Border.fromSide(microBorder(context)),
+                border: active ? null : Border.fromBorderSide(microBorder(context)),
               ),
               child: Row(
                 children: [

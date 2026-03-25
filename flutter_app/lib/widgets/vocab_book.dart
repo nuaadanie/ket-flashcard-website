@@ -153,7 +153,7 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
       backgroundColor: surfaceColor(context),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kBorderRadius),
-        side: Border.fromSide(microBorder(context)),
+        side: microBorder(context),
       ),
       insetPadding: EdgeInsets.symmetric(
         horizontal: isLandscape ? 24 : 16,
@@ -239,11 +239,11 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                borderSide: Border.fromSide(microBorder(context)),
+                borderSide: microBorder(context),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                borderSide: Border.fromSide(microBorder(context)),
+                borderSide: microBorder(context),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               isDense: true,
@@ -265,11 +265,11 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                borderSide: Border.fromSide(microBorder(context)),
+                borderSide: microBorder(context),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                borderSide: Border.fromSide(microBorder(context)),
+                borderSide: microBorder(context),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               isDense: true,
@@ -312,11 +312,11 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
               labelText: '级别',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                borderSide: Border.fromSide(microBorder(context)),
+                borderSide: microBorder(context),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                borderSide: Border.fromSide(microBorder(context)),
+                borderSide: microBorder(context),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
@@ -336,11 +336,11 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
               labelText: '主题',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                borderSide: Border.fromSide(microBorder(context)),
+                borderSide: microBorder(context),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kBorderRadius),
-                borderSide: Border.fromSide(microBorder(context)),
+                borderSide: microBorder(context),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),

@@ -240,7 +240,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
       decoration: BoxDecoration(
         color: surfaceColor(context), // ceramic white, no pure white
         borderRadius: BorderRadius.circular(kBorderRadius), // 28.0
-        border: Border.fromSide(microBorder(context)), // 0.8px @ 4% opacity
+        border: Border.fromBorderSide(microBorder(context)), // 0.8px @ 4% opacity
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(

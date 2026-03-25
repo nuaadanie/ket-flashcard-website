@@ -131,7 +131,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
                 decoration: BoxDecoration(
                   color: active ? color : surfaceColor(context),
                   borderRadius: BorderRadius.circular(kBorderRadius),
-                  border: active ? null : Border.fromSide(microBorder(context)),
+                  border: active ? null : Border.fromBorderSide(microBorder(context)),
                 ),
                 child: Text(level,
                     style: TextStyle(
@@ -195,7 +195,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         decoration: BoxDecoration(
           color: surfaceColor(context),
           borderRadius: BorderRadius.circular(kBorderRadius),
-          border: Border.fromSide(microBorder(context)),
+          border: Border.fromBorderSide(microBorder(context)),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(

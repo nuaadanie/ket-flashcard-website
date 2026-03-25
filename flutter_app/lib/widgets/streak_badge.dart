@@ -50,7 +50,7 @@ class StreakBadge extends StatelessWidget {
         backgroundColor: surfaceColor(context),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kBorderRadius),
-          side: Border.fromSide(microBorder(context)),
+          side: microBorder(context),
         ),
         title: const Text('🔥 连续学习'),
         content: Column(

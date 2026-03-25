@@ -241,7 +241,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
         decoration: BoxDecoration(
           color: surfaceColor(context),
           borderRadius: BorderRadius.circular(kBorderRadius),
-          border: Border.fromSide(microBorder(context)),
+          border: Border.fromBorderSide(microBorder(context)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,7 +299,7 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
           style: TextStyle(
               fontSize: _fontSize,
               height: 1.7,
-              color: onSurfaceColor(context));
+              color: onSurfaceColor(context)));
     }
 
     final text = para.en;

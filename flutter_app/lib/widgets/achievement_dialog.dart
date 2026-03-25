@@ -19,7 +19,7 @@ class AchievementDialog extends StatelessWidget {
       backgroundColor: surfaceColor(context),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kBorderRadius),
-        side: Border.fromSide(microBorder(context)),
+        side: microBorder(context),
       ),
       insetPadding: EdgeInsets.symmetric(
         horizontal: isLandscape ? 24 : 16,
@@ -79,7 +79,7 @@ class AchievementDialog extends StatelessWidget {
       decoration: BoxDecoration(
         color: unlocked ? surfaceColor(context) : surfaceColor(context).withOpacity(0.5),
         borderRadius: BorderRadius.circular(kBorderRadius),
-        border: Border.fromSide(microBorder(context)),
+        border: Border.fromBorderSide(microBorder(context)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
