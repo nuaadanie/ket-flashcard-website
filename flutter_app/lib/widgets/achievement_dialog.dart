@@ -63,7 +63,7 @@ class AchievementDialog extends StatelessWidget {
                 itemBuilder: (ctx, i) {
                   final a = achievements[i];
                   final unlocked = unlockedAchievements.contains(a.id);
-                  return _buildBadge(a, unlocked);
+                  return _buildBadge(ctx, a, unlocked);
                 },
               ),
             ),
@@ -73,7 +73,7 @@ class AchievementDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildBadge(Achievement achievement, bool unlocked) {
+  Widget _buildBadge(BuildContext context, Achievement achievement, bool unlocked) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
