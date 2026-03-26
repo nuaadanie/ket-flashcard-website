@@ -104,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
   // 需求3: 统计筛选模式 null=不筛选, 'mastered', 'unknown', 'unlearned'
   String? _statsFilter;
+  Word? _cachedWordOfDay;
 
   late AnimationController _cardAnimController;
   late Animation<Offset> _cardSlideAnim;
@@ -120,17 +121,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
 
     // Card slide-rotate animation (for mastered / next)
     _cardAnimController = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 200),
       vsync: this,
     );
     _cardSlideAnim = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(0.3, -0.15),
+      end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _cardAnimController,
       curve: kAnimCurve,
     ));
-    _cardRotationAnim = Tween<double>(begin: 0, end: 0.08).animate(
+    _cardRotationAnim = Tween<double>(begin: 0, end: 0).animate(
       CurvedAnimation(parent: _cardAnimController, curve: kAnimCurve),
     );
 
@@ -160,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     _currentTopic = _storage.lastTopic;
     _statsFilter = _storage.statsFilter;
     _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
     _cardAnimController.forward();
     setState(() {});
   }
@@ -229,11 +231,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (shake) {
       await _shakeController.forward();
       _shakeController.reset();
-    } else {
-      await _cardAnimController.reverse();
     }
     action();
-    _cardAnimController.forward();
   }
 
   void _onReachEnd() {
@@ -277,6 +276,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   setState(() {
                     _currentLevel = nextLabel;
                     _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
                     _saveProgress();
                   });
                 });
@@ -550,6 +550,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         _statsFilter = filter;
       }
       _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
     });
     _cardAnimController.forward(from: 0);
   }
@@ -624,7 +625,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     final progress = _allWords.isEmpty
         ? 0.0
         : _storage.mastered.length / _allWords.length;
-    final wotd = _getWordOfDay();
     return Column(
       children: [
         _buildTopBar(progress),
@@ -633,8 +633,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           bestStreak: _storage.bestStreak,
         ),
         _buildStatsBar(),
-        if (wotd != null)
-          WordOfDayCard(word: wotd, speech: _speech),
         _buildModeSelector(),
         if (_currentMode == 'level') _buildLevelSelector(),
         if (_currentMode == 'topic') _buildTopicSelector(),
@@ -662,7 +660,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     final progress = _allWords.isEmpty
         ? 0.0
         : _storage.mastered.length / _allWords.length;
-    final wotd = _getWordOfDay();
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 900;
     final leftWidth = isTablet ? 160.0 : 130.0;
@@ -708,27 +705,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 ),
               ),
               // 中间：闪卡填满
-              Expanded(
-                child: Column(
-                  children: [
-                    if (wotd != null)
-                      WordOfDayCard(word: wotd, speech: _speech),
-                    Expanded(child: _buildCardArea(true)),
-                  ],
-                ),
-              ),
+              Expanded(child: _buildCardArea(true)),
               // 右侧：按钮，对齐中间卡片上边界
               SizedBox(
                 width: rightWidth,
                 child: Column(
                   children: [
-                    if (wotd != null)
-                      Opacity(
-                        opacity: 0,
-                        child: IgnorePointer(
-                          child: WordOfDayCard(word: wotd, speech: _speech),
-                        ),
-                      ),
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.only(right: 8, left: 4),
@@ -997,6 +979,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           }
           _statsFilter = null;
           _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
           _saveProgress();
         });
         _cardAnimController.forward(from: 0);
@@ -1035,6 +1018,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                     _currentLevel = level;
                     _statsFilter = null;
                     _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
                     _saveProgress();
                   });
                 });
@@ -1087,6 +1071,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               _currentTopic = v;
               _statsFilter = null;
               _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
               _saveProgress();
             });
           });
@@ -1108,6 +1093,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                 _currentLevel = level;
                 _statsFilter = null;
                 _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
                 _saveProgress();
               });
             });
@@ -1158,6 +1144,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             _currentTopic = v;
             _statsFilter = null;
             _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
             _saveProgress();
           });
         });
@@ -1177,6 +1164,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
           }
           _statsFilter = null;
           _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
           _saveProgress();
         });
         _cardAnimController.forward(from: 0);
@@ -1220,6 +1208,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   _currentLevel = level;
                   _statsFilter = null;
                   _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
                   _saveProgress();
                 });
               });
@@ -1283,6 +1272,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   _currentTopic = topic;
                   _statsFilter = null;
                   _filterWords();
+    _cachedWordOfDay = _getWordOfDay();
                   _saveProgress();
                 });
               });
@@ -1360,21 +1350,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               child: child,
             );
           },
-          child: FadeTransition(
-            opacity: _cardAnimController,
-            child: SlideTransition(
-              position: _cardSlideAnim,
-              child: RotationTransition(
-                turns: _cardRotationAnim,
-                child: FlashcardWidget(
+          child: FlashcardWidget(
                   word: _filteredWords[_currentIndex],
                   isPlaying: _isPlaying,
                   onPlay: _playWord,
                   expandVertical: shouldExpand,
                   isPad: isPad,
-                ),
-              ),
-            ),
           ),
         ),
       ),

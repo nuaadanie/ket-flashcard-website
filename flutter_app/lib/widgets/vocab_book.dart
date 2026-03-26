@@ -401,12 +401,12 @@ class _VocabBookDialogState extends State<VocabBookDialog> {
                 const SizedBox(width: 4),
                 GestureDetector(
                   onTap: () => widget.speech.speak(w.word),
-                  child: const Icon(Icons.volume_up, color: stichSecondary, size: 18),
+                  child: const Icon(Icons.volume_up, color: stichTertiary, size: 18),
                 ),
               ],
             )
           : IconButton(
-              icon: const Icon(Icons.volume_up, color: stichSecondary),
+              icon: const Icon(Icons.volume_up, color: stichTertiary),
               onPressed: () => widget.speech.speak(w.word),
             ),
     );

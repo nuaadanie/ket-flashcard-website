@@ -126,7 +126,7 @@ class _WordOfDayCardState extends State<WordOfDayCard> {
               onTap: _isPlaying ? null : _play,
               child: Icon(
                 _isPlaying ? Icons.hourglass_top : Icons.volume_up,
-                color: stichSecondary,
+                color: stichTertiary,
                 size: 20,
               ),
             ),

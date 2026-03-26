@@ -4,6 +4,7 @@ import '../services/storage_service.dart';
 import '../services/speech_service.dart';
 import 'home_screen.dart';
 import 'reading_screen.dart';
+import 'word_of_day_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -14,6 +15,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentTab = 0;
+  late PageController _pageController;
   final StorageService _storage = StorageService();
   final SpeechService _speech = SpeechService();
   int _themeIndex = 0;
@@ -22,6 +24,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     _init();
   }
 
@@ -43,8 +46,21 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _onPageChanged(int index) {
+    setState(() => _currentTab = index);
+  }
+
+  void _onNavTap(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
+  }
+
   @override
   void dispose() {
+    _pageController.dispose();
     _speech.dispose();
     super.dispose();
   }
@@ -58,8 +74,9 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentTab,
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
         children: [
           HomeScreen(
             themeIndex: _themeIndex,
@@ -70,6 +87,12 @@ class _MainScreenState extends State<MainScreen> {
             speech: _speech,
             themeIndex: _themeIndex,
           ),
+          WordOfDayScreen(
+            storage: _storage,
+            speech: _speech,
+            themeIndex: _themeIndex,
+            onThemeToggle: _toggleTheme,
+          ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -78,8 +101,9 @@ class _MainScreenState extends State<MainScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(0, '🎴', '单词'),
-              _buildNavItem(1, '📚', '阅读'),
+              _buildNavItem(0, Icons.style, '单词'),
+              _buildNavItem(1, Icons.auto_stories, '阅读'),
+              _buildNavItem(2, Icons.wb_sunny, '今日一词'),
             ],
           ),
         ),
@@ -87,10 +111,10 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, String emoji, String label) {
+  Widget _buildNavItem(int index, IconData icon, String label) {
     final active = _currentTab == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentTab = index),
+      onTap: () => _onNavTap(index),
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -103,7 +127,7 @@ class _MainScreenState extends State<MainScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
+            Icon(icon, size: 20, color: active ? stichPrimary : Colors.grey[400]),
             const SizedBox(width: 6),
             Text(
               label,

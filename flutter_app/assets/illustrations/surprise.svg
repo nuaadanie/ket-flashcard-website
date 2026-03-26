@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- Gift box body -->
+  <rect x="20" y="55" width="80" height="50" rx="6" fill="#FF6B6B" stroke="#CC4444" stroke-width="2"/>
+  <!-- Gift box lid -->
+  <rect x="15" y="45" width="90" height="15" rx="4" fill="#FF8888" stroke="#CC4444" stroke-width="2"/>
+  <!-- Ribbon vertical -->
+  <rect x="55" y="45" width="10" height="60" fill="#FFD93D"/>
+  <!-- Ribbon horizontal -->
+  <rect x="15" y="48" width="90" height="8" fill="#FFD93D"/>
+  <!-- Bow left -->
+  <ellipse cx="48" cy="40" rx="12" ry="10" fill="#FFD93D" stroke="#E6B800" stroke-width="1.5"/>
+  <!-- Bow right -->
+  <ellipse cx="72" cy="40" rx="12" ry="10" fill="#FFD93D" stroke="#E6B800" stroke-width="1.5"/>
+  <!-- Bow center -->
+  <circle cx="60" cy="42" r="5" fill="#E6B800"/>
+  <!-- Sparkles -->
+  <text x="10" y="30" font-size="16">✨</text>
+  <text x="90" y="25" font-size="14">⭐</text>
+  <text x="5" y="70" font-size="12">✨</text>
+  <text x="100" y="80" font-size="12">✨</text>
+  <!-- Exclamation -->
+  <text x="52" y="20" font-size="20" font-weight="bold" fill="#FF6B6B">!</text>
+</svg>

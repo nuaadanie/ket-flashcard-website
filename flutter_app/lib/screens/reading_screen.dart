@@ -163,7 +163,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
     return GridView.builder(
       padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+        crossAxisCount: 4,
         childAspectRatio: 1.6,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,

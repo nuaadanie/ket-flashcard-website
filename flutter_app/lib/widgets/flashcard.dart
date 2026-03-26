@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/word.dart';
 import '../models/app_theme.dart';
@@ -26,31 +25,21 @@ class FlashcardWidget extends StatefulWidget {
 class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProviderStateMixin {
   // 0 = front (blurred), 1 = meaning, 2 = meaning + example
   int _showLevel = 0;
-  late AnimationController _blurController;
-  late Animation<double> _blurAnimation;
 
   @override
   void initState() {
     super.initState();
-    _blurController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _blurAnimation = Tween<double>(begin: 10.0, end: 0.0).animate(
-      CurvedAnimation(parent: _blurController, curve: kAnimCurve),
-    );
+
   }
 
   @override
   void dispose() {
-    _blurController.dispose();
     super.dispose();
   }
 
   void resetMeaning() {
     if (mounted) {
       setState(() => _showLevel = 0);
-      _blurController.reset();
     }
   }
 
@@ -59,26 +48,12 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
     super.didUpdateWidget(oldWidget);
     if (oldWidget.word.id != widget.word.id) {
       _showLevel = 0;
-      _blurController.reset();
     }
   }
 
   void _singleTap() {
     setState(() {
-      if (_showLevel >= 1) {
-        _showLevel = 0;
-        _blurController.reverse();
-      } else {
-        _showLevel = 1;
-        _blurController.forward();
-      }
-    });
-  }
-
-  void _doubleTap() {
-    setState(() {
-      _showLevel = 2;
-      _blurController.forward();
+      _showLevel = (_showLevel + 1) % 3;
     });
   }
 
@@ -138,44 +113,46 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
           ],
         ),
         Text(
-          widget.word.word,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: wordSize,
-            fontWeight: FontWeight.w900, // Black weight per spec
-            letterSpacing: -1.2,        // tight spacing per spec
-            color: onSurfaceColor(context),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        Text(
           widget.word.phonetic,
           style: TextStyle(
-            fontFamily: 'RobotoMono',    // monospace per spec
+            fontFamily: 'RobotoMono',
             fontSize: phoneticSize,
             color: Colors.grey[500],
           ),
         ),
-        // Meaning with blur mechanism per spec
-        AnimatedBuilder(
-          animation: _blurAnimation,
-          builder: (context, child) {
-            return ImageFiltered(
-              imageFilter: ImageFilter.blur(
-                sigmaX: _blurAnimation.value,
-                sigmaY: _blurAnimation.value,
-              ),
-              child: child,
-            );
-          },
-          child: Text(
+        Text(
+          widget.word.word,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: wordSize,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.2,
+            color: onSurfaceColor(context),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        // Meaning: tap to reveal
+        AnimatedCrossFade(
+          firstChild: Text(
+            '释义',
+            style: TextStyle(
+              fontSize: meaningSize - 4,
+              color: Colors.grey[400],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          secondChild: Text(
             widget.word.meaning,
             style: TextStyle(
-              fontSize: meaningSize,
+              fontSize: meaningSize - 4,
               color: Colors.grey[700],
             ),
             textAlign: TextAlign.center,
           ),
+          crossFadeState: _showLevel >= 1
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 20),
         ),
         // Example on double-tap
         AnimatedOpacity(
@@ -190,8 +167,6 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
               fontStyle: FontStyle.italic,
             ),
             textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
           ),
         ),
         const SizedBox(height: 8),
@@ -222,7 +197,6 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
 
     final card = GestureDetector(
       onTap: _singleTap,
-      onDoubleTap: _doubleTap,
       child: _buildCardFace(cardPadding, frontContent),
     );
 

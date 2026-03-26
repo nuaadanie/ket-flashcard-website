@@ -7,6 +7,7 @@ class Word {
   final String topic;
   final List<String> syllables;
   final String example;
+  final String wiki;
 
   Word({
     required this.id,
@@ -17,6 +18,7 @@ class Word {
     required this.topic,
     this.syllables = const [],
     this.example = '',
+    this.wiki = '',
   });
 
   factory Word.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class Word {
               .toList() ??
           [],
       example: json['example'] as String? ?? '',
+      wiki: json['wiki'] as String? ?? '',
     );
   }
 }
