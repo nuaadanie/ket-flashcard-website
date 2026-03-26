@@ -579,9 +579,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     if (_allWords.isEmpty) return null;
     final today = DateTime.now();
     final seed = today.year * 10000 + today.month * 100 + today.day;
-    final unmastered = _allWords.where((w) => !_storage.isMastered(w.id)).toList();
-    if (unmastered.isEmpty) return null;
-    return unmastered[seed % unmastered.length];
+
+    // 只选动词和形容词
+    final verbAdj = _allWords.where((w) =>
+      w.topic.startsWith('Verbs') || w.topic.startsWith('Adjectives')
+    ).toList();
+
+    // 优先从不会单词中选
+    final unknownPool = verbAdj.where((w) => _storage.isUnknown(w.id)).toList();
+    final pool = unknownPool.isNotEmpty ? unknownPool : verbAdj;
+    if (pool.isEmpty) return null;
+    return pool[seed % pool.length];
   }
 
   List<String> get _topics {
