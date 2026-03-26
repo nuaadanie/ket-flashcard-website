@@ -435,7 +435,8 @@ def gen_dart_shapes(shape_names, palette_hex):
         elif name == 'shield':
             x, y, w, h = 0.5, 0.45, 0.35, 0.4
 
-        shape_type = f"ShapeType.{name}" if name != 'equals' else "ShapeType.cross"
+        name_map = {'equals': 'cross', 'wave': 'oval', 'exclamation': 'roundedRect', 'shield': 'diamond'}
+        shape_type = f"ShapeType.{name_map.get(name, name)}"
         parts.append(
             f"VisualShape(type: {shape_type}, x: {x}, y: {y}, w: {w}, h: {h}, color: {color})"
         )

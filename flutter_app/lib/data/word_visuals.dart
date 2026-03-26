@@ -160,7 +160,7 @@ final Map<String, WordVisual> wordVisuals = {
   'wave': WordVisual(
     palette: [Color(0xFF03A9F4), Color(0xFF81D4FA)],
     shapes: [
-        VisualShape(type: ShapeType.wave, x: 0.5, y: 0.5, w: 0.6, h: 0.15, color: Color(0xFF03A9F4)),
+        VisualShape(type: ShapeType.oval, x: 0.5, y: 0.5, w: 0.6, h: 0.15, color: Color(0xFF03A9F4)),
     ],
     animType: AnimType.wave,
     animSpeed: 1.2,
@@ -286,7 +286,7 @@ final Map<String, WordVisual> wordVisuals = {
   'need': WordVisual(
     palette: [Color(0xFFF44336), Color(0xFFEF9A9A)],
     shapes: [
-        VisualShape(type: ShapeType.exclamation, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFF44336)),
+        VisualShape(type: ShapeType.roundedRect, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFF44336)),
     ],
     animType: AnimType.pulse,
     animSpeed: 1.2,
@@ -1136,7 +1136,7 @@ final Map<String, WordVisual> wordVisuals = {
   'must': WordVisual(
     palette: [Color(0xFFF44336), Color(0xFFE57373)],
     shapes: [
-        VisualShape(type: ShapeType.exclamation, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFF44336)),
+        VisualShape(type: ShapeType.roundedRect, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFF44336)),
         VisualShape(type: ShapeType.circle, x: 0.35, y: 0.6, w: 0.15, h: 0.15, color: Color(0xFFE57373)),
     ],
     animType: AnimType.pulse,
@@ -1899,7 +1899,7 @@ final Map<String, WordVisual> wordVisuals = {
     palette: [Color(0xFFF44336), Color(0xFFFF5722)],
     shapes: [
         VisualShape(type: ShapeType.star, x: 0.5, y: 0.45, w: 0.5, h: 0.5, color: Color(0xFFF44336)),
-        VisualShape(type: ShapeType.shield, x: 0.5, y: 0.45, w: 0.35, h: 0.4, color: Color(0xFFFF5722)),
+        VisualShape(type: ShapeType.diamond, x: 0.5, y: 0.45, w: 0.35, h: 0.4, color: Color(0xFFFF5722)),
     ],
     animType: AnimType.pulse,
     animSpeed: 0.8,
@@ -1926,7 +1926,7 @@ final Map<String, WordVisual> wordVisuals = {
   'careful': WordVisual(
     palette: [Color(0xFFFF9800), Color(0xFFFFCC80)],
     shapes: [
-        VisualShape(type: ShapeType.exclamation, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFFF9800)),
+        VisualShape(type: ShapeType.roundedRect, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFFF9800)),
         VisualShape(type: ShapeType.circle, x: 0.35, y: 0.6, w: 0.15, h: 0.15, color: Color(0xFFFFCC80)),
     ],
     animType: AnimType.pulse,
@@ -1973,7 +1973,7 @@ final Map<String, WordVisual> wordVisuals = {
     palette: [Color(0xFFF44336), Color(0xFFFF5722)],
     shapes: [
         VisualShape(type: ShapeType.triangle, x: 0.5, y: 0.45, w: 0.45, h: 0.45, color: Color(0xFFF44336)),
-        VisualShape(type: ShapeType.exclamation, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFFF5722)),
+        VisualShape(type: ShapeType.roundedRect, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFFF5722)),
     ],
     animType: AnimType.shake,
     animSpeed: 0.8,
@@ -2188,7 +2188,7 @@ final Map<String, WordVisual> wordVisuals = {
     palette: [Color(0xFF4CAF50), Color(0xFFA5D6A7)],
     shapes: [
         VisualShape(type: ShapeType.circle, x: 0.5, y: 0.45, w: 0.45, h: 0.45, color: Color(0xFF4CAF50)),
-        VisualShape(type: ShapeType.shield, x: 0.5, y: 0.45, w: 0.35, h: 0.4, color: Color(0xFFA5D6A7)),
+        VisualShape(type: ShapeType.diamond, x: 0.5, y: 0.45, w: 0.35, h: 0.4, color: Color(0xFFA5D6A7)),
     ],
     animType: AnimType.breathe,
     animSpeed: 0.8,
@@ -2357,7 +2357,7 @@ final Map<String, WordVisual> wordVisuals = {
   'windy': WordVisual(
     palette: [Color(0xFF03A9F4), Color(0xFF81D4FA)],
     shapes: [
-        VisualShape(type: ShapeType.wave, x: 0.5, y: 0.5, w: 0.6, h: 0.15, color: Color(0xFF03A9F4)),
+        VisualShape(type: ShapeType.oval, x: 0.5, y: 0.5, w: 0.6, h: 0.15, color: Color(0xFF03A9F4)),
         VisualShape(type: ShapeType.dot, x: 0.5, y: 0.5, w: 0.15, h: 0.15, color: Color(0xFF81D4FA)),
     ],
     animType: AnimType.wave,
@@ -2679,7 +2679,7 @@ final Map<String, WordVisual> wordVisuals = {
     palette: [Color(0xFFFFC107), Color(0xFFFFD54F)],
     shapes: [
         VisualShape(type: ShapeType.star, x: 0.5, y: 0.45, w: 0.5, h: 0.5, color: Color(0xFFFFC107)),
-        VisualShape(type: ShapeType.exclamation, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFFFD54F)),
+        VisualShape(type: ShapeType.roundedRect, x: 0.5, y: 0.45, w: 0.12, h: 0.35, color: Color(0xFFFFD54F)),
     ],
     animType: AnimType.pulse,
     animSpeed: 0.8,
