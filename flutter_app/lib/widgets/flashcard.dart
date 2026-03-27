@@ -112,6 +112,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
             _buildTag(widget.word.topic, stichSecondary, tagFontSize, tagHPad, tagVPad),
           ],
         ),
+        SizedBox(height: isLandscape ? 4 : 8),
         Text(
           widget.word.phonetic,
           style: TextStyle(
@@ -122,59 +123,79 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
                 : Colors.grey[500],
           ),
         ),
-        Text(
-          widget.word.word,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: wordSize,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -1.2,
-            color: onSurfaceColor(context),
+        SizedBox(height: isLandscape ? 2 : 4),
+        SizedBox(
+          height: wordSize + 12,
+          child: Center(
+            child: Text(
+              widget.word.word,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: wordSize,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.2,
+                color: onSurfaceColor(context),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          textAlign: TextAlign.center,
         ),
-        // Meaning: tap to reveal
-        AnimatedCrossFade(
-          firstChild: Text(
-            '释义',
-            style: TextStyle(
-              fontSize: meaningSize - 4,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[500]
-                  : Colors.grey[400],
+        // Meaning: tap to reveal — fixed height to prevent layout shift
+        SizedBox(
+          height: meaningSize + 8,
+          child: Center(
+            child: AnimatedCrossFade(
+              firstChild: Text(
+                '释义',
+                style: TextStyle(
+                  fontSize: meaningSize - 4,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[500]
+                      : Colors.grey[400],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              secondChild: Text(
+                widget.word.meaning,
+                style: TextStyle(
+                  fontSize: meaningSize - 4,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[300]
+                      : Colors.grey[700],
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              crossFadeState: _showLevel >= 1
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 20),
             ),
-            textAlign: TextAlign.center,
           ),
-          secondChild: Text(
-            widget.word.meaning,
-            style: TextStyle(
-              fontSize: meaningSize - 4,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[300]
-                  : Colors.grey[700],
-            ),
-            textAlign: TextAlign.center,
-          ),
-          crossFadeState: _showLevel >= 1
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 20),
         ),
-        // Example on double-tap
-        AnimatedOpacity(
-          opacity: _showLevel == 2 ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 250),
-          curve: kAnimCurve,
-          child: Text(
-            widget.word.example,
-            style: TextStyle(
-              fontSize: meaningSize - 4,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[400]
-                  : Colors.grey[500],
-              fontStyle: FontStyle.italic,
+        // Example on double-tap — fixed height to prevent layout shift
+        SizedBox(
+          height: meaningSize + 8,
+          child: AnimatedOpacity(
+            opacity: _showLevel == 2 ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 250),
+            curve: kAnimCurve,
+            child: Text(
+              widget.word.example,
+              style: TextStyle(
+                fontSize: meaningSize - 4,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[400]
+                    : Colors.grey[500],
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
           ),
         ),
         const SizedBox(height: 8),
