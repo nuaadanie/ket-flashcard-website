@@ -40,6 +40,7 @@ class _WordIllustrationWidgetState extends State<WordIllustrationWidget>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       width: widget.size,
       height: widget.size,
@@ -52,6 +53,7 @@ class _WordIllustrationWidgetState extends State<WordIllustrationWidget>
               illustration: widget.illustration,
               word: widget.word,
               t: _ctrl.value,
+              isDark: isDark,
             ),
           );
         },
@@ -68,12 +70,55 @@ class WordIllustrationPainter extends CustomPainter {
   final WordIllustration illustration;
   final String? word;
   final double t;
+  final bool isDark;
 
   WordIllustrationPainter({
     required this.illustration,
     required this.word,
     required this.t,
+    this.isDark = false,
   });
+
+  // ── dark mode helpers ───────────────────────────────────────────────────
+
+  /// Boost opacity for dark mode visibility
+  double _dop(double opacity) => isDark ? (opacity * 1.6).clamp(0.0, 1.0) : opacity;
+
+  /// Dark-boosted color: lighter + more opaque (neon-like glow on dark)
+  Color _dc(Color c) {
+    if (!isDark) return c;
+    // Shift 60% toward white for strong luminance contrast on dark backgrounds
+    final r = c.red + ((255 - c.red) * 0.6).round();
+    final g = c.green + ((255 - c.green) * 0.6).round();
+    final b = c.blue + ((255 - c.blue) * 0.6).round();
+    return Color.fromARGB(255, r.clamp(0, 255), g.clamp(0, 255), b.clamp(0, 255));
+  }
+
+  /// Dark-boosted paint: lighter color + thicker strokes
+  Paint _dp(Paint p) {
+    if (!isDark) return p;
+    final boosted = Paint()
+      ..color = _dc(p.color)
+      ..style = p.style
+      ..strokeWidth = p.strokeWidth * 1.4
+      ..strokeCap = p.strokeCap
+      ..strokeJoin = p.strokeJoin
+      ..blendMode = p.blendMode;
+    if (p.shader != null) boosted.shader = p.shader;
+    if (p.maskFilter != null) boosted.maskFilter = p.maskFilter;
+    return boosted;
+  }
+
+  /// White outline stroke for dark mode
+  Paint get _outlineP => Paint()
+    ..color = Colors.white.withOpacity(0.6)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3.0
+    ..strokeCap = StrokeCap.round;
+
+  /// Minimum opacity in dark mode to ensure visibility
+  /// Preserves 0 opacity (intentional transparency, e.g. gradient endpoints)
+  double _minOp(double opacity) => (isDark && opacity > 0) ? opacity.clamp(0.4, 1.0) : opacity;
 
   // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -86,11 +131,13 @@ class WordIllustrationPainter extends CustomPainter {
       final phase = rng.nextDouble() * pi * 2;
       final dx = bx + sin(t * pi * 2 * speed + phase) * size.width * 0.04;
       final dy = by + cos(t * pi * 2 * speed + phase * 1.3) * size.height * 0.04;
-      final opacity = (0.15 + sin(t * pi * 2 + phase) * 0.1).clamp(0.03, 0.3);
+      final baseOpacity = isDark ? 0.25 : 0.15;
+      final swing = isDark ? 0.15 : 0.1;
+      final opacity = (baseOpacity + sin(t * pi * 2 + phase) * swing).clamp(0.05, 0.5);
       final r = (2.0 + rng.nextDouble() * 3) * (size.width / 200);
       canvas.drawCircle(
         Offset(dx, dy), r,
-        Paint()..color = illustration.accent.withOpacity(opacity),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(opacity)),
       );
     }
   }
@@ -101,14 +148,16 @@ class WordIllustrationPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
 
-    // 背景渐变
+    // 背景渐变 (very subtle in dark mode so shapes stand out)
+    final bgOpacity1 = isDark ? 0.08 : 0.22;
+    final bgOpacity2 = isDark ? 0.05 : 0.14;
     final bgPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          illustration.bg.withOpacity(0.22),
-          illustration.accent.withOpacity(0.14),
+          illustration.bg.withOpacity(_minOp(bgOpacity1)),
+          illustration.accent.withOpacity(_minOp(bgOpacity2)),
         ],
       ).createShader(Rect.fromLTWH(0, 0, w, h));
     canvas.drawRRect(
@@ -116,18 +165,44 @@ class WordIllustrationPainter extends CustomPainter {
       bgPaint,
     );
 
-    // 粒子
+    // 粒子 (brighter in dark mode)
     _drawParticles(canvas, size);
 
     // 呼吸光环
     final ringPhase = sin(t * pi * 2);
+    final ringOpacity = isDark ? 0.12 : 0.07;
     canvas.drawCircle(
       Offset(w / 2, h / 2), w * (0.36 + ringPhase * 0.02),
       Paint()
-        ..color = illustration.bg.withOpacity(0.07 + ringPhase * 0.03)
+        ..color = illustration.bg.withOpacity(_minOp(ringOpacity + ringPhase * 0.04))
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
+        ..strokeWidth = isDark ? 2.0 : 1.5,
     );
+
+    // Dark mode: outer glow ring for extra clarity
+    if (isDark) {
+      canvas.drawCircle(
+        Offset(w / 2, h / 2), w * 0.42,
+        Paint()
+          ..color = illustration.accent.withOpacity(_minOp(0.06))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0,
+      );
+    }
+
+    // Dark mode: soft radial glow behind illustration for luminous feel
+    if (isDark) {
+      final glowPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            _dc(illustration.accent).withOpacity(0.25),
+            _dc(illustration.bg).withOpacity(0.10),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ).createShader(Rect.fromCircle(center: Offset(w / 2, h / 2), radius: w * 0.45));
+      canvas.drawCircle(Offset(w / 2, h / 2), w * 0.45, glowPaint);
+    }
 
     // 动画偏移
     final animOff = _getAnimOffset(w, h);
@@ -556,6 +631,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..cubicTo(cx + hw * 0.55, cy + hh * 0.2, cx + hw * 0.05, cy + hh * 0.45,
           cx, cy + hh * 0.65)
       ..close();
+    if (isDark) {
+      canvas.drawPath(path, _outlineP);
+    }
     canvas.drawPath(path, paint);
   }
 
@@ -573,6 +651,9 @@ class WordIllustrationPainter extends CustomPainter {
       }
     }
     path.close();
+    if (isDark && outerR > 5) {
+      canvas.drawPath(path, _outlineP);
+    }
     canvas.drawPath(path, paint);
   }
 
@@ -589,10 +670,11 @@ class WordIllustrationPainter extends CustomPainter {
         double bodyTopY = -0.1,
         double headCY = -0.4,
       }) {
+    final effectiveColor = _dc(color);
     final paint = Paint()
-      ..color = color
+      ..color = effectiveColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5 * scale
+      ..strokeWidth = (isDark ? 5.0 : 3.5) * scale
       ..strokeCap = StrokeCap.round;
 
     final headR2 = headR * scale;
@@ -630,17 +712,21 @@ class WordIllustrationPainter extends CustomPainter {
 
   void _drawFace(Canvas canvas, double cx, double cy, double r, Color color,
       {double smileFactor = 1.0, bool hasTears = false, bool hasAngryBrows = false}) {
-    final paint = Paint()..color = color;
+    final effectiveColor = _dc(color);
+    final paint = Paint()..color = effectiveColor;
 
-    // face circle
+    // face circle with outline in dark mode
+    if (isDark) {
+      canvas.drawCircle(Offset(cx, cy), r, Paint()..color = Colors.white.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = 2.0);
+    }
     canvas.drawCircle(Offset(cx, cy), r, paint);
 
     // eyes
     final eyePaint = Paint()..color = Colors.white;
     canvas.drawCircle(Offset(cx - r * 0.3, cy - r * 0.12), r * 0.12, eyePaint);
     canvas.drawCircle(Offset(cx + r * 0.3, cy - r * 0.12), r * 0.12, eyePaint);
-    // pupils
-    final pupilPaint = Paint()..color = Colors.black87;
+    // pupils (use dark color that's visible on light face)
+    final pupilPaint = Paint()..color = isDark ? Colors.grey[800]! : Colors.black87;
     canvas.drawCircle(Offset(cx - r * 0.3, cy - r * 0.1), r * 0.06, pupilPaint);
     canvas.drawCircle(Offset(cx + r * 0.3, cy - r * 0.1), r * 0.06, pupilPaint);
 
@@ -714,7 +800,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // steam lines
     final steamPaint = Paint()
-      ..color = illustration.accent
+      ..color = _dc(illustration.accent)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
@@ -738,8 +824,8 @@ class WordIllustrationPainter extends CustomPainter {
     final wingPhase = sin(t * pi * 2) * 0.15;
 
     // wings
-    final wingPaint = Paint()..color = illustration.bg.withOpacity(0.8);
-    final wingPaint2 = Paint()..color = illustration.accent;
+    final wingPaint = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.8));
+    final wingPaint2 = Paint()..color = _dc(illustration.accent);
 
     for (int side = -1; side <= 1; side += 2) {
       // upper wing
@@ -814,8 +900,8 @@ class WordIllustrationPainter extends CustomPainter {
     // central glow
     final glowPaint = Paint()
       ..shader = RadialGradient(colors: [
-        illustration.accent.withOpacity(0.3),
-        illustration.accent.withOpacity(0),
+        illustration.accent.withOpacity(_minOp(0.3)),
+        illustration.accent.withOpacity(_minOp(0)),
       ]).createShader(Rect.fromCircle(center: Offset(w / 2, h * 0.45), radius: w * 0.3));
     canvas.drawCircle(Offset(w / 2, h * 0.45), w * 0.3, glowPaint);
   }
@@ -827,7 +913,7 @@ class WordIllustrationPainter extends CustomPainter {
     final r = w * 0.28;
 
     final flakePaint = Paint()
-      ..color = illustration.bg
+      ..color = _dc(illustration.bg)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
@@ -865,7 +951,7 @@ class WordIllustrationPainter extends CustomPainter {
     }
 
     // center dot
-    canvas.drawCircle(Offset(cx, cy), 4, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(cx, cy), 4, Paint()..color = _dc(illustration.accent));
   }
 
   // ── dirty: 泥点溅射 ──────────────────────────────────────────────────────
@@ -875,7 +961,7 @@ class WordIllustrationPainter extends CustomPainter {
     final rng = Random(word?.hashCode ?? 0);
 
     // main splat
-    final mainPaint = Paint()..color = illustration.bg;
+    final mainPaint = Paint()..color = _dc(illustration.bg);
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy), width: w * 0.3, height: h * 0.2),
       mainPaint,
@@ -890,7 +976,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(dripPath, mainPaint);
 
     // small splatter dots
-    final dotPaint = Paint()..color = illustration.accent.withOpacity(0.7);
+    final dotPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7));
     for (int i = 0; i < 8; i++) {
       final angle = rng.nextDouble() * pi * 2;
       final dist = w * (0.15 + rng.nextDouble() * 0.15);
@@ -903,7 +989,7 @@ class WordIllustrationPainter extends CustomPainter {
     }
 
     // smudge marks
-    final smudgePaint = Paint()..color = illustration.bg.withOpacity(0.4);
+    final smudgePaint = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4));
     for (int i = 0; i < 3; i++) {
       final sx = cx + (rng.nextDouble() - 0.5) * w * 0.4;
       final sy = cy + (rng.nextDouble() - 0.5) * h * 0.3;
@@ -921,7 +1007,7 @@ class WordIllustrationPainter extends CustomPainter {
     final r = w * 0.15;
 
     // sun body
-    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = _dc(illustration.bg));
 
     // face on sun
     final eyePaint = Paint()..color = Colors.orange[800]!;
@@ -939,7 +1025,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // rays
     final rayPaint = Paint()
-      ..color = illustration.accent
+      ..color = _dc(illustration.accent)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
@@ -957,7 +1043,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // heat waves below
     final wavePaint = Paint()
-      ..color = illustration.bg.withOpacity(0.4)
+      ..color = illustration.bg.withOpacity(_minOp(0.4))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
@@ -985,19 +1071,19 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.15, cy - h * 0.08)
       ..lineTo(cx, cy - h * 0.08)
       ..close();
-    canvas.drawPath(boltPath, Paint()..color = illustration.bg);
+    canvas.drawPath(boltPath, Paint()..color = _dc(illustration.bg));
 
     // glow
     final glowPaint = Paint()
       ..shader = RadialGradient(colors: [
-        illustration.accent.withOpacity(0.25),
-        illustration.accent.withOpacity(0),
+        illustration.accent.withOpacity(_minOp(0.25)),
+        illustration.accent.withOpacity(_minOp(0)),
       ]).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: w * 0.3));
     canvas.drawCircle(Offset(cx, cy), w * 0.3, glowPaint);
 
     // speed lines
     final speedPaint = Paint()
-      ..color = illustration.accent.withOpacity(0.6)
+      ..color = illustration.accent.withOpacity(_minOp(0.6))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
@@ -1035,7 +1121,7 @@ class WordIllustrationPainter extends CustomPainter {
     // heart above hand
     final pulseS = 0.9 + sin(t * pi * 2) * 0.1;
     _drawHeartShape(canvas, cx + w * 0.01, cy - h * 0.22, w * 0.1 * pulseS, h * 0.1 * pulseS,
-        Paint()..color = illustration.bg);
+        Paint()..color = _dc(illustration.bg));
   }
 
   // ── great: 奖杯 + 星星 ───────────────────────────────────────────────────
@@ -1044,7 +1130,7 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w / 2, cy = h * 0.4;
 
     // trophy cup
-    final cupPaint = Paint()..color = illustration.bg;
+    final cupPaint = Paint()..color = _dc(illustration.bg);
     final cupPath = Path()
       ..moveTo(cx - w * 0.15, cy - h * 0.2)
       ..quadraticBezierTo(cx - w * 0.18, cy + h * 0.05, cx - w * 0.05, cy + h * 0.1)
@@ -1057,7 +1143,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // handles
     final handlePaint = Paint()
-      ..color = illustration.bg
+      ..color = _dc(illustration.bg)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
@@ -1081,7 +1167,7 @@ class WordIllustrationPainter extends CustomPainter {
     // star decoration
     final pulseS = 0.8 + sin(t * pi * 2) * 0.2;
     _drawStarShape(canvas, cx, cy - h * 0.05, w * 0.06 * pulseS, w * 0.025 * pulseS, 5,
-        Paint()..color = illustration.accent);
+        Paint()..color = _dc(illustration.accent));
   }
 
   // ── happy: 笑脸 ───────────────────────────────────────────────────────────
@@ -1130,15 +1216,15 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(rightPath, rightPaint);
 
     // handshake circle (connection)
-    canvas.drawCircle(Offset(cx, cy - h * 0.02), w * 0.04, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy - h * 0.02), w * 0.04, Paint()..color = _dc(illustration.bg));
 
     // heart above
     final pulseS = 0.8 + sin(t * pi * 2) * 0.15;
     _drawHeartShape(canvas, cx, cy - h * 0.25, w * 0.06 * pulseS, h * 0.06 * pulseS,
-        Paint()..color = illustration.accent);
+        Paint()..color = _dc(illustration.accent));
 
     // sparkle dots
-    final sparkPaint = Paint()..color = illustration.accent;
+    final sparkPaint = Paint()..color = _dc(illustration.accent);
     final sp = sin(t * pi * 2) * 0.5 + 0.5;
     canvas.drawCircle(Offset(cx - w * 0.15, cy - h * 0.2), 3 * sp, sparkPaint);
     canvas.drawCircle(Offset(cx + w * 0.15, cy - h * 0.22), 2.5 * sp, sparkPaint);
@@ -1152,11 +1238,11 @@ class WordIllustrationPainter extends CustomPainter {
     final r = w * 0.14;
 
     // sun body
-    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = _dc(illustration.bg));
 
     // rays (animated)
     final rayPaint = Paint()
-      ..color = illustration.bg.withOpacity(0.8)
+      ..color = illustration.bg.withOpacity(_minOp(0.8))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round;
@@ -1216,7 +1302,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // motion lines below feet
     final motionPaint = Paint()
-      ..color = illustration.accent.withOpacity(0.5)
+      ..color = illustration.accent.withOpacity(_minOp(0.5))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
@@ -1236,7 +1322,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // "HA HA" text effect - sparkle bursts
     final burstPhase = sin(t * pi * 4).abs();
-    final burstPaint = Paint()..color = illustration.accent;
+    final burstPaint = Paint()..color = _dc(illustration.accent);
     for (int i = 0; i < 3; i++) {
       final angle = -pi / 3 + i * pi / 3;
       final dist = w * 0.3 + burstPhase * w * 0.05;
@@ -1251,7 +1337,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.42;
 
-    final thumbPaint = Paint()..color = illustration.bg;
+    final thumbPaint = Paint()..color = _dc(illustration.bg);
 
     // thumb (upward rectangle)
     final thumbPath = Path()
@@ -1287,7 +1373,7 @@ class WordIllustrationPainter extends CustomPainter {
     // sparkle on thumb
     final sparkleS = sin(t * pi * 2) * 0.5 + 0.5;
     _drawStarShape(canvas, cx + w * 0.06, cy - h * 0.22, w * 0.03 * sparkleS, w * 0.012 * sparkleS, 4,
-        Paint()..color = illustration.accent);
+        Paint()..color = _dc(illustration.accent));
   }
 
   // ── love: 心形脉搏 ───────────────────────────────────────────────────────
@@ -1308,13 +1394,13 @@ class WordIllustrationPainter extends CustomPainter {
     // outer glow
     final glowPaint = Paint()
       ..shader = RadialGradient(colors: [
-        illustration.bg.withOpacity(0.2 * s),
-        illustration.bg.withOpacity(0),
+        illustration.bg.withOpacity(_minOp(0.2 * s)),
+        illustration.bg.withOpacity(_minOp(0)),
       ]).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: w * 0.35));
     canvas.drawCircle(Offset(cx, cy), w * 0.35, glowPaint);
 
     // heart
-    _drawHeartShape(canvas, cx, cy, w * 0.22 * s, h * 0.22 * s, Paint()..color = illustration.bg);
+    _drawHeartShape(canvas, cx, cy, w * 0.22 * s, h * 0.22 * s, Paint()..color = _dc(illustration.bg));
 
     // small heart particles
     final rng = Random(42);
@@ -1324,7 +1410,7 @@ class WordIllustrationPainter extends CustomPainter {
       final floatY = py - sin(phase + i * 1.3) * h * 0.04;
       final ps = 0.6 + sin(phase + i * 0.7) * 0.3;
       _drawHeartShape(canvas, px, floatY, w * 0.03 * ps, h * 0.03 * ps,
-          Paint()..color = illustration.accent.withOpacity(0.4 * ps));
+          Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4 * ps)));
     }
   }
 
@@ -1343,7 +1429,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // speed lines
     final speedPaint = Paint()
-      ..color = illustration.accent.withOpacity(0.5)
+      ..color = illustration.accent.withOpacity(_minOp(0.5))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
@@ -1362,7 +1448,7 @@ class WordIllustrationPainter extends CustomPainter {
     _drawFace(canvas, w / 2, h * 0.45, w * 0.22, illustration.bg, smileFactor: -0.8, hasTears: true);
 
     // rain drops
-    final dropPaint = Paint()..color = illustration.accent.withOpacity(0.4);
+    final dropPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4));
     final dropPhase = (t * 2) % 1.0;
     for (int i = 0; i < 6; i++) {
       final dx = w * (0.15 + (i * 0.12));
@@ -1380,7 +1466,7 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w / 2, cy = h * 0.42;
 
     // megaphone body
-    final hornPaint = Paint()..color = illustration.bg;
+    final hornPaint = Paint()..color = _dc(illustration.bg);
     final hornPath = Path()
       ..moveTo(cx - w * 0.05, cy - h * 0.08)
       ..lineTo(cx + w * 0.15, cy - h * 0.18)
@@ -1404,7 +1490,7 @@ class WordIllustrationPainter extends CustomPainter {
       final waveR = w * (0.08 + i * 0.07) * (0.8 + wavePhase * 0.2);
       final alpha = (1.0 - i * 0.25).clamp(0.0, 1.0);
       final arcPaint = Paint()
-        ..color = illustration.accent.withOpacity(alpha)
+        ..color = illustration.accent.withOpacity(_minOp(alpha))
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5
         ..strokeCap = StrokeCap.round;
@@ -1437,12 +1523,12 @@ class WordIllustrationPainter extends CustomPainter {
     // shell outline
     canvas.drawOval(
       Rect.fromCenter(center: Offset(shellCx, shellCy), width: w * 0.18, height: h * 0.16),
-      Paint()..color = illustration.bg,
+      Paint()..color = _dc(illustration.bg),
     );
 
     // spiral inside
     final spiralPaint = Paint()
-      ..color = illustration.accent
+      ..color = _dc(illustration.accent)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     final spiralPath = Path();
@@ -1467,12 +1553,12 @@ class WordIllustrationPainter extends CustomPainter {
     for (int i = -1; i <= 1; i += 2) {
       final ex = cx - w * 0.15 + i * w * 0.04;
       canvas.drawLine(Offset(ex, cy - h * 0.02), Offset(ex + i * w * 0.02, cy - h * 0.15), stalkPaint);
-      canvas.drawCircle(Offset(ex + i * w * 0.02, cy - h * 0.15), 3, Paint()..color = illustration.bg);
+      canvas.drawCircle(Offset(ex + i * w * 0.02, cy - h * 0.15), 3, Paint()..color = _dc(illustration.bg));
     }
 
     // slime trail
     final trailPaint = Paint()
-      ..color = illustration.accent.withOpacity(0.3)
+      ..color = illustration.accent.withOpacity(_minOp(0.3))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
@@ -1493,7 +1579,7 @@ class WordIllustrationPainter extends CustomPainter {
       Rect.fromCenter(center: Offset(cx, cy), width: bw, height: bh),
       Radius.circular(w * 0.06),
     );
-    canvas.drawRRect(bubbleRRect, Paint()..color = illustration.bg);
+    canvas.drawRRect(bubbleRRect, Paint()..color = _dc(illustration.bg));
 
     // tail
     final tailPath = Path()
@@ -1501,7 +1587,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx - w * 0.15, cy + bh / 2 + h * 0.08)
       ..lineTo(cx + w * 0.02, cy + bh / 2 - 1)
       ..close();
-    canvas.drawPath(tailPath, Paint()..color = illustration.bg);
+    canvas.drawPath(tailPath, Paint()..color = _dc(illustration.bg));
 
     // animated dots
     final dotPaint = Paint()..color = Colors.white;
@@ -1530,7 +1616,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // ground line
     final groundPaint = Paint()
-      ..color = illustration.accent.withOpacity(0.3)
+      ..color = illustration.accent.withOpacity(_minOp(0.3))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawLine(Offset(w * 0.15, h * 0.85), Offset(w * 0.85, h * 0.85), groundPaint);
@@ -1589,7 +1675,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // motion lines
     final motionPaint = Paint()
-      ..color = illustration.accent.withOpacity(0.6)
+      ..color = illustration.accent.withOpacity(_minOp(0.6))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
@@ -1616,7 +1702,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..cubicTo(cx - w * 0.18, cy, cx - w * 0.15, cy + h * 0.15, cx, cy + h * 0.2)
       ..cubicTo(cx + w * 0.15, cy + h * 0.15, cx + w * 0.18, cy, cx, cy - h * 0.25)
       ..close();
-    canvas.drawPath(dropPath, Paint()..color = illustration.bg);
+    canvas.drawPath(dropPath, Paint()..color = _dc(illustration.bg));
 
     // highlight
     final hlPaint = Paint()..color = Colors.white.withOpacity(0.3);
@@ -1627,7 +1713,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // small falling drops
     final fallPhase = (t * 1.5) % 1.0;
-    final smallPaint = Paint()..color = illustration.accent.withOpacity(0.5);
+    final smallPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     for (int i = 0; i < 4; i++) {
       final dx = cx + (i - 1.5) * w * 0.15;
       final dy = h * ((fallPhase + i * 0.25) % 1.0);
@@ -1640,7 +1726,7 @@ class WordIllustrationPainter extends CustomPainter {
 
     // splash at bottom
     final splashPaint = Paint()
-      ..color = illustration.accent.withOpacity(0.3)
+      ..color = illustration.accent.withOpacity(_minOp(0.3))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     final splashPhase = sin(t * pi * 2) * 0.5 + 0.5;
@@ -1657,11 +1743,11 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawEat(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // plate
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.1), width: w * 0.4, height: h * 0.12), p);
     // fork
-    final forkP = Paint()..color = illustration.bg.withOpacity(0.7)..strokeWidth = 2.5..style = PaintingStyle.stroke;
+    final forkP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.7))..strokeWidth = 2.5..style = PaintingStyle.stroke;
     final forkPath = Path()
       ..moveTo(cx - w * 0.18, cy - h * 0.2)
       ..lineTo(cx - w * 0.18, cy + h * 0.02);
@@ -1672,14 +1758,14 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(forkPath, forkP);
     // food bounce
     final bounce = sin(t * pi * 2) * h * 0.01;
-    canvas.drawCircle(Offset(cx + w * 0.05, cy + h * 0.03 + bounce), w * 0.06, Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx + w * 0.05, cy + h * 0.03 + bounce), w * 0.06, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
   }
 
   void _drawDrink(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // cup body
-    final cupP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final cupP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final cupPath = Path()
       ..moveTo(cx - w * 0.1, cy - h * 0.15)
       ..lineTo(cx - w * 0.08, cy + h * 0.15)
@@ -1690,10 +1776,10 @@ class WordIllustrationPainter extends CustomPainter {
     // handle
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx + w * 0.14, cy + h * 0.02), width: w * 0.1, height: h * 0.12),
-      -pi * 0.4, pi * 0.8, false, Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 2.5,
+      -pi * 0.4, pi * 0.8, false, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 2.5,
     );
     // steam
-    final steamP = Paint()..color = illustration.bg.withOpacity(0.35)..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final steamP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35))..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = -1; i <= 1; i++) {
       final sx = cx + i * w * 0.05;
       final wave = sin(t * pi * 2 + i * 1.5) * w * 0.02;
@@ -1704,17 +1790,17 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawCook(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.48;
-    final p = Paint()..color = illustration.accent.withOpacity(0.6);
+    final p = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     // pot body
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.35, height: h * 0.2), Radius.circular(w * 0.04)), p,
     );
     // handles
-    final hP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 2.5..style = PaintingStyle.stroke;
+    final hP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 2.5..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(cx - w * 0.2, cy - h * 0.02), Offset(cx - w * 0.26, cy - h * 0.02), hP);
     canvas.drawLine(Offset(cx + w * 0.2, cy - h * 0.02), Offset(cx + w * 0.26, cy - h * 0.02), hP);
     // steam lines
-    final sP = Paint()..color = illustration.bg.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final sP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = -1; i <= 1; i++) {
       final sx = cx + i * w * 0.08;
       final wave = sin(t * pi * 2 + i * 2) * w * 0.015;
@@ -1726,7 +1812,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // book pages
-    final bookP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final bookP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     final leftPage = Path()
       ..moveTo(cx, cy - h * 0.15)
       ..lineTo(cx - w * 0.18, cy - h * 0.1)
@@ -1740,9 +1826,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx, cy + h * 0.08)
       ..close();
     canvas.drawPath(leftPage, bookP);
-    canvas.drawPath(rightPage, Paint()..color = illustration.accent.withOpacity(0.35));
+    canvas.drawPath(rightPage, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
     // text lines
-    final lineP = Paint()..color = illustration.bg.withOpacity(0.25)..strokeWidth = 1..strokeCap = StrokeCap.round;
+    final lineP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.25))..strokeWidth = 1..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final ly = cy - h * 0.04 + i * h * 0.05;
       canvas.drawLine(Offset(cx - w * 0.14, ly), Offset(cx - w * 0.03, ly), lineP);
@@ -1754,16 +1840,16 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // paper
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.05), width: w * 0.3, height: h * 0.35), Paint()..color = illustration.accent.withOpacity(0.25));
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.05), width: w * 0.3, height: h * 0.35), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
     // text lines
-    final lineP = Paint()..color = illustration.bg.withOpacity(0.25)..strokeWidth = 1..strokeCap = StrokeCap.round;
+    final lineP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.25))..strokeWidth = 1..strokeCap = StrokeCap.round;
     for (int i = 0; i < 4; i++) {
       final ly = cy - h * 0.06 + i * h * 0.06;
       final lw = w * (0.18 - i * 0.02);
       canvas.drawLine(Offset(cx - w * 0.1, ly), Offset(cx - w * 0.1 + lw, ly), lineP);
     }
     // pencil
-    final penP = Paint()..color = illustration.bg.withOpacity(0.6)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final penP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     final tipY = cy - h * 0.06 + 3 * h * 0.06;
     final tipX = cx - w * 0.1 + w * (0.18 - 3 * 0.02);
     canvas.drawLine(Offset(tipX, tipY), Offset(tipX + w * 0.1, tipY - h * 0.18), penP);
@@ -1773,21 +1859,21 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
     // microphone
-    final micP = Paint()..color = illustration.bg.withOpacity(0.6);
+    final micP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6));
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy - h * 0.05), width: w * 0.08, height: h * 0.14), Radius.circular(w * 0.04)), micP,
     );
-    final standP = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2.5..style = PaintingStyle.stroke;
+    final standP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2.5..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(cx, cy + h * 0.02), Offset(cx, cy + h * 0.18), standP);
     // music notes floating
-    final noteP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final noteP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     for (int i = 0; i < 3; i++) {
       final phase = t * pi * 2 + i * 2.1;
       final nx = cx + w * (0.12 + i * 0.06) + sin(phase) * w * 0.03;
       final ny = cy - h * (0.1 + i * 0.06) + cos(phase) * h * 0.03;
       final nr = w * 0.025;
       canvas.drawOval(Rect.fromCenter(center: Offset(nx, ny), width: nr * 2, height: nr * 1.4), noteP);
-      canvas.drawLine(Offset(nx + nr, ny), Offset(nx + nr, ny - h * 0.06), Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 1.5);
+      canvas.drawLine(Offset(nx + nr, ny), Offset(nx + nr, ny - h * 0.06), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 1.5);
     }
   }
 
@@ -1796,7 +1882,7 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     final sway = sin(t * pi * 2) * w * 0.04;
     final armUp = sin(t * pi * 2) * 0.3;
-    final p = Paint()..color = illustration.bg.withOpacity(0.6)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // head
     canvas.drawCircle(Offset(cx + sway, cy - h * 0.15), w * 0.05, p);
     // body
@@ -1814,16 +1900,16 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.48;
     final wave = sin(t * pi * 2) * w * 0.03;
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // body horizontal
     canvas.drawLine(Offset(cx - w * 0.15 + wave, cy), Offset(cx + w * 0.1 + wave, cy), p);
     // head
-    canvas.drawCircle(Offset(cx - w * 0.18 + wave, cy), w * 0.04, Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx - w * 0.18 + wave, cy), w * 0.04, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     // arm splash
     final armAngle = sin(t * pi * 2) * 0.8;
     canvas.drawLine(Offset(cx + wave, cy), Offset(cx + w * 0.1 + wave + cos(armAngle) * w * 0.08, cy - h * 0.1 + sin(armAngle) * h * 0.05), p);
     // water waves
-    final wP = Paint()..color = illustration.accent.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    final wP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = 1.5;
     for (int i = 0; i < 3; i++) {
       final wy = cy + h * (0.08 + i * 0.06);
       final path = Path();
@@ -1839,18 +1925,18 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.4;
     final floatY = sin(t * pi * 2) * h * 0.04;
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // body
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + floatY), width: w * 0.06, height: h * 0.12), Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + floatY), width: w * 0.06, height: h * 0.12), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     // wings
     final wingFlap = sin(t * pi * 4) * 0.3;
-    final wingP = Paint()..color = illustration.accent.withOpacity(0.4);
+    final wingP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4));
     canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.1, cy - h * 0.04 + floatY), width: w * 0.18, height: h * 0.04 * (1 + wingFlap)), wingP);
     canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.1, cy - h * 0.04 + floatY), width: w * 0.18, height: h * 0.04 * (1 + wingFlap)), wingP);
     // trail dots
     for (int i = 1; i <= 3; i++) {
       final dotAlpha = (0.3 - i * 0.08).clamp(0.0, 1.0);
-      canvas.drawCircle(Offset(cx - w * 0.04 * i, cy + h * 0.1 + floatY + i * h * 0.02), w * 0.015, Paint()..color = illustration.accent.withOpacity(dotAlpha));
+      canvas.drawCircle(Offset(cx - w * 0.04 * i, cy + h * 0.1 + floatY + i * h * 0.02), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(dotAlpha)));
     }
   }
 
@@ -1860,10 +1946,10 @@ class WordIllustrationPainter extends CustomPainter {
     // pillow
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy + h * 0.05), width: w * 0.35, height: h * 0.12), Radius.circular(w * 0.06)),
-      Paint()..color = illustration.accent.withOpacity(0.35),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)),
     );
     // Z letters floating
-    final zP = TextStyle(color: illustration.bg.withOpacity(0.6), fontSize: w * 0.08, fontWeight: FontWeight.bold);
+    final zP = TextStyle(color: illustration.bg.withOpacity(_minOp(0.6)), fontSize: w * 0.08, fontWeight: FontWeight.bold);
     for (int i = 0; i < 3; i++) {
       final phase = t * pi * 2 + i * 0.8;
       final zx = cx + w * (0.1 + i * 0.06) + sin(phase) * w * 0.02;
@@ -1872,7 +1958,7 @@ class WordIllustrationPainter extends CustomPainter {
       tp.paint(canvas, Offset(zx - tp.width / 2, zy - tp.height / 2));
     }
     // closed eyes line
-    final eyeP = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final eyeP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx - w * 0.06, cy - h * 0.02), width: w * 0.06, height: h * 0.02), 0, pi, false, eyeP);
     canvas.drawArc(Rect.fromCenter(center: Offset(cx + w * 0.06, cy - h * 0.02), width: w * 0.06, height: h * 0.02), 0, pi, false, eyeP);
   }
@@ -1882,26 +1968,26 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     final angle = (sin(t * pi * 2) + 1) / 2 * 0.5; // 0 to 0.5 rad
     // door frame
-    final frameP = Paint()..color = illustration.bg.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = 3;
+    final frameP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = 3;
     canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.3, height: h * 0.35), frameP);
     // door (opens with perspective)
-    final doorP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final doorP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     final doorW = w * 0.28 * cos(angle);
     canvas.drawRect(Rect.fromLTWH(cx - doorW / 2, cy - h * 0.17, doorW, h * 0.35), doorP);
     // handle
-    canvas.drawCircle(Offset(cx + doorW * 0.3, cy + h * 0.02), w * 0.015, Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx + doorW * 0.3, cy + h * 0.02), w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
   }
 
   void _drawClose(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // door (closed)
-    final doorP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final doorP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.28, height: h * 0.35), doorP);
     // handle
-    canvas.drawCircle(Offset(cx + w * 0.08, cy + h * 0.02), w * 0.015, Paint()..color = illustration.bg.withOpacity(0.6));
+    canvas.drawCircle(Offset(cx + w * 0.08, cy + h * 0.02), w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
     // lock X
-    final lockP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final lockP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx - w * 0.03, cy - h * 0.05), Offset(cx + w * 0.03, cy + h * 0.05), lockP);
     canvas.drawLine(Offset(cx + w * 0.03, cy - h * 0.05), Offset(cx - w * 0.03, cy + h * 0.05), lockP);
   }
@@ -1913,22 +1999,22 @@ class WordIllustrationPainter extends CustomPainter {
     final phase = t * pi * 2;
     final bx = cx + w * 0.15 + sin(phase) * w * 0.08;
     final by = cy - h * 0.1 + cos(phase) * h * 0.08;
-    canvas.drawCircle(Offset(bx, by), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawCircle(Offset(bx, by), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // motion lines
-    final mP = Paint()..color = illustration.bg.withOpacity(0.25)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final mP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.25))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final lx = bx - w * (0.08 + i * 0.04);
       canvas.drawLine(Offset(lx, by + h * 0.01 * i), Offset(lx - w * 0.04, by + h * 0.01 * i), mP);
     }
     // hand
-    canvas.drawCircle(Offset(cx - w * 0.1, cy + h * 0.08), w * 0.035, Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(cx - w * 0.1, cy + h * 0.08), w * 0.035, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
   }
 
   void _drawCatch(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // net/basket shape
-    final netP = Paint()..color = illustration.accent.withOpacity(0.45)..style = PaintingStyle.stroke..strokeWidth = 2.5;
+    final netP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45))..style = PaintingStyle.stroke..strokeWidth = 2.5;
     final netPath = Path()
       ..moveTo(cx - w * 0.02, cy - h * 0.15)
       ..lineTo(cx - w * 0.15, cy + h * 0.08)
@@ -1937,19 +2023,19 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(netPath, netP);
     // handle
-    canvas.drawLine(Offset(cx - w * 0.02, cy - h * 0.15), Offset(cx - w * 0.02, cy - h * 0.25), Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(cx - w * 0.02, cy - h * 0.15), Offset(cx - w * 0.02, cy - h * 0.25), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..strokeCap = StrokeCap.round);
     // ball coming in
     final ballY = cy - h * 0.05 + sin(t * pi * 2) * h * 0.05;
-    canvas.drawCircle(Offset(cx + w * 0.08, ballY), w * 0.04, Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx + w * 0.08, ballY), w * 0.04, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
   }
 
   void _drawClimb(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.45, cy = h * 0.45;
     final climbY = sin(t * pi * 2) * h * 0.03;
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // ladder
-    final ladP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2.5..style = PaintingStyle.stroke;
+    final ladP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2.5..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(cx - w * 0.08, cy - h * 0.2), Offset(cx - w * 0.12, cy + h * 0.2), ladP);
     canvas.drawLine(Offset(cx + w * 0.08, cy - h * 0.2), Offset(cx + w * 0.04, cy + h * 0.2), ladP);
     for (int i = 0; i < 4; i++) {
@@ -1972,9 +2058,9 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawSit(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.48;
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // chair
-    final chairP = Paint()..color = illustration.accent.withOpacity(0.35)..strokeWidth = 2.5..style = PaintingStyle.stroke;
+    final chairP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35))..strokeWidth = 2.5..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(cx - w * 0.1, cy - h * 0.15), Offset(cx - w * 0.1, cy + h * 0.15), chairP);
     canvas.drawLine(Offset(cx - w * 0.1, cy + h * 0.02), Offset(cx + w * 0.1, cy + h * 0.02), chairP);
     canvas.drawLine(Offset(cx + w * 0.1, cy + h * 0.02), Offset(cx + w * 0.1, cy + h * 0.15), chairP);
@@ -1989,7 +2075,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawStand(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // standing figure
     canvas.drawCircle(Offset(cx, cy - h * 0.15), w * 0.05, p);
     canvas.drawLine(Offset(cx, cy - h * 0.1), Offset(cx, cy + h * 0.1), p);
@@ -1998,7 +2084,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawLine(Offset(cx, cy + h * 0.1), Offset(cx - w * 0.08, cy + h * 0.22), p);
     canvas.drawLine(Offset(cx, cy + h * 0.1), Offset(cx + w * 0.08, cy + h * 0.22), p);
     // ground line
-    canvas.drawLine(Offset(cx - w * 0.15, cy + h * 0.23), Offset(cx + w * 0.15, cy + h * 0.23), Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5);
+    canvas.drawLine(Offset(cx - w * 0.15, cy + h * 0.23), Offset(cx + w * 0.15, cy + h * 0.23), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5);
   }
 
   void _drawFind(Canvas canvas, Size size) {
@@ -2006,12 +2092,12 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.42;
     // magnifying glass
     final pulse = 1.0 + sin(t * pi * 2) * 0.05;
-    final gP = Paint()..color = illustration.accent.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 3;
+    final gP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 3;
     canvas.drawCircle(Offset(cx - w * 0.04, cy - h * 0.02), w * 0.1 * pulse, gP);
-    canvas.drawLine(Offset(cx - w * 0.04 + w * 0.07 * pulse, cy - h * 0.02 + w * 0.07 * pulse), Offset(cx + w * 0.1, cy + h * 0.1), Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 3.5..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(cx - w * 0.04 + w * 0.07 * pulse, cy - h * 0.02 + w * 0.07 * pulse), Offset(cx + w * 0.1, cy + h * 0.1), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 3.5..strokeCap = StrokeCap.round);
     // sparkle inside glass
     final sparkle = ((sin(t * pi * 4) + 1) / 2).clamp(0.0, 1.0);
-    canvas.drawCircle(Offset(cx - w * 0.02, cy - h * 0.04), w * 0.02, Paint()..color = illustration.bg.withOpacity(0.3 * sparkle));
+    canvas.drawCircle(Offset(cx - w * 0.02, cy - h * 0.04), w * 0.02, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3 * sparkle)));
   }
 
   void _drawBring(Canvas canvas, Size size) {
@@ -2019,12 +2105,12 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     // box
     final bounce = sin(t * pi * 2) * h * 0.015;
-    final boxP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final boxP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy - h * 0.02 + bounce), width: w * 0.22, height: h * 0.18), boxP);
     // tape line
-    canvas.drawLine(Offset(cx, cy - h * 0.11 + bounce), Offset(cx, cy + h * 0.07 + bounce), Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 2);
+    canvas.drawLine(Offset(cx, cy - h * 0.11 + bounce), Offset(cx, cy + h * 0.07 + bounce), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 2);
     // hands underneath
-    final hP = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final hP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx - w * 0.12, cy + h * 0.1 + bounce), Offset(cx - w * 0.05, cy + h * 0.09 + bounce), hP);
     canvas.drawLine(Offset(cx + w * 0.12, cy + h * 0.1 + bounce), Offset(cx + w * 0.05, cy + h * 0.09 + bounce), hP);
   }
@@ -2033,12 +2119,12 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // presentation board
-    final boardP = Paint()..color = illustration.accent.withOpacity(0.3);
+    final boardP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3));
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy - h * 0.03), width: w * 0.35, height: h * 0.25), Radius.circular(w * 0.02)), boardP,
     );
     // chart bars
-    final barP = Paint()..color = illustration.bg.withOpacity(0.5);
+    final barP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5));
     final heights = [0.08, 0.14, 0.1, 0.16];
     for (int i = 0; i < 4; i++) {
       final bx = cx - w * 0.12 + i * w * 0.08;
@@ -2046,7 +2132,7 @@ class WordIllustrationPainter extends CustomPainter {
       canvas.drawRect(Rect.fromLTWH(bx, cy + h * 0.1 - bh, w * 0.05, bh), barP);
     }
     // pointing hand
-    final handP = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2.5..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    final handP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2.5..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     final pointPhase = sin(t * pi * 2) * w * 0.01;
     canvas.drawLine(Offset(cx + w * 0.2, cy - h * 0.12 + pointPhase), Offset(cx + w * 0.1, cy - h * 0.06 + pointPhase), handP);
   }
@@ -2058,9 +2144,9 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     final pulse = 1.0 + sin(t * pi * 2) * 0.04;
     // large circle
-    canvas.drawCircle(Offset(cx, cy), w * 0.2 * pulse, Paint()..color = illustration.accent.withOpacity(0.35));
+    canvas.drawCircle(Offset(cx, cy), w * 0.2 * pulse, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
     // arrow pointing outward
-    final aP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final aP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 4; i++) {
       final angle = i * pi / 2;
       final r1 = w * 0.22 * pulse;
@@ -2079,9 +2165,9 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     final pulse = 1.0 - sin(t * pi * 2) * 0.05;
     // small circle
-    canvas.drawCircle(Offset(cx, cy), w * 0.08 * pulse, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx, cy), w * 0.08 * pulse, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // arrows pointing inward
-    final aP = Paint()..color = illustration.bg.withOpacity(0.35)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final aP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35))..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 4; i++) {
       final angle = i * pi / 2 + pi / 4;
       canvas.drawLine(Offset(cx + cos(angle) * w * 0.25, cy + sin(angle) * w * 0.25), Offset(cx + cos(angle) * w * 0.15, cy + sin(angle) * w * 0.15), aP);
@@ -2090,7 +2176,7 @@ class WordIllustrationPainter extends CustomPainter {
     for (int i = 0; i < 5; i++) {
       final angle = i * pi * 2 / 5 + t * pi * 2;
       final r = w * 0.18;
-      canvas.drawCircle(Offset(cx + cos(angle) * r, cy + sin(angle) * r), w * 0.01, Paint()..color = illustration.bg.withOpacity(0.2));
+      canvas.drawCircle(Offset(cx + cos(angle) * r, cy + sin(angle) * r), w * 0.01, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2)));
     }
   }
 
@@ -2098,7 +2184,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // tall figure
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawCircle(Offset(cx, cy - h * 0.2), w * 0.04, p);
     canvas.drawLine(Offset(cx, cy - h * 0.16), Offset(cx, cy + h * 0.12), p);
     canvas.drawLine(Offset(cx, cy - h * 0.08), Offset(cx - w * 0.1, cy - h * 0.02), p);
@@ -2106,7 +2192,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawLine(Offset(cx, cy + h * 0.12), Offset(cx - w * 0.06, cy + h * 0.22), p);
     canvas.drawLine(Offset(cx, cy + h * 0.12), Offset(cx + w * 0.06, cy + h * 0.22), p);
     // height arrow
-    final aP = Paint()..color = illustration.accent.withOpacity(0.45)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final aP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45))..strokeWidth = 2..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx + w * 0.18, cy - h * 0.22), Offset(cx + w * 0.18, cy + h * 0.22), aP);
     canvas.drawLine(Offset(cx + w * 0.18, cy - h * 0.22), Offset(cx + w * 0.15, cy - h * 0.17), aP);
     canvas.drawLine(Offset(cx + w * 0.18, cy - h * 0.22), Offset(cx + w * 0.21, cy - h * 0.17), aP);
@@ -2118,7 +2204,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // short figure
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawCircle(Offset(cx, cy - h * 0.06), w * 0.04, p);
     canvas.drawLine(Offset(cx, cy - h * 0.02), Offset(cx, cy + h * 0.1), p);
     canvas.drawLine(Offset(cx, cy + h * 0.02), Offset(cx - w * 0.08, cy + h * 0.06), p);
@@ -2126,7 +2212,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawLine(Offset(cx, cy + h * 0.1), Offset(cx - w * 0.06, cy + h * 0.18), p);
     canvas.drawLine(Offset(cx, cy + h * 0.1), Offset(cx + w * 0.06, cy + h * 0.18), p);
     // double arrow horizontal (small height)
-    final aP = Paint()..color = illustration.accent.withOpacity(0.45)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final aP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45))..strokeWidth = 2..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx + w * 0.16, cy - h * 0.08), Offset(cx + w * 0.16, cy + h * 0.18), aP);
     canvas.drawLine(Offset(cx + w * 0.16, cy - h * 0.08), Offset(cx + w * 0.13, cy - h * 0.03), aP);
     canvas.drawLine(Offset(cx + w * 0.16, cy - h * 0.08), Offset(cx + w * 0.19, cy - h * 0.03), aP);
@@ -2139,14 +2225,14 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.42;
     // sparkle star
     final sparkle = ((sin(t * pi * 2) + 1) / 2).clamp(0.0, 1.0);
-    final sP = Paint()..color = illustration.accent.withOpacity(0.3 + sparkle * 0.3);
+    final sP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3 + sparkle * 0.3));
     _drawStarShape(canvas, cx, cy, w * 0.2, w * 0.08, 4, sP);
     // "NEW" text sparkle effect
     for (int i = 0; i < 6; i++) {
       final angle = i * pi / 3 + t * pi;
       final r = w * 0.25 + sin(t * pi * 2 + i) * w * 0.03;
       final dotAlpha = ((sin(t * pi * 3 + i * 1.1) + 1) / 2).clamp(0.0, 1.0);
-      canvas.drawCircle(Offset(cx + cos(angle) * r, cy + sin(angle) * r), w * 0.015, Paint()..color = illustration.bg.withOpacity(0.2 * dotAlpha));
+      canvas.drawCircle(Offset(cx + cos(angle) * r, cy + sin(angle) * r), w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2 * dotAlpha)));
     }
   }
 
@@ -2154,7 +2240,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
     // hourglass
-    final hP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2.5..style = PaintingStyle.stroke;
+    final hP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2.5..style = PaintingStyle.stroke;
     final topPath = Path()
       ..moveTo(cx - w * 0.1, cy - h * 0.15)
       ..lineTo(cx + w * 0.1, cy - h * 0.15)
@@ -2170,7 +2256,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(topPath, hP);
     canvas.drawPath(bottomPath, hP);
     // sand falling
-    final sandP = Paint()..color = illustration.accent.withOpacity(0.4);
+    final sandP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4));
     final sandPhase = (t * pi * 2) % (pi * 2);
     canvas.drawCircle(Offset(cx, cy + h * 0.02 + sandPhase / (pi * 2) * h * 0.08), w * 0.008, sandP);
     // sand pile at bottom
@@ -2181,15 +2267,15 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // crescent moon
-    final moonP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final moonP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawCircle(Offset(cx, cy), w * 0.14, moonP);
-    canvas.drawCircle(Offset(cx + w * 0.06, cy - h * 0.03), w * 0.12, Paint()..color = illustration.bg.withOpacity(0.22));
+    canvas.drawCircle(Offset(cx + w * 0.06, cy - h * 0.03), w * 0.12, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.22)));
     // stars
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4 + 0.3;
       final r = w * 0.28 + (i % 2) * w * 0.06;
       final starAlpha = ((sin(t * pi * 2 + i * 1.3) + 1) / 2).clamp(0.0, 1.0);
-      canvas.drawCircle(Offset(cx + cos(angle) * r, cy + sin(angle) * r), w * (0.01 + starAlpha * 0.01), Paint()..color = illustration.accent.withOpacity(0.2 + starAlpha * 0.3));
+      canvas.drawCircle(Offset(cx + cos(angle) * r, cy + sin(angle) * r), w * (0.01 + starAlpha * 0.01), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2 + starAlpha * 0.3)));
     }
   }
 
@@ -2197,14 +2283,14 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.4;
     // lightbulb
-    final bulbP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final bulbP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawCircle(Offset(cx, cy - h * 0.02), w * 0.12, bulbP);
     // base
     canvas.drawRect(Rect.fromLTWH(cx - w * 0.04, cy + h * 0.08, w * 0.08, h * 0.04), bulbP);
     canvas.drawRect(Rect.fromLTWH(cx - w * 0.05, cy + h * 0.12, w * 0.1, h * 0.02), bulbP);
     // glow rays
     final glowAlpha = (sin(t * pi * 2) + 1) / 2 * 0.3 + 0.1;
-    final glowP = Paint()..color = illustration.bg.withOpacity(glowAlpha)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final glowP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(glowAlpha))..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4;
       final r1 = w * 0.16;
@@ -2217,28 +2303,36 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // flexed arm / bicep
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 4..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(_dop(0.5)))..strokeWidth = isDark ? 5 : 4..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     final flexPhase = sin(t * pi * 2) * 0.15;
     final armPath = Path()
       ..moveTo(cx - w * 0.15, cy + h * 0.08)
       ..lineTo(cx - w * 0.08, cy - h * 0.02)
       ..quadraticBezierTo(cx + w * 0.02, cy - h * (0.15 + flexPhase), cx + w * 0.08, cy - h * 0.05)
       ..lineTo(cx + w * 0.15, cy + h * 0.02);
+    if (isDark) {
+      canvas.drawPath(armPath, Paint()..color = Colors.white.withOpacity(0.3)..strokeWidth = 7..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+    }
     canvas.drawPath(armPath, p);
     // fist
+    final fistRRect = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx + w * 0.16, cy + h * 0.04), width: w * 0.07, height: h * 0.06), Radius.circular(w * 0.02));
+    if (isDark) {
+      canvas.drawRRect(fistRRect, Paint()..color = Colors.white.withOpacity(0.25)..style = PaintingStyle.stroke..strokeWidth = 2);
+    }
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx + w * 0.16, cy + h * 0.04), width: w * 0.07, height: h * 0.06), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.bg.withOpacity(0.45),
+      fistRRect,
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(_dop(0.45))),
     );
     // power lines
     for (int i = 0; i < 3; i++) {
       final angle = -pi / 4 + i * 0.3;
       final r = w * 0.25;
       final sparkAlpha = ((sin(t * pi * 3 + i * 2) + 1) / 2).clamp(0.0, 1.0);
+      final sparkOpacity = _dop(0.2 + sparkAlpha * 0.3);
       canvas.drawLine(
         Offset(cx + cos(angle) * r * 0.8, cy - h * 0.05 + sin(angle) * r * 0.8),
         Offset(cx + cos(angle) * r, cy - h * 0.05 + sin(angle) * r),
-        Paint()..color = illustration.accent.withOpacity(0.2 + sparkAlpha * 0.3)..strokeWidth = 2..strokeCap = StrokeCap.round,
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(sparkOpacity))..strokeWidth = isDark ? 3 : 2..strokeCap = StrokeCap.round,
       );
     }
   }
@@ -2248,7 +2342,7 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     // wobbly figure
     final wobble = sin(t * pi * 2) * w * 0.02;
-    final p = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawCircle(Offset(cx + wobble, cy - h * 0.12), w * 0.04, p);
     canvas.drawLine(Offset(cx + wobble, cy - h * 0.08), Offset(cx + wobble * 0.5, cy + h * 0.08), p);
     canvas.drawLine(Offset(cx + wobble, cy - h * 0.02), Offset(cx - w * 0.1 + wobble, cy + h * 0.04), p);
@@ -2256,7 +2350,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawLine(Offset(cx + wobble * 0.5, cy + h * 0.08), Offset(cx - w * 0.08, cy + h * 0.2), p);
     canvas.drawLine(Offset(cx + wobble * 0.5, cy + h * 0.08), Offset(cx + w * 0.08, cy + h * 0.2), p);
     // dizzy marks
-    final dP = Paint()..color = illustration.accent.withOpacity(0.35)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final dP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final angle = t * pi * 2 + i * 2.1;
       final dx = cx + wobble + cos(angle) * w * 0.1;
@@ -2270,7 +2364,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // droopy face
-    final p = Paint()..color = illustration.bg.withOpacity(0.45)..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.45))..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawCircle(Offset(cx, cy), w * 0.12, p);
     // droopy eyes
     canvas.drawLine(Offset(cx - w * 0.06, cy - h * 0.02), Offset(cx - w * 0.02, cy - h * 0.01), p);
@@ -2278,7 +2372,7 @@ class WordIllustrationPainter extends CustomPainter {
     // yawn mouth
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.06), width: w * 0.06, height: h * 0.03 + sin(t * pi * 2).abs() * h * 0.02), p);
     // zzz
-    final zP = TextStyle(color: illustration.accent.withOpacity(0.4), fontSize: w * 0.06, fontWeight: FontWeight.bold);
+    final zP = TextStyle(color: illustration.accent.withOpacity(_minOp(0.4)), fontSize: w * 0.06, fontWeight: FontWeight.bold);
     for (int i = 0; i < 2; i++) {
       final zx = cx + w * (0.14 + i * 0.05);
       final zy = cy - h * (0.08 + i * 0.06) + sin(t * pi * 2 + i) * h * 0.02;
@@ -2291,9 +2385,9 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
     // plate (empty)
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.05), width: w * 0.35, height: h * 0.1), Paint()..color = illustration.accent.withOpacity(0.25));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.05), width: w * 0.35, height: h * 0.1), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
     // fork and knife crossed
-    final fP = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final fP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx - w * 0.12, cy - h * 0.1), Offset(cx - w * 0.05, cy + h * 0.08), fP);
     for (int i = -1; i <= 1; i++) {
       canvas.drawLine(Offset(cx - w * 0.12 + i * w * 0.02, cy - h * 0.1), Offset(cx - w * 0.12 + i * w * 0.02, cy - h * 0.15), fP);
@@ -2301,7 +2395,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawLine(Offset(cx + w * 0.12, cy - h * 0.1), Offset(cx + w * 0.05, cy + h * 0.08), fP);
     // growling stomach
     final growl = sin(t * pi * 4).abs();
-    canvas.drawCircle(Offset(cx, cy + h * 0.12), w * (0.02 + growl * 0.01), Paint()..color = illustration.bg.withOpacity(0.15 + growl * 0.15));
+    canvas.drawCircle(Offset(cx, cy + h * 0.12), w * (0.02 + growl * 0.01), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.15 + growl * 0.15)));
   }
 
   void _drawScared(Canvas canvas, Size size) {
@@ -2309,20 +2403,20 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     final shake = sin(t * pi * 10) * w * 0.01;
     // face
-    final p = Paint()..color = illustration.bg.withOpacity(0.45)..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.45))..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawCircle(Offset(cx + shake, cy), w * 0.12, p);
     // wide eyes
-    canvas.drawCircle(Offset(cx - w * 0.05 + shake, cy - h * 0.02), w * 0.025, Paint()..color = illustration.bg.withOpacity(0.4));
-    canvas.drawCircle(Offset(cx + w * 0.05 + shake, cy - h * 0.02), w * 0.025, Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(cx - w * 0.05 + shake, cy - h * 0.02), w * 0.025, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
+    canvas.drawCircle(Offset(cx + w * 0.05 + shake, cy - h * 0.02), w * 0.025, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
     // pupils
-    canvas.drawCircle(Offset(cx - w * 0.05 + shake, cy - h * 0.02), w * 0.012, Paint()..color = illustration.accent.withOpacity(0.5));
-    canvas.drawCircle(Offset(cx + w * 0.05 + shake, cy - h * 0.02), w * 0.012, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx - w * 0.05 + shake, cy - h * 0.02), w * 0.012, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(cx + w * 0.05 + shake, cy - h * 0.02), w * 0.012, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // open mouth
     canvas.drawOval(Rect.fromCenter(center: Offset(cx + shake, cy + h * 0.07), width: w * 0.06, height: h * 0.04), p);
     // exclamation marks
-    final eP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final eP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx + w * 0.18, cy - h * 0.1), Offset(cx + w * 0.18, cy - h * 0.02), eP);
-    canvas.drawCircle(Offset(cx + w * 0.18, cy + h * 0.01), w * 0.01, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(cx + w * 0.18, cy + h * 0.01), w * 0.01, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   void _drawFriendly(Canvas canvas, Size size) {
@@ -2330,7 +2424,7 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     // two hands shaking
     final wave = sin(t * pi * 2) * w * 0.01;
-    final hP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final hP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // left hand
     canvas.drawLine(Offset(cx - w * 0.2, cy + h * 0.02), Offset(cx - w * 0.08, cy - h * 0.02 + wave), hP);
     // right hand
@@ -2338,10 +2432,10 @@ class WordIllustrationPainter extends CustomPainter {
     // clasp
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy - h * 0.01), width: w * 0.16, height: h * 0.06), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.35),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)),
     );
     // heart above
-    final heartP = Paint()..color = illustration.bg.withOpacity(0.3);
+    final heartP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3));
     final heartScale = 1.0 + sin(t * pi * 2) * 0.1;
     _drawHeartShape(canvas, cx, cy - h * 0.15, w * 0.04 * heartScale, h * 0.03 * heartScale, heartP);
   }
@@ -2350,10 +2444,10 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
     // face
-    final p = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawCircle(Offset(cx, cy), w * 0.12, p);
     // X eyes
-    final xP = Paint()..color = illustration.bg.withOpacity(0.45)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final xP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.45))..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = -1; i <= 1; i += 2) {
       final ex = cx + i * w * 0.05;
       canvas.drawLine(Offset(ex - w * 0.02, cy - h * 0.03), Offset(ex + w * 0.02, cy + h * 0.01), xP);
@@ -2367,12 +2461,12 @@ class WordIllustrationPainter extends CustomPainter {
     }
     canvas.drawPath(mouthPath, p);
     // thermometer
-    final tP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2..style = PaintingStyle.stroke;
+    final tP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(cx + w * 0.18, cy - h * 0.1), Offset(cx + w * 0.18, cy + h * 0.08), tP);
-    canvas.drawCircle(Offset(cx + w * 0.18, cy + h * 0.1), w * 0.025, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(cx + w * 0.18, cy + h * 0.1), w * 0.025, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // mercury level (animated)
     final level = h * 0.04 + sin(t * pi * 2) * h * 0.02;
-    canvas.drawRect(Rect.fromLTWH(cx + w * 0.17, cy + h * 0.08 - level, w * 0.02, level), Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawRect(Rect.fromLTWH(cx + w * 0.17, cy + h * 0.08 - level, w * 0.02, level), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
   }
 
   void _drawDeep(Canvas canvas, Size size) {
@@ -2383,10 +2477,10 @@ class WordIllustrationPainter extends CustomPainter {
       final layerH = h * 0.08;
       final y = cy - h * 0.15 + i * layerH;
       final alpha = 0.15 + i * 0.06;
-      canvas.drawRect(Rect.fromLTWH(cx - w * 0.2, y, w * 0.4, layerH), Paint()..color = illustration.accent.withOpacity(alpha));
+      canvas.drawRect(Rect.fromLTWH(cx - w * 0.2, y, w * 0.4, layerH), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(alpha)));
     }
     // arrow pointing down
-    final aP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final aP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     final arrowY = cy + h * 0.15 + sin(t * pi * 2) * h * 0.02;
     canvas.drawLine(Offset(cx, cy + h * 0.05), Offset(cx, arrowY), aP);
     canvas.drawLine(Offset(cx, arrowY), Offset(cx - w * 0.05, arrowY - h * 0.05), aP);
@@ -2402,23 +2496,23 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.translate(cx, cy);
     canvas.rotate(rot);
     // candy body
-    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: w * 0.16, height: h * 0.14), Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: w * 0.16, height: h * 0.14), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // wrapper ends
-    final wP = Paint()..color = illustration.bg.withOpacity(0.35)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final wP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35))..strokeWidth = 2..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(-w * 0.08, 0), Offset(-w * 0.18, -h * 0.06), wP);
     canvas.drawLine(Offset(-w * 0.08, 0), Offset(-w * 0.18, h * 0.06), wP);
     canvas.drawLine(Offset(w * 0.08, 0), Offset(w * 0.18, -h * 0.06), wP);
     canvas.drawLine(Offset(w * 0.08, 0), Offset(w * 0.18, h * 0.06), wP);
     // stripes
-    canvas.drawLine(Offset(-w * 0.03, -h * 0.07), Offset(-w * 0.03, h * 0.07), Paint()..color = illustration.bg.withOpacity(0.2)..strokeWidth = 2);
-    canvas.drawLine(Offset(w * 0.03, -h * 0.07), Offset(w * 0.03, h * 0.07), Paint()..color = illustration.bg.withOpacity(0.2)..strokeWidth = 2);
+    canvas.drawLine(Offset(-w * 0.03, -h * 0.07), Offset(-w * 0.03, h * 0.07), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2))..strokeWidth = 2);
+    canvas.drawLine(Offset(w * 0.03, -h * 0.07), Offset(w * 0.03, h * 0.07), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2))..strokeWidth = 2);
     canvas.restore();
     // sparkles
     for (int i = 0; i < 4; i++) {
       final angle = i * pi / 2 + t * pi;
       final r = w * 0.25;
       final sa = ((sin(t * pi * 2 + i * 1.5) + 1) / 2).clamp(0.0, 1.0);
-      canvas.drawCircle(Offset(cx + cos(angle) * r, cy + sin(angle) * r), w * 0.012, Paint()..color = illustration.bg.withOpacity(0.15 + sa * 0.2));
+      canvas.drawCircle(Offset(cx + cos(angle) * r, cy + sin(angle) * r), w * 0.012, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.15 + sa * 0.2)));
     }
   }
 
@@ -2426,7 +2520,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // speaker
-    final spP = Paint()..color = illustration.bg.withOpacity(0.5);
+    final spP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5));
     canvas.drawRect(Rect.fromLTWH(cx - w * 0.1, cy - h * 0.06, w * 0.08, h * 0.12), spP);
     final conePath = Path()
       ..moveTo(cx - w * 0.02, cy - h * 0.06)
@@ -2434,11 +2528,11 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.08, cy + h * 0.12)
       ..lineTo(cx - w * 0.02, cy + h * 0.06)
       ..close();
-    canvas.drawPath(conePath, Paint()..color = illustration.accent.withOpacity(0.35));
+    canvas.drawPath(conePath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
     // sound waves
     for (int i = 1; i <= 3; i++) {
       final waveAlpha = ((sin(t * pi * 2 - i * 0.5) + 1) / 2).clamp(0.0, 1.0);
-      final waveP = Paint()..color = illustration.accent.withOpacity(0.15 + waveAlpha * 0.25)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+      final waveP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15 + waveAlpha * 0.25))..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
       canvas.drawArc(
         Rect.fromCenter(center: Offset(cx + w * 0.08, cy), width: w * 0.1 * i * 2, height: h * 0.1 * i * 2),
         -pi * 0.35, pi * 0.7, false, waveP,
@@ -2450,19 +2544,19 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // finger over lips (shh gesture)
-    final p = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // face outline
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.22, height: h * 0.25), p);
     // nose
     canvas.drawLine(Offset(cx, cy - h * 0.03), Offset(cx + w * 0.02, cy + h * 0.02), p);
     // finger across lips
-    canvas.drawLine(Offset(cx - w * 0.12, cy + h * 0.04), Offset(cx + w * 0.1, cy + h * 0.04), Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 4..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(cx - w * 0.12, cy + h * 0.04), Offset(cx + w * 0.1, cy + h * 0.04), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 4..strokeCap = StrokeCap.round);
     // subtle "shh" curves
-    final shP = Paint()..color = illustration.accent.withOpacity(0.25)..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final shP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 2; i++) {
       final sy = cy + h * (0.08 + i * 0.04);
       final fade = (1.0 - t).clamp(0.0, 1.0);
-      canvas.drawArc(Rect.fromCenter(center: Offset(cx + w * 0.08, sy), width: w * 0.08, height: h * 0.02), 0, pi, false, Paint()..color = illustration.accent.withOpacity(0.15 * fade)..style = PaintingStyle.stroke..strokeWidth = 1.5);
+      canvas.drawArc(Rect.fromCenter(center: Offset(cx + w * 0.08, sy), width: w * 0.08, height: h * 0.02), 0, pi, false, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15 * fade))..style = PaintingStyle.stroke..strokeWidth = 1.5);
     }
   }
 
@@ -2470,7 +2564,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
     // flower
-    final petalP = Paint()..color = illustration.accent.withOpacity(0.45);
+    final petalP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45));
     final breathe = sin(t * pi * 2) * w * 0.01;
     for (int i = 0; i < 6; i++) {
       final angle = i * pi / 3;
@@ -2478,11 +2572,11 @@ class WordIllustrationPainter extends CustomPainter {
       canvas.drawOval(Rect.fromCenter(center: Offset(cx + cos(angle) * pr, cy + sin(angle) * pr), width: w * 0.1, height: h * 0.07), petalP);
     }
     // center
-    canvas.drawCircle(Offset(cx, cy), w * 0.05, Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx, cy), w * 0.05, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     // stem
-    canvas.drawLine(Offset(cx, cy + h * 0.08), Offset(cx, cy + h * 0.22), Paint()..color = illustration.bg.withOpacity(0.35)..strokeWidth = 2.5..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(cx, cy + h * 0.08), Offset(cx, cy + h * 0.22), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35))..strokeWidth = 2.5..strokeCap = StrokeCap.round);
     // leaf
-    final leafP = Paint()..color = illustration.accent.withOpacity(0.3);
+    final leafP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3));
     canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.06, cy + h * 0.16), width: w * 0.1, height: h * 0.04), leafP);
   }
 
@@ -2494,7 +2588,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 箭头指向右方，表示"去"
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     final path = Path()
       ..moveTo(cx - w * 0.3, cy - h * 0.06)
       ..lineTo(cx + w * 0.15, cy - h * 0.06)
@@ -2509,7 +2603,7 @@ class WordIllustrationPainter extends CustomPainter {
     for (int i = 0; i < 3; i++) {
       final dx = cx - w * 0.35 - i * w * 0.08;
       final opacity = 0.2 + i * 0.15;
-      canvas.drawCircle(Offset(dx, cy), w * 0.02, Paint()..color = illustration.accent.withOpacity(opacity));
+      canvas.drawCircle(Offset(dx, cy), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(opacity)));
     }
   }
 
@@ -2517,7 +2611,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 箭头指向左方（向观众走来）
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     final path = Path()
       ..moveTo(cx + w * 0.3, cy - h * 0.06)
       ..lineTo(cx - w * 0.15, cy - h * 0.06)
@@ -2529,14 +2623,14 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(path, p);
     // 目标点 (星形标记)
-    _drawStarShape(canvas, cx - w * 0.3, cy, w * 0.06, w * 0.03, 5, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawStarShape(canvas, cx - w * 0.3, cy, w * 0.06, w * 0.03, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   void _drawGet(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.48;
     // 手掌（接收）
-    final handP = Paint()..color = illustration.accent;
+    final handP = Paint()..color = _dc(illustration.accent);
     // 手掌
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy + h * 0.08), width: w * 0.22, height: h * 0.14), Radius.circular(w * 0.04)),
@@ -2550,7 +2644,7 @@ class WordIllustrationPainter extends CustomPainter {
       );
     }
     // 落下的礼物
-    final giftP = Paint()..color = illustration.accent.withOpacity(0.5 + sin(t * pi * 2) * 0.3);
+    final giftP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5 + sin(t * pi * 2) * 0.3));
     canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy - h * 0.18 + sin(t * pi * 2) * h * 0.04), width: w * 0.1, height: h * 0.08), giftP);
   }
 
@@ -2558,7 +2652,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 齿轮（制造/创造）
-    final gearP = Paint()..color = illustration.accent;
+    final gearP = Paint()..color = _dc(illustration.accent);
     final teeth = 8;
     final outerR = w * 0.22;
     final innerR = w * 0.17;
@@ -2573,15 +2667,15 @@ class WordIllustrationPainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, gearP);
     // 中心圆
-    canvas.drawCircle(Offset(cx, cy), w * 0.08, Paint()..color = illustration.bg);
-    canvas.drawCircle(Offset(cx, cy), w * 0.05, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawCircle(Offset(cx, cy), w * 0.08, Paint()..color = _dc(illustration.bg));
+    canvas.drawCircle(Offset(cx, cy), w * 0.05, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
   }
 
   void _drawTake(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 手拿物品
-    final handP = Paint()..color = illustration.accent;
+    final handP = Paint()..color = _dc(illustration.accent);
     // 手（从上方拿起）
     final handPath = Path()
       ..moveTo(cx - w * 0.08, cy + h * 0.05)
@@ -2596,7 +2690,7 @@ class WordIllustrationPainter extends CustomPainter {
     // 被拿的物体
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy - h * 0.04 + sin(t * pi * 2) * h * 0.03), width: w * 0.2, height: h * 0.12), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
   }
 
@@ -2604,37 +2698,37 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 双手递出
-    final handP = Paint()..color = illustration.accent;
+    final handP = Paint()..color = _dc(illustration.accent);
     // 左手
     canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.1, cy + h * 0.05), width: w * 0.16, height: h * 0.1), handP);
     // 右手（伸出）
     final reach = sin(t * pi * 2) * w * 0.04;
     canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.12 + reach, cy - h * 0.02), width: w * 0.16, height: h * 0.1), handP);
     // 心形（给予爱）
-    _drawHeartShape(canvas, cx + w * 0.02, cy - h * 0.1, w * 0.08, h * 0.06, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawHeartShape(canvas, cx + w * 0.02, cy - h * 0.1, w * 0.08, h * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
   }
 
   void _drawThink(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // 头部
-    final headP = Paint()..color = illustration.accent;
+    final headP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx, cy), w * 0.18, headP);
     // 眼睛（向上看）
-    final eyeP = Paint()..color = illustration.bg;
+    final eyeP = Paint()..color = _dc(illustration.bg);
     canvas.drawCircle(Offset(cx - w * 0.07, cy - h * 0.02), w * 0.03, eyeP);
     canvas.drawCircle(Offset(cx + w * 0.07, cy - h * 0.02), w * 0.03, eyeP);
     // 瞳孔向上
     canvas.drawCircle(Offset(cx - w * 0.07, cy - h * 0.035), w * 0.015, headP);
     canvas.drawCircle(Offset(cx + w * 0.07, cy - h * 0.035), w * 0.015, headP);
     // 手托腮
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.18, cy + h * 0.08), width: w * 0.1, height: h * 0.08), Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.18, cy + h * 0.08), width: w * 0.1, height: h * 0.08), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // 思考泡泡
     for (int i = 0; i < 3; i++) {
       final r = w * 0.02 * (3 - i);
       final px = cx + w * 0.16 + i * w * 0.06;
       final py = cy - h * 0.16 - i * h * 0.08;
-      canvas.drawCircle(Offset(px, py), r, Paint()..color = illustration.accent.withOpacity(0.3 + i * 0.15));
+      canvas.drawCircle(Offset(px, py), r, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3 + i * 0.15)));
     }
   }
 
@@ -2642,7 +2736,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // 说话气泡
-    final bubbleP = Paint()..color = illustration.accent;
+    final bubbleP = Paint()..color = _dc(illustration.accent);
     final bx = cx, by = cy;
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(bx, by), width: w * 0.5, height: h * 0.3), Radius.circular(w * 0.1)),
@@ -2656,7 +2750,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(tailPath, bubbleP);
     // 文字线条
-    final lineP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 2..style = PaintingStyle.stroke;
+    final lineP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 2..style = PaintingStyle.stroke;
     canvas.drawLine(Offset(bx - w * 0.15, by - h * 0.04), Offset(bx + w * 0.15, by - h * 0.04), lineP);
     canvas.drawLine(Offset(bx - w * 0.12, by + h * 0.04), Offset(bx + w * 0.12, by + h * 0.04), lineP);
   }
@@ -2665,17 +2759,17 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 大眼睛
-    final eyeP = Paint()..color = illustration.accent;
+    final eyeP = Paint()..color = _dc(illustration.accent);
     // 眼白
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.5, height: h * 0.3), eyeP);
     // 虹膜
-    canvas.drawCircle(Offset(cx, cy), w * 0.12, Paint()..color = illustration.bg.withOpacity(0.8));
+    canvas.drawCircle(Offset(cx, cy), w * 0.12, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.8)));
     // 瞳孔
-    canvas.drawCircle(Offset(cx, cy), w * 0.06, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy), w * 0.06, Paint()..color = _dc(illustration.bg));
     // 高光
     canvas.drawCircle(Offset(cx + w * 0.04, cy - h * 0.04), w * 0.025, Paint()..color = Colors.white.withOpacity(0.7));
     // 睫毛
-    final lashP = Paint()..color = illustration.accent..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final lashP = Paint()..color = _dc(illustration.accent)..strokeWidth = 2.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     for (int i = -2; i <= 2; i++) {
       final angle = i * 0.3;
       canvas.drawLine(
@@ -2690,7 +2784,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 耳朵
-    final earP = Paint()..color = illustration.accent;
+    final earP = Paint()..color = _dc(illustration.accent);
     final earPath = Path()
       ..moveTo(cx, cy + h * 0.2)
       ..cubicTo(cx - w * 0.25, cy + h * 0.15, cx - w * 0.3, cy - h * 0.1, cx - w * 0.1, cy - h * 0.2)
@@ -2699,7 +2793,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(earPath, earP);
     // 内耳
-    final innerP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final innerP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     final innerPath = Path()
       ..moveTo(cx, cy + h * 0.12)
       ..cubicTo(cx - w * 0.12, cy + h * 0.08, cx - w * 0.15, cy - h * 0.05, cx - w * 0.05, cy - h * 0.1)
@@ -2709,7 +2803,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(innerPath, innerP);
     // 声波
     for (int i = 1; i <= 3; i++) {
-      final waveP = Paint()..color = illustration.accent.withOpacity(0.2 + 0.1 * (3 - i))..strokeWidth = 2..style = PaintingStyle.stroke;
+      final waveP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2 + 0.1 * (3 - i)))..strokeWidth = 2..style = PaintingStyle.stroke;
       canvas.drawArc(
         Rect.fromCenter(center: Offset(cx + w * 0.15, cy - h * 0.05), width: w * 0.15 * i, height: h * 0.15 * i),
         -pi * 0.4, pi * 0.8, false, waveP,
@@ -2721,50 +2815,50 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 张开的手臂 + 星星（渴望）
-    final handP = Paint()..color = illustration.accent;
+    final handP = Paint()..color = _dc(illustration.accent);
     // 身体
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.1), width: w * 0.2, height: h * 0.25), handP);
     // 头
     canvas.drawCircle(Offset(cx, cy - h * 0.12), w * 0.1, handP);
     // 张开的手臂
-    final armP = Paint()..color = illustration.accent..strokeWidth = w * 0.04..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final armP = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.04..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx - w * 0.08, cy), Offset(cx - w * 0.28, cy - h * 0.1), armP);
     canvas.drawLine(Offset(cx + w * 0.08, cy), Offset(cx + w * 0.28, cy - h * 0.1), armP);
     // 渴望的星星
     final sparkle = 0.5 + sin(t * pi * 2) * 0.5;
-    _drawStarShape(canvas, cx, cy - h * 0.28, w * 0.08 * sparkle, w * 0.04 * sparkle, 5, Paint()..color = illustration.accent.withOpacity(sparkle));
+    _drawStarShape(canvas, cx, cy - h * 0.28, w * 0.08 * sparkle, w * 0.04 * sparkle, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(sparkle)));
   }
 
   void _drawNeed(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 感叹号（需要！）
-    final exP = Paint()..color = illustration.accent;
+    final exP = Paint()..color = _dc(illustration.accent);
     // 圆形背景
     canvas.drawCircle(Offset(cx, cy), w * 0.25, exP);
     // 感叹号竖线
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy - h * 0.08), width: w * 0.06, height: h * 0.22), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.bg,
+      Paint()..color = _dc(illustration.bg),
     );
     // 感叹号点
-    canvas.drawCircle(Offset(cx, cy + h * 0.14), w * 0.04, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy + h * 0.14), w * 0.04, Paint()..color = _dc(illustration.bg));
     // 脉冲动画
     final pulseR = w * 0.25 + sin(t * pi * 2) * w * 0.05;
-    canvas.drawCircle(Offset(cx, cy), pulseR, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(cx, cy), pulseR, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
   }
 
   void _drawLeave(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 门 + 离开的人影
-    final doorP = Paint()..color = illustration.accent;
+    final doorP = Paint()..color = _dc(illustration.accent);
     // 门框
     canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.3, height: h * 0.5), doorP);
     // 门内（暗色）
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.02), width: w * 0.22, height: h * 0.42), Paint()..color = illustration.bg.withOpacity(0.3));
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.02), width: w * 0.22, height: h * 0.42), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     // 人影（正在离开，向右偏移出框）
-    final personP = Paint()..color = illustration.accent.withOpacity(0.7);
+    final personP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7));
     final dx = sin(t * pi * 2) * w * 0.02;
     canvas.drawCircle(Offset(cx + w * 0.12 + dx, cy - h * 0.08), w * 0.05, personP);
     canvas.drawRect(Rect.fromCenter(center: Offset(cx + w * 0.12 + dx, cy + h * 0.05), width: w * 0.06, height: h * 0.14), personP);
@@ -2774,28 +2868,39 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 旗帜 + 位置标记（到达）
-    final flagP = Paint()..color = illustration.accent;
+    final flagP = Paint()..color = _dc(illustration.accent);
     // 旗杆
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.03, height: h * 0.5), flagP);
+    final poleRect = Rect.fromCenter(center: Offset(cx, cy), width: w * 0.03, height: h * 0.5);
+    if (isDark) {
+      canvas.drawRect(poleRect.inflate(1.5), Paint()..color = Colors.white.withOpacity(0.25));
+    }
+    canvas.drawRect(poleRect, flagP);
     // 旗帜
     final flagPath = Path()
       ..moveTo(cx, cy - h * 0.25)
       ..lineTo(cx + w * 0.2, cy - h * 0.18)
       ..lineTo(cx, cy - h * 0.1)
       ..close();
-    canvas.drawPath(flagPath, Paint()..color = illustration.accent.withOpacity(0.7));
+    if (isDark) {
+      canvas.drawPath(flagPath, _outlineP);
+    }
+    canvas.drawPath(flagPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(_dop(0.7))));
     // 底座
-    canvas.drawCircle(Offset(cx, cy + h * 0.25), w * 0.06, flagP);
+    final baseR = w * 0.06;
+    if (isDark) {
+      canvas.drawCircle(Offset(cx, cy + h * 0.25), baseR, _outlineP);
+    }
+    canvas.drawCircle(Offset(cx, cy + h * 0.25), baseR, flagP);
     // 到达标记星
     final sparkle = (sin(t * pi * 2) + 1) / 2;
-    _drawStarShape(canvas, cx + w * 0.22, cy - h * 0.2, w * 0.05 * sparkle, w * 0.025 * sparkle, 4, Paint()..color = illustration.accent.withOpacity(0.5));
+    _drawStarShape(canvas, cx + w * 0.22, cy - h * 0.2, w * 0.05 * sparkle, w * 0.025 * sparkle, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(_dop(0.5))));
   }
 
   void _drawBegin(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 播放按钮（开始）
-    final playP = Paint()..color = illustration.accent;
+    final playP = Paint()..color = _dc(illustration.accent);
     // 圆形背景
     canvas.drawCircle(Offset(cx, cy), w * 0.25, playP);
     // 播放三角形
@@ -2804,10 +2909,10 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx - w * 0.08, cy + h * 0.12)
       ..lineTo(cx + w * 0.14, cy)
       ..close();
-    canvas.drawPath(triPath, Paint()..color = illustration.bg);
+    canvas.drawPath(triPath, Paint()..color = _dc(illustration.bg));
     // 光环动画
     final pulseR = w * 0.25 + sin(t * pi * 2) * w * 0.04;
-    canvas.drawCircle(Offset(cx, cy), pulseR, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(cx, cy), pulseR, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
   }
 
   void _drawFinish(Canvas canvas, Size size) {
@@ -2815,7 +2920,7 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.5;
     // 对勾（完成）
     final checkP = Paint()
-      ..color = illustration.accent
+      ..color = _dc(illustration.accent)
       ..style = PaintingStyle.stroke
       ..strokeWidth = w * 0.06
       ..strokeCap = StrokeCap.round
@@ -2826,18 +2931,18 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.22, cy - h * 0.15);
     canvas.drawPath(checkPath, checkP);
     // 圆圈
-    canvas.drawCircle(Offset(cx, cy), w * 0.28, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(cx, cy), w * 0.28, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
     // 庆祝星星
     final sparkle = (sin(t * pi * 2) + 1) / 2;
-    _drawStarShape(canvas, cx + w * 0.2, cy - h * 0.22, w * 0.06 * sparkle, w * 0.03 * sparkle, 5, Paint()..color = illustration.accent.withOpacity(0.5));
-    _drawStarShape(canvas, cx - w * 0.24, cy - h * 0.15, w * 0.04 * sparkle, w * 0.02 * sparkle, 5, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawStarShape(canvas, cx + w * 0.2, cy - h * 0.22, w * 0.06 * sparkle, w * 0.03 * sparkle, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    _drawStarShape(canvas, cx - w * 0.24, cy - h * 0.15, w * 0.04 * sparkle, w * 0.02 * sparkle, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   void _drawBuy(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 购物袋
-    final bagP = Paint()..color = illustration.accent;
+    final bagP = Paint()..color = _dc(illustration.accent);
     // 袋身
     final bagPath = Path()
       ..moveTo(cx - w * 0.18, cy - h * 0.05)
@@ -2849,21 +2954,21 @@ class WordIllustrationPainter extends CustomPainter {
     // 袋口
     canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy - h * 0.05), width: w * 0.4, height: h * 0.04), bagP);
     // 提手
-    final handleP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final handleP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     final handlePath = Path()
       ..moveTo(cx - w * 0.1, cy - h * 0.07)
       ..cubicTo(cx - w * 0.1, cy - h * 0.25, cx + w * 0.1, cy - h * 0.25, cx + w * 0.1, cy - h * 0.07);
     canvas.drawPath(handlePath, handleP);
     // 购物星
     final sparkle = (sin(t * pi * 2) + 1) / 2;
-    _drawStarShape(canvas, cx + w * 0.15, cy - h * 0.15, w * 0.04 * sparkle, w * 0.02 * sparkle, 5, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawStarShape(canvas, cx + w * 0.15, cy - h * 0.15, w * 0.04 * sparkle, w * 0.02 * sparkle, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
   }
 
   void _drawSell(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 价格标签
-    final tagP = Paint()..color = illustration.accent;
+    final tagP = Paint()..color = _dc(illustration.accent);
     // 标签主体
     final tagPath = Path()
       ..moveTo(cx - w * 0.25, cy - h * 0.05)
@@ -2874,9 +2979,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(tagPath, tagP);
     // 标签孔
-    canvas.drawCircle(Offset(cx - w * 0.18, cy), w * 0.025, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx - w * 0.18, cy), w * 0.025, Paint()..color = _dc(illustration.bg));
     // $ 符号
-    final dollarP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final dollarP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx + w * 0.02, cy - h * 0.08), Offset(cx + w * 0.02, cy + h * 0.08), dollarP);
     final sPath = Path()
       ..moveTo(cx + w * 0.06, cy - h * 0.04)
@@ -2889,10 +2994,10 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 球（玩耍）
-    final ballP = Paint()..color = illustration.accent;
+    final ballP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx, cy), w * 0.2, ballP);
     // 球花纹弧线
-    final stripeP = Paint()..color = illustration.bg.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = 3;
+    final stripeP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = 3;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.4, height: h * 0.4), -pi * 0.3, pi * 0.6, false, stripeP);
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.4, height: h * 0.4), pi * 0.7, pi * 0.6, false, stripeP);
     // 弹跳动画
@@ -2912,7 +3017,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 奖杯
-    final cupP = Paint()..color = illustration.accent;
+    final cupP = Paint()..color = _dc(illustration.accent);
     // 杯身
     final cupPath = Path()
       ..moveTo(cx - w * 0.15, cy - h * 0.2)
@@ -2929,24 +3034,24 @@ class WordIllustrationPainter extends CustomPainter {
       cupP,
     );
     // 把手
-    final handleP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final handleP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     final lH = Path()..moveTo(cx - w * 0.15, cy - h * 0.12)..cubicTo(cx - w * 0.28, cy - h * 0.1, cx - w * 0.28, cy + h * 0.02, cx - w * 0.12, cy + h * 0.02);
     final rH = Path()..moveTo(cx + w * 0.15, cy - h * 0.12)..cubicTo(cx + w * 0.28, cy - h * 0.1, cx + w * 0.28, cy + h * 0.02, cx + w * 0.12, cy + h * 0.02);
     canvas.drawPath(lH, handleP);
     canvas.drawPath(rH, handleP);
     // 皇冠星
     final sparkle = (sin(t * pi * 2) + 1) / 2;
-    _drawStarShape(canvas, cx, cy - h * 0.28, w * 0.07 * sparkle, w * 0.035 * sparkle, 5, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawStarShape(canvas, cx, cy - h * 0.28, w * 0.07 * sparkle, w * 0.035 * sparkle, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
   }
 
   void _drawLose(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 破碎的心/丢失的物品
-    final heartP = Paint()..color = illustration.accent;
+    final heartP = Paint()..color = _dc(illustration.accent);
     _drawHeartShape(canvas, cx, cy, w * 0.2, h * 0.15, heartP);
     // 裂痕
-    final crackP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final crackP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     final crackPath = Path()
       ..moveTo(cx - w * 0.02, cy - h * 0.12)
       ..lineTo(cx + w * 0.01, cy - h * 0.04)
@@ -2957,7 +3062,7 @@ class WordIllustrationPainter extends CustomPainter {
     for (int i = 0; i < 3; i++) {
       final fallY = (t * 0.3 + i * 0.33) % 1.0;
       final fx = cx + (i - 1) * w * 0.12;
-      canvas.drawCircle(Offset(fx, cy + h * 0.1 + fallY * h * 0.1), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.4 - fallY * 0.3));
+      canvas.drawCircle(Offset(fx, cy + h * 0.1 + fallY * h * 0.1), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4 - fallY * 0.3)));
     }
   }
 
@@ -2965,7 +3070,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 书本 + 灯泡（学习）
-    final bookP = Paint()..color = illustration.accent;
+    final bookP = Paint()..color = _dc(illustration.accent);
     // 书（打开）
     final leftPage = Path()
       ..moveTo(cx, cy + h * 0.05)
@@ -2980,21 +3085,21 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx, cy + h * 0.2)
       ..close();
     canvas.drawPath(leftPage, bookP);
-    canvas.drawPath(rightPage, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(rightPage, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // 书脊线
-    canvas.drawLine(Offset(cx, cy + h * 0.05), Offset(cx, cy + h * 0.2), Paint()..color = illustration.bg..strokeWidth = 1.5);
+    canvas.drawLine(Offset(cx, cy + h * 0.05), Offset(cx, cy + h * 0.2), Paint()..color = _dc(illustration.bg)..strokeWidth = 1.5);
     // 灯泡
-    final bulbP = Paint()..color = illustration.accent.withOpacity(0.6 + sin(t * pi * 2) * 0.3);
+    final bulbP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6 + sin(t * pi * 2) * 0.3));
     canvas.drawCircle(Offset(cx, cy - h * 0.15), w * 0.08, bulbP);
     // 灯泡底座
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy - h * 0.08), width: w * 0.06, height: h * 0.03), Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy - h * 0.08), width: w * 0.06, height: h * 0.03), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
   }
 
   void _drawTeach(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 黑板
-    final boardP = Paint()..color = illustration.accent;
+    final boardP = Paint()..color = _dc(illustration.accent);
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.6, height: h * 0.4), Radius.circular(w * 0.03)),
       boardP,
@@ -3002,7 +3107,7 @@ class WordIllustrationPainter extends CustomPainter {
     // 黑板内
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.52, height: h * 0.32), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.bg.withOpacity(0.3),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)),
     );
     // 粉笔字（E = mc² 风格）
     final chalkP = Paint()..color = Colors.white.withOpacity(0.8)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
@@ -3019,23 +3124,23 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 问号（尝试）
-    final qP = Paint()..color = illustration.accent;
+    final qP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx, cy), w * 0.25, qP);
     // 问号形状
-    final markP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = w * 0.05..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+    final markP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = w * 0.05..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
     final qPath = Path()
       ..moveTo(cx - w * 0.06, cy + h * 0.05)
       ..cubicTo(cx - w * 0.06, cy - h * 0.08, cx + w * 0.05, cy - h * 0.12, cx + w * 0.05, cy - h * 0.02)
       ..cubicTo(cx + w * 0.05, cy + h * 0.03, cx - w * 0.02, cy + h * 0.02, cx, cy + h * 0.06);
     canvas.drawPath(qPath, markP);
-    canvas.drawCircle(Offset(cx, cy + h * 0.13), w * 0.025, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy + h * 0.13), w * 0.025, Paint()..color = _dc(illustration.bg));
     // 旋转动画
     final angle = sin(t * pi * 2) * 0.1;
     canvas.save();
     canvas.translate(cx, cy);
     canvas.rotate(angle);
     canvas.translate(-cx, -cy);
-    canvas.drawCircle(Offset(cx, cy), w * 0.25, Paint()..color = illustration.accent.withOpacity(0.1));
+    canvas.drawCircle(Offset(cx, cy), w * 0.25, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.1)));
     canvas.restore();
   }
 
@@ -3043,10 +3148,10 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 时钟（等待）
-    final clockP = Paint()..color = illustration.accent;
+    final clockP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx, cy), w * 0.25, clockP);
     // 钟面
-    canvas.drawCircle(Offset(cx, cy), w * 0.22, Paint()..color = illustration.bg.withOpacity(0.2));
+    canvas.drawCircle(Offset(cx, cy), w * 0.22, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2)));
     // 刻度
     for (int i = 0; i < 12; i++) {
       final angle = i * pi / 6 - pi / 2;
@@ -3054,25 +3159,25 @@ class WordIllustrationPainter extends CustomPainter {
       canvas.drawLine(
         Offset(cx + cos(angle) * w * 0.19, cy + sin(angle) * w * 0.19),
         Offset(cx + cos(angle) * (w * 0.19 + len), cy + sin(angle) * (w * 0.19 + len)),
-        Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = i % 3 == 0 ? 2.5 : 1.5..style = PaintingStyle.stroke,
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = i % 3 == 0 ? 2.5 : 1.5..style = PaintingStyle.stroke,
       );
     }
     // 指针（走动）
     final minuteAngle = t * pi * 2;
     final hourAngle = t * pi * 2 / 12;
-    final handP = Paint()..color = illustration.accent..strokeWidth = 2..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final handP = Paint()..color = _dc(illustration.accent)..strokeWidth = 2..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx, cy), Offset(cx + cos(hourAngle - pi/2) * w * 0.1, cy + sin(hourAngle - pi/2) * w * 0.1), handP);
-    final handP2 = Paint()..color = illustration.accent..strokeWidth = 1.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final handP2 = Paint()..color = _dc(illustration.accent)..strokeWidth = 1.5..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx, cy), Offset(cx + cos(minuteAngle - pi/2) * w * 0.16, cy + sin(minuteAngle - pi/2) * w * 0.16), handP2);
     // 中心点
-    canvas.drawCircle(Offset(cx, cy), w * 0.02, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy), w * 0.02, Paint()..color = _dc(illustration.bg));
   }
 
   void _drawCall(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 电话听筒
-    final phoneP = Paint()..color = illustration.accent;
+    final phoneP = Paint()..color = _dc(illustration.accent);
     // 听筒主体
     final bodyPath = Path()
       ..moveTo(cx - w * 0.2, cy - h * 0.05)
@@ -3088,16 +3193,16 @@ class WordIllustrationPainter extends CustomPainter {
       ..cubicTo(cx + w * 0.15, cy + h * 0.15, cx + w * 0.25, cy + h * 0.12, cx + w * 0.2, cy + h * 0.05)
       ..close();
     canvas.drawPath(bodyPath, phoneP);
-    canvas.drawPath(micPath, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(micPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // 连线
-    final cordP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final cordP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     final cordPath = Path()
       ..moveTo(cx - w * 0.08, cy - h * 0.1)
       ..cubicTo(cx, cy - h * 0.18, cx, cy + h * 0.18, cx + w * 0.08, cy + h * 0.1);
     canvas.drawPath(cordPath, cordP);
     // 信号波
     for (int i = 1; i <= 3; i++) {
-      final waveP = Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 2..style = PaintingStyle.stroke;
+      final waveP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 2..style = PaintingStyle.stroke;
       canvas.drawArc(
         Rect.fromCenter(center: Offset(cx + w * 0.2, cy - h * 0.05), width: w * 0.12 * i, height: h * 0.12 * i),
         -pi * 0.4, pi * 0.8, false, waveP,
@@ -3109,7 +3214,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // 问号气泡
-    final bubbleP = Paint()..color = illustration.accent;
+    final bubbleP = Paint()..color = _dc(illustration.accent);
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.5, height: h * 0.3), Radius.circular(w * 0.1)),
       bubbleP,
@@ -3122,20 +3227,20 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(tailPath, bubbleP);
     // 问号
-    final qP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
+    final qP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
     final qPath = Path()
       ..moveTo(cx - w * 0.04, cy + h * 0.02)
       ..cubicTo(cx - w * 0.04, cy - h * 0.06, cx + w * 0.04, cy - h * 0.08, cx + w * 0.04, cy - h * 0.02)
       ..cubicTo(cx + w * 0.04, cy, cx - w * 0.01, cy, cx, cy + h * 0.03);
     canvas.drawPath(qPath, qP);
-    canvas.drawCircle(Offset(cx, cy + h * 0.08), w * 0.02, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy + h * 0.08), w * 0.02, Paint()..color = _dc(illustration.bg));
   }
 
   void _drawAnswer(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // 回复气泡（和问号气泡对应）
-    final bubbleP = Paint()..color = illustration.accent;
+    final bubbleP = Paint()..color = _dc(illustration.accent);
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.5, height: h * 0.3), Radius.circular(w * 0.1)),
       bubbleP,
@@ -3148,7 +3253,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(tailPath, bubbleP);
     // 对勾（答案正确）
-    final checkP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+    final checkP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
     final checkPath = Path()
       ..moveTo(cx - w * 0.08, cy)
       ..lineTo(cx - w * 0.02, cy + h * 0.06)
@@ -3160,9 +3265,9 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 植物生长
-    final stemP = Paint()..color = illustration.accent..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final stemP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // 花盆
-    final potP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final potP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final potPath = Path()
       ..moveTo(cx - w * 0.12, cy + h * 0.1)
       ..lineTo(cx - w * 0.08, cy + h * 0.22)
@@ -3174,7 +3279,7 @@ class WordIllustrationPainter extends CustomPainter {
     final growH = h * 0.15 + sin(t * pi * 2) * h * 0.03;
     canvas.drawLine(Offset(cx, cy + h * 0.1), Offset(cx, cy + h * 0.1 - growH), stemP);
     // 叶子
-    final leafP = Paint()..color = illustration.accent;
+    final leafP = Paint()..color = _dc(illustration.accent);
     final leafSize = w * 0.06;
     // 左叶
     canvas.save();
@@ -3189,21 +3294,21 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: leafSize * 2, height: leafSize), leafP);
     canvas.restore();
     // 花
-    canvas.drawCircle(Offset(cx, cy + h * 0.1 - growH), w * 0.05, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(cx, cy + h * 0.1 - growH), w * 0.05, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
   }
 
   void _drawChange(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 循环箭头（变换）
-    final arrowP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
     // 上弧
     final topArc = Rect.fromCenter(center: Offset(cx, cy), width: w * 0.4, height: h * 0.3);
     canvas.drawArc(topArc, -pi * 0.7, pi * 1.2, false, arrowP);
     // 下弧
     canvas.drawArc(topArc, pi * 0.3, pi * 1.2, false, arrowP);
     // 箭头头部
-    final headP = Paint()..color = illustration.accent;
+    final headP = Paint()..color = _dc(illustration.accent);
     // 右上箭头
     final a1x = cx + w * 0.18, a1y = cy - h * 0.08;
     final a1Path = Path()
@@ -3222,23 +3327,23 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(a2Path, headP);
     // 中心闪烁
     final sparkle = (sin(t * pi * 2) + 1) / 2;
-    _drawStarShape(canvas, cx, cy, w * 0.06 * sparkle, w * 0.03 * sparkle, 4, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawStarShape(canvas, cx, cy, w * 0.06 * sparkle, w * 0.03 * sparkle, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   void _drawAfraid(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // 恐惧的脸
-    final faceP = Paint()..color = illustration.accent;
+    final faceP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx, cy), w * 0.2, faceP);
     // 惊恐的眼睛（睁大）
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.08, cy - h * 0.04), width: w * 0.08, height: h * 0.06), Paint()..color = illustration.bg);
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.08, cy - h * 0.04), width: w * 0.08, height: h * 0.06), Paint()..color = illustration.bg);
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.08, cy - h * 0.04), width: w * 0.08, height: h * 0.06), Paint()..color = _dc(illustration.bg));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.08, cy - h * 0.04), width: w * 0.08, height: h * 0.06), Paint()..color = _dc(illustration.bg));
     // 小瞳孔
     canvas.drawCircle(Offset(cx - w * 0.08, cy - h * 0.04), w * 0.02, faceP);
     canvas.drawCircle(Offset(cx + w * 0.08, cy - h * 0.04), w * 0.02, faceP);
     // 张开的嘴（O形）
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.08), width: w * 0.1, height: h * 0.08), Paint()..color = illustration.bg);
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.08), width: w * 0.1, height: h * 0.08), Paint()..color = _dc(illustration.bg));
     // 颤抖动画
     final shake = sin(t * pi * 8) * w * 0.01;
     canvas.save();
@@ -3251,7 +3356,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 盾牌 + 剑（勇敢）
-    final shieldP = Paint()..color = illustration.accent;
+    final shieldP = Paint()..color = _dc(illustration.accent);
     // 盾牌
     final shieldPath = Path()
       ..moveTo(cx - w * 0.18, cy - h * 0.2)
@@ -3262,9 +3367,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(shieldPath, shieldP);
     // 盾牌内星
-    _drawStarShape(canvas, cx, cy - h * 0.02, w * 0.1, w * 0.05, 5, Paint()..color = illustration.bg.withOpacity(0.4));
+    _drawStarShape(canvas, cx, cy - h * 0.02, w * 0.1, w * 0.05, 5, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
     // 剑
-    final swordP = Paint()..color = illustration.accent.withOpacity(0.8);
+    final swordP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8));
     canvas.save();
     canvas.translate(cx + w * 0.12, cy - h * 0.1);
     canvas.rotate(pi * 0.25);
@@ -3279,16 +3384,16 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 放大镜（仔细查看）
-    final glassP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.03;
+    final glassP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.03;
     // 镜片
     canvas.drawCircle(Offset(cx - w * 0.05, cy - h * 0.05), w * 0.16, glassP);
     // 镜柄
-    final handleP = Paint()..color = illustration.accent..strokeWidth = w * 0.03..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final handleP = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.03..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx + w * 0.08, cy + h * 0.08), Offset(cx + w * 0.22, cy + h * 0.22), handleP);
     // 镜片内细节（放大效果）
-    canvas.drawCircle(Offset(cx - w * 0.05, cy - h * 0.05), w * 0.14, Paint()..color = illustration.accent.withOpacity(0.1));
+    canvas.drawCircle(Offset(cx - w * 0.05, cy - h * 0.05), w * 0.14, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.1)));
     // 放大的文字
-    final textP = Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 2;
+    final textP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 2;
     canvas.drawLine(Offset(cx - w * 0.1, cy - h * 0.08), Offset(cx + w * 0.0, cy - h * 0.08), textP);
     canvas.drawLine(Offset(cx - w * 0.08, cy - h * 0.03), Offset(cx + w * 0.02, cy - h * 0.03), textP);
     canvas.drawLine(Offset(cx - w * 0.06, cy + h * 0.02), Offset(cx - w * 0.01, cy + h * 0.02), textP);
@@ -3298,7 +3403,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 警告三角形
-    final warnP = Paint()..color = illustration.accent;
+    final warnP = Paint()..color = _dc(illustration.accent);
     // 三角形外框
     final triPath = Path()
       ..moveTo(cx, cy - h * 0.25)
@@ -3313,41 +3418,41 @@ class WordIllustrationPainter extends CustomPainter {
         ..lineTo(cx + w * 0.18, cy + h * 0.13)
         ..lineTo(cx - w * 0.18, cy + h * 0.13)
         ..close(),
-      Paint()..color = illustration.bg.withOpacity(0.3),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)),
     );
     // 感叹号
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy - h * 0.02), width: w * 0.04, height: h * 0.12), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent,
+      Paint()..color = _dc(illustration.accent),
     );
-    canvas.drawCircle(Offset(cx, cy + h * 0.1), w * 0.025, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(cx, cy + h * 0.1), w * 0.025, Paint()..color = _dc(illustration.accent));
     // 警告脉冲
     final pulseR = w * 0.3 + sin(t * pi * 2) * w * 0.03;
-    canvas.drawCircle(Offset(cx, cy), pulseR, Paint()..color = illustration.accent.withOpacity(0.08));
+    canvas.drawCircle(Offset(cx, cy), pulseR, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.08)));
   }
 
   void _drawDifferent(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 两个不同形状对比
-    final p1 = Paint()..color = illustration.accent;
-    final p2 = Paint()..color = illustration.accent.withOpacity(0.5);
+    final p1 = Paint()..color = _dc(illustration.accent);
+    final p2 = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     // 左边：圆形
     canvas.drawCircle(Offset(cx - w * 0.15, cy - h * 0.05), w * 0.12, p1);
     // 右边：方形
     canvas.drawRect(Rect.fromCenter(center: Offset(cx + w * 0.15, cy - h * 0.05), width: w * 0.22, height: h * 0.18), p2);
     // 不等号
-    final neqP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.03..strokeCap = StrokeCap.round;
+    final neqP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.03..strokeCap = StrokeCap.round;
     // ≠ 符号
     canvas.drawLine(Offset(cx - w * 0.12, cy + h * 0.15), Offset(cx + w * 0.12, cy + h * 0.15), neqP);
-    canvas.drawLine(Offset(cx - w * 0.08, cy + h * 0.11), Offset(cx + w * 0.08, cy + h * 0.19), Paint()..color = illustration.accent..strokeWidth = w * 0.025..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(cx - w * 0.08, cy + h * 0.11), Offset(cx + w * 0.08, cy + h * 0.19), Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.025..style = PaintingStyle.stroke..strokeCap = StrokeCap.round);
   }
 
   void _drawDifficult(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 迷宫（困难）
-    final mazeP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
+    final mazeP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
     // 迷宫墙
     final mazePath = Path()
       ..moveTo(cx - w * 0.2, cy - h * 0.2)
@@ -3362,10 +3467,10 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.2, cy + h * 0.2);
     canvas.drawPath(mazePath, mazeP);
     // 困惑的人
-    final personP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final personP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     canvas.drawCircle(Offset(cx - w * 0.2, cy - h * 0.2), w * 0.04, personP);
     // 问号
-    final qP = Paint()..color = illustration.accent.withOpacity(0.4 + sin(t * pi * 2) * 0.3);
+    final qP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4 + sin(t * pi * 2) * 0.3));
     canvas.drawCircle(Offset(cx - w * 0.12, cy - h * 0.25), w * 0.03, qP);
   }
 
@@ -3373,12 +3478,12 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 羽毛（轻而易举）
-    final featherP = Paint()..color = illustration.accent;
+    final featherP = Paint()..color = _dc(illustration.accent);
     // 羽毛主杆
     canvas.drawLine(
       Offset(cx - w * 0.2, cy + h * 0.15),
       Offset(cx + w * 0.2, cy - h * 0.15),
-      Paint()..color = illustration.accent..strokeWidth = 2..style = PaintingStyle.stroke..strokeCap = StrokeCap.round,
+      Paint()..color = _dc(illustration.accent)..strokeWidth = 2..style = PaintingStyle.stroke..strokeCap = StrokeCap.round,
     );
     // 羽毛左边毛
     for (int i = 0; i < 6; i++) {
@@ -3390,7 +3495,7 @@ class WordIllustrationPainter extends CustomPainter {
         ..moveTo(px, py)
         ..quadraticBezierTo(px - curve * 0.6, py - h * 0.03, px - curve, py - h * 0.01)
         ..quadraticBezierTo(px - curve * 0.6, py + h * 0.02, px, py);
-      canvas.drawPath(leafPath, Paint()..color = illustration.accent.withOpacity(0.3 + t2 * 0.3));
+      canvas.drawPath(leafPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3 + t2 * 0.3)));
     }
     // 右边毛
     for (int i = 0; i < 6; i++) {
@@ -3402,7 +3507,7 @@ class WordIllustrationPainter extends CustomPainter {
         ..moveTo(px, py)
         ..quadraticBezierTo(px + curve * 0.6, py - h * 0.03, px + curve, py - h * 0.01)
         ..quadraticBezierTo(px + curve * 0.6, py + h * 0.02, px, py);
-      canvas.drawPath(leafPath, Paint()..color = illustration.accent.withOpacity(0.3 + t2 * 0.3));
+      canvas.drawPath(leafPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3 + t2 * 0.3)));
     }
     // 飘浮动画
     final floatY = sin(t * pi * 2) * h * 0.02;
@@ -3415,24 +3520,24 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // 兴奋的脸
-    final faceP = Paint()..color = illustration.accent;
+    final faceP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx, cy), w * 0.2, faceP);
     // 星星眼睛
-    _drawStarShape(canvas, cx - w * 0.08, cy - h * 0.03, w * 0.05, w * 0.025, 5, Paint()..color = illustration.bg);
-    _drawStarShape(canvas, cx + w * 0.08, cy - h * 0.03, w * 0.05, w * 0.025, 5, Paint()..color = illustration.bg);
+    _drawStarShape(canvas, cx - w * 0.08, cy - h * 0.03, w * 0.05, w * 0.025, 5, Paint()..color = _dc(illustration.bg));
+    _drawStarShape(canvas, cx + w * 0.08, cy - h * 0.03, w * 0.05, w * 0.025, 5, Paint()..color = _dc(illustration.bg));
     // 大笑嘴
     final mouthPath = Path()
       ..moveTo(cx - w * 0.1, cy + h * 0.06)
       ..quadraticBezierTo(cx, cy + h * 0.16, cx + w * 0.1, cy + h * 0.06)
       ..close();
-    canvas.drawPath(mouthPath, Paint()..color = illustration.bg);
+    canvas.drawPath(mouthPath, Paint()..color = _dc(illustration.bg));
     // 兴奋的火花
     for (int i = 0; i < 6; i++) {
       final angle = i * pi / 3 + t * pi * 2;
       final r = w * 0.28 + sin(t * pi * 4 + i) * w * 0.03;
       final sx = cx + cos(angle) * r;
       final sy = cy + sin(angle) * r;
-      _drawStarShape(canvas, sx, sy, w * 0.03, w * 0.015, 4, Paint()..color = illustration.accent.withOpacity(0.4 + sin(t * pi * 2 + i) * 0.3));
+      _drawStarShape(canvas, sx, sy, w * 0.03, w * 0.015, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4 + sin(t * pi * 2 + i) * 0.3)));
     }
   }
 
@@ -3440,15 +3545,15 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 明星（著名的）
-    final starP = Paint()..color = illustration.accent;
+    final starP = Paint()..color = _dc(illustration.accent);
     // 大星星
     _drawStarShape(canvas, cx, cy, w * 0.25, w * 0.12, 5, starP);
     // 内星
-    _drawStarShape(canvas, cx, cy, w * 0.15, w * 0.075, 5, Paint()..color = illustration.bg.withOpacity(0.3));
+    _drawStarShape(canvas, cx, cy, w * 0.15, w * 0.075, 5, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     // 光芒
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4;
-      final rayP = Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 2..style = PaintingStyle.stroke;
+      final rayP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 2..style = PaintingStyle.stroke;
       canvas.drawLine(
         Offset(cx + cos(angle) * w * 0.28, cy + sin(angle) * w * 0.28),
         Offset(cx + cos(angle) * w * 0.38, cy + sin(angle) * w * 0.38),
@@ -3459,7 +3564,7 @@ class WordIllustrationPainter extends CustomPainter {
     final sparkle = (sin(t * pi * 2) + 1) / 2;
     for (int i = 0; i < 4; i++) {
       final angle = i * pi / 2 + pi / 4;
-      _drawStarShape(canvas, cx + cos(angle) * w * 0.35, cy + sin(angle) * w * 0.35, w * 0.03 * sparkle, w * 0.015 * sparkle, 4, Paint()..color = illustration.accent.withOpacity(0.5 * sparkle));
+      _drawStarShape(canvas, cx + cos(angle) * w * 0.35, cy + sin(angle) * w * 0.35, w * 0.03 * sparkle, w * 0.015 * sparkle, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5 * sparkle)));
     }
   }
 
@@ -3467,7 +3572,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // 飞翔的鸟（自由）
-    final birdP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final birdP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     // 主鸟
     final wingY = sin(t * pi * 2) * h * 0.05;
     final birdPath = Path()
@@ -3476,9 +3581,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(cx + w * 0.05, cy - h * 0.08 + wingY, cx + w * 0.2, cy + wingY * 0.5);
     canvas.drawPath(birdPath, birdP);
     // 鸟身体
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.06, height: h * 0.03), Paint()..color = illustration.accent);
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.06, height: h * 0.03), Paint()..color = _dc(illustration.accent));
     // 第二只鸟（远处）
-    final bird2P = Paint()..color = illustration.accent.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final bird2P = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     final b2Path = Path()
       ..moveTo(cx - w * 0.3, cy - h * 0.12 + wingY * 0.3)
       ..quadraticBezierTo(cx - w * 0.22, cy - h * 0.17 + wingY * 0.3, cx - w * 0.18, cy - h * 0.12 + wingY * 0.3)
@@ -3496,10 +3601,10 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // 开心微笑的脸
-    final faceP = Paint()..color = illustration.accent;
+    final faceP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx, cy), w * 0.2, faceP);
     // 眼睛（弯弯的笑眼）
-    final eyeP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final eyeP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     final leftEye = Path()..moveTo(cx - w * 0.12, cy - h * 0.02)..quadraticBezierTo(cx - w * 0.08, cy - h * 0.06, cx - w * 0.04, cy - h * 0.02);
     final rightEye = Path()..moveTo(cx + w * 0.04, cy - h * 0.02)..quadraticBezierTo(cx + w * 0.08, cy - h * 0.06, cx + w * 0.12, cy - h * 0.02);
     canvas.drawPath(leftEye, eyeP);
@@ -3508,10 +3613,10 @@ class WordIllustrationPainter extends CustomPainter {
     final smilePath = Path()
       ..moveTo(cx - w * 0.1, cy + h * 0.04)
       ..quadraticBezierTo(cx, cy + h * 0.14, cx + w * 0.1, cy + h * 0.04);
-    canvas.drawPath(smilePath, Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
+    canvas.drawPath(smilePath, Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
     // 腮红
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.14, cy + h * 0.04), width: w * 0.06, height: h * 0.03), Paint()..color = illustration.accent.withOpacity(0.5));
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.14, cy + h * 0.04), width: w * 0.06, height: h * 0.03), Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.14, cy + h * 0.04), width: w * 0.06, height: h * 0.03), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.14, cy + h * 0.04), width: w * 0.06, height: h * 0.03), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -3572,14 +3677,14 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawAct(Canvas canvas, Size size) {
     // 舞台聚光灯 + 人物剪影
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 聚光灯光束
     final lightPath = Path()
       ..moveTo(w * 0.5, 0)
       ..lineTo(w * 0.25, h * 0.85)
       ..lineTo(w * 0.75, h * 0.85)
       ..close();
-    canvas.drawPath(lightPath, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawPath(lightPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
     // 人物（站姿）
     canvas.drawCircle(Offset(w * 0.5, h * 0.32), w * 0.07, p);
     _drawRoundedRectAt(canvas, w * 0.42, h * 0.4, w * 0.16, h * 0.22, p);
@@ -3590,13 +3695,13 @@ class WordIllustrationPainter extends CustomPainter {
     _drawLine(canvas, w * 0.46, h * 0.62, w * 0.38, h * 0.8, p..strokeWidth = w * 0.03);
     _drawLine(canvas, w * 0.54, h * 0.62, w * 0.62, h * 0.8, p..strokeWidth = w * 0.03);
     // 舞台地板
-    _drawLine(canvas, w * 0.15, h * 0.85, w * 0.85, h * 0.85, Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2);
+    _drawLine(canvas, w * 0.15, h * 0.85, w * 0.85, h * 0.85, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2);
   }
 
   void _drawAdd(Canvas canvas, Size size) {
     // 加号 + 堆叠方块
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 下方方块
     _drawRoundedRectAt(canvas, w * 0.25, h * 0.5, w * 0.22, h * 0.22, p);
     // 加号
@@ -3605,16 +3710,16 @@ class WordIllustrationPainter extends CustomPainter {
     _drawLine(canvas, cx - w * 0.08, cy, cx + w * 0.08, cy, plusP);
     _drawLine(canvas, cx, cy - h * 0.08, cx, cy + h * 0.08, plusP);
     // 上方方块（虚影）
-    _drawRoundedRectAt(canvas, w * 0.55, h * 0.22, w * 0.2, h * 0.2, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawRoundedRectAt(canvas, w * 0.55, h * 0.22, w * 0.2, h * 0.2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // 箭头
-    final arrowP = Paint()..color = illustration.bg..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.bg)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.47, h * 0.55, w * 0.55, h * 0.38, arrowP);
   }
 
   void _drawAgree(Canvas canvas, Size size) {
     // 两只手握手 + 对勾
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    final p = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     // 握手
     final handPath = Path()
       ..moveTo(w * 0.2, h * 0.5)
@@ -3624,8 +3729,8 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.8, h * 0.5);
     canvas.drawPath(handPath, p);
     // 手臂
-    _drawLine(canvas, w * 0.2, h * 0.5, w * 0.2, h * 0.3, Paint()..color = illustration.accent..strokeWidth = w * 0.04..strokeCap = StrokeCap.round);
-    _drawLine(canvas, w * 0.8, h * 0.5, w * 0.8, h * 0.3, Paint()..color = illustration.accent..strokeWidth = w * 0.04..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.2, h * 0.5, w * 0.2, h * 0.3, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.04..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.8, h * 0.5, w * 0.8, h * 0.3, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.04..strokeCap = StrokeCap.round);
     // 对勾
     final checkP = Paint()..color = Colors.green..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     final checkPath = Path()
@@ -3638,16 +3743,16 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawAlone(Canvas canvas, Size size) {
     // 单个小人站在空旷空间
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 大片空白中的小人
     canvas.drawCircle(Offset(w * 0.5, h * 0.3), w * 0.06, p);
     _drawRoundedRectAt(canvas, w * 0.44, h * 0.37, w * 0.12, h * 0.18, p);
-    _drawLine(canvas, w * 0.47, h * 0.55, w * 0.42, h * 0.72, Paint()..color = illustration.accent..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
-    _drawLine(canvas, w * 0.53, h * 0.55, w * 0.58, h * 0.72, Paint()..color = illustration.accent..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.47, h * 0.55, w * 0.42, h * 0.72, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.53, h * 0.55, w * 0.58, h * 0.72, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
     // 地面线
-    _drawLine(canvas, w * 0.15, h * 0.78, w * 0.85, h * 0.78, Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 1);
+    _drawLine(canvas, w * 0.15, h * 0.78, w * 0.85, h * 0.78, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 1);
     // 虚线圈（孤独感）
-    final dashP = Paint()..color = illustration.bg.withOpacity(0.15)..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    final dashP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.15))..style = PaintingStyle.stroke..strokeWidth = 1.5;
     canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.28, dashP);
   }
 
@@ -3655,12 +3760,12 @@ class WordIllustrationPainter extends CustomPainter {
     // 星星爆发 + 惊叹
     final w = size.width, h = size.height;
     // 中心大星
-    _drawStarShape(canvas, w * 0.5, h * 0.45, w * 0.18, w * 0.08, 5, Paint()..color = illustration.accent);
+    _drawStarShape(canvas, w * 0.5, h * 0.45, w * 0.18, w * 0.08, 5, Paint()..color = _dc(illustration.accent));
     // 周围小星
-    _drawStarShape(canvas, w * 0.22, h * 0.25, w * 0.06, w * 0.025, 5, Paint()..color = illustration.accent.withOpacity(0.5));
-    _drawStarShape(canvas, w * 0.78, h * 0.3, w * 0.07, w * 0.03, 5, Paint()..color = illustration.accent.withOpacity(0.6));
-    _drawStarShape(canvas, w * 0.3, h * 0.7, w * 0.05, w * 0.02, 5, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawStarShape(canvas, w * 0.72, h * 0.68, w * 0.06, w * 0.025, 5, Paint()..color = illustration.accent.withOpacity(0.5));
+    _drawStarShape(canvas, w * 0.22, h * 0.25, w * 0.06, w * 0.025, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    _drawStarShape(canvas, w * 0.78, h * 0.3, w * 0.07, w * 0.03, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
+    _drawStarShape(canvas, w * 0.3, h * 0.7, w * 0.05, w * 0.02, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, w * 0.72, h * 0.68, w * 0.06, w * 0.025, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // 闪光线
     final sparkP = Paint()..color = Colors.white.withOpacity(0.6)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
@@ -3673,7 +3778,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawAppear(Canvas canvas, Size size) {
     // 魔法帽 + 逐渐出现的星星
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 帽子
     final hatPath = Path()
       ..moveTo(w * 0.3, h * 0.65)
@@ -3682,11 +3787,11 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(hatPath, p);
     // 帽檐
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.66), width: w * 0.5, height: h * 0.08), Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.66), width: w * 0.5, height: h * 0.08), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     // 出现的星星（渐隐）
-    _drawStarShape(canvas, w * 0.35, h * 0.75, w * 0.06, w * 0.025, 5, Paint()..color = illustration.accent.withOpacity(0.8));
-    _drawStarShape(canvas, w * 0.55, h * 0.82, w * 0.04, w * 0.015, 5, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawStarShape(canvas, w * 0.65, h * 0.72, w * 0.05, w * 0.02, 5, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawStarShape(canvas, w * 0.35, h * 0.75, w * 0.06, w * 0.025, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
+    _drawStarShape(canvas, w * 0.55, h * 0.82, w * 0.04, w * 0.015, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, w * 0.65, h * 0.72, w * 0.05, w * 0.02, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // 问号
     _drawText(canvas, '?', w * 0.5, h * 0.42, w * 0.1, Colors.white.withOpacity(0.7));
   }
@@ -3695,20 +3800,20 @@ class WordIllustrationPainter extends CustomPainter {
     // 睁开的眼睛 + 太阳
     final w = size.width, h = size.height;
     // 太阳
-    canvas.drawCircle(Offset(w * 0.72, h * 0.25), w * 0.1, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.72, h * 0.25), w * 0.1, Paint()..color = _dc(illustration.accent));
     // 阳光
-    final rayP = Paint()..color = illustration.accent..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final rayP = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4;
       _drawLine(canvas, w * 0.72 + cos(angle) * w * 0.13, h * 0.25 + sin(angle) * w * 0.13, w * 0.72 + cos(angle) * w * 0.18, h * 0.25 + sin(angle) * w * 0.18, rayP);
     }
     // 大眼睛（睁开）
-    final eyeP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.03;
+    final eyeP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.03;
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.4, h * 0.5), width: w * 0.3, height: h * 0.18), eyeP);
     // 瞳孔
-    canvas.drawCircle(Offset(w * 0.4, h * 0.5), w * 0.05, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.4, h * 0.5), w * 0.05, Paint()..color = _dc(illustration.accent));
     // 睫毛
-    final lashP = Paint()..color = illustration.accent..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
+    final lashP = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.27, h * 0.44, w * 0.22, h * 0.38, lashP);
     _drawLine(canvas, w * 0.35, h * 0.42, w * 0.33, h * 0.35, lashP);
     _drawLine(canvas, w * 0.45, h * 0.42, w * 0.47, h * 0.35, lashP);
@@ -3718,7 +3823,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBad(Canvas canvas, Size size) {
     // 生气的脸 + 眉毛
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 脸
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.25, p);
     // 眼睛
@@ -3737,32 +3842,32 @@ class WordIllustrationPainter extends CustomPainter {
     // 心形 + 星星 = 信仰
     final w = size.width, h = size.height;
     // 心形
-    _drawHeartAt(canvas, w * 0.35, h * 0.4, w * 0.2, h * 0.22, Paint()..color = illustration.accent);
+    _drawHeartAt(canvas, w * 0.35, h * 0.4, w * 0.2, h * 0.22, Paint()..color = _dc(illustration.accent));
     // 星星
-    _drawStarShape(canvas, w * 0.68, h * 0.35, w * 0.1, w * 0.04, 5, Paint()..color = illustration.accent.withOpacity(0.7));
+    _drawStarShape(canvas, w * 0.68, h * 0.35, w * 0.1, w * 0.04, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // 连接线（信念的桥梁）
-    final bridgeP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = w * 0.015..style = PaintingStyle.stroke;
+    final bridgeP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = w * 0.015..style = PaintingStyle.stroke;
     final bridgePath = Path()
       ..moveTo(w * 0.45, h * 0.35)
       ..quadraticBezierTo(w * 0.55, h * 0.2, w * 0.6, h * 0.33);
     canvas.drawPath(bridgePath, bridgeP);
     // 光环
-    final haloP = Paint()..color = illustration.accent.withOpacity(0.15)..style = PaintingStyle.stroke..strokeWidth = w * 0.015;
+    final haloP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15))..style = PaintingStyle.stroke..strokeWidth = w * 0.015;
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.32, haloP);
     // 文字"相信"
-    _drawText(canvas, '✦', w * 0.5, h * 0.72, w * 0.06, illustration.accent.withOpacity(0.5));
+    _drawText(canvas, '✦', w * 0.5, h * 0.72, w * 0.06, illustration.accent.withOpacity(_minOp(0.5)));
   }
 
   void _drawBest(Canvas canvas, Size size) {
     // 金牌 + 皇冠
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 奖牌圆
     canvas.drawCircle(Offset(w * 0.5, h * 0.52), w * 0.2, p);
     // 1号
     _drawText(canvas, '1', w * 0.5, h * 0.52, w * 0.18, Colors.white);
     // 绶带
-    final ribbonP = Paint()..color = illustration.bg.withOpacity(0.6)..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
+    final ribbonP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6))..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.35, h * 0.38, w * 0.3, h * 0.15, ribbonP);
     _drawLine(canvas, w * 0.65, h * 0.38, w * 0.7, h * 0.15, ribbonP);
     // 皇冠
@@ -3773,9 +3878,9 @@ class WordIllustrationPainter extends CustomPainter {
     // 向上的箭头 + 对比
     final w = size.width, h = size.height;
     // 低的方块
-    _drawRoundedRectAt(canvas, w * 0.15, h * 0.55, w * 0.2, h * 0.25, Paint()..color = illustration.bg.withOpacity(0.3));
+    _drawRoundedRectAt(canvas, w * 0.15, h * 0.55, w * 0.2, h * 0.25, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     // 高的方块
-    _drawRoundedRectAt(canvas, w * 0.5, h * 0.35, w * 0.2, h * 0.45, Paint()..color = illustration.accent);
+    _drawRoundedRectAt(canvas, w * 0.5, h * 0.35, w * 0.2, h * 0.45, Paint()..color = _dc(illustration.accent));
     // 上升箭头
     final arrowP = Paint()..color = Colors.white..strokeWidth = w * 0.03..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     final arrowPath = Path()
@@ -3790,21 +3895,21 @@ class WordIllustrationPainter extends CustomPainter {
     // 黑色月亮 + 暗色调
     final w = size.width, h = size.height;
     // 深色背景圆
-    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.28, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.28, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
     // 月牙
-    final moonP = Paint()..color = illustration.accent;
+    final moonP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.2, moonP);
     canvas.drawCircle(Offset(w * 0.58, h * 0.42), w * 0.17, Paint()..color = Color.lerp(illustration.accent, Colors.black, 0.7)!);
     // 小星星
-    _drawStarShape(canvas, w * 0.25, h * 0.25, w * 0.03, w * 0.012, 5, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawStarShape(canvas, w * 0.75, h * 0.2, w * 0.04, w * 0.016, 5, Paint()..color = illustration.accent.withOpacity(0.3));
-    _drawStarShape(canvas, w * 0.7, h * 0.7, w * 0.03, w * 0.012, 5, Paint()..color = illustration.accent.withOpacity(0.35));
+    _drawStarShape(canvas, w * 0.25, h * 0.25, w * 0.03, w * 0.012, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, w * 0.75, h * 0.2, w * 0.04, w * 0.016, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    _drawStarShape(canvas, w * 0.7, h * 0.7, w * 0.03, w * 0.012, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
   }
 
   void _drawBlue(Canvas canvas, Size size) {
     // 水滴 + 波浪
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 大水滴
     final dropPath = Path();
     dropPath.moveTo(w * 0.5, h * 0.15);
@@ -3814,7 +3919,7 @@ class WordIllustrationPainter extends CustomPainter {
     // 高光
     canvas.drawCircle(Offset(w * 0.44, h * 0.42), w * 0.04, Paint()..color = Colors.white.withOpacity(0.4));
     // 波浪底
-    final waveP = Paint()..color = illustration.accent.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final waveP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     final wavePath = Path();
     wavePath.moveTo(w * 0.1, h * 0.82);
     for (double x = 0; x <= 1; x += 0.05) {
@@ -3826,7 +3931,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBored(Canvas canvas, Size size) {
     // 无聊的脸（托腮）
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 脸
     canvas.drawCircle(Offset(w * 0.5, h * 0.38), w * 0.18, p);
     // 无聊的眼睛（半闭）
@@ -3836,12 +3941,12 @@ class WordIllustrationPainter extends CustomPainter {
     // 嘴（直的）
     _drawLine(canvas, w * 0.44, h * 0.46, w * 0.56, h * 0.46, Paint()..color = Colors.white..strokeWidth = w * 0.015..strokeCap = StrokeCap.round);
     // 手托腮
-    final handP = Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = w * 0.03..strokeCap = StrokeCap.round;
+    final handP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = w * 0.03..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.32, h * 0.5, w * 0.25, h * 0.65, handP);
     _drawLine(canvas, w * 0.68, h * 0.5, w * 0.75, h * 0.65, handP);
     // 省略号 ...
     for (int i = 0; i < 3; i++) {
-      canvas.drawCircle(Offset(w * (0.4 + i * 0.1), h * 0.72), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.3));
+      canvas.drawCircle(Offset(w * (0.4 + i * 0.1), h * 0.72), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
     }
   }
 
@@ -3852,26 +3957,26 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBorrow(Canvas canvas, Size size) {
     // 伸出手（借）
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent..strokeWidth = w * 0.035..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.035..strokeCap = StrokeCap.round;
     // 伸出的手
     _drawLine(canvas, w * 0.2, h * 0.55, w * 0.5, h * 0.45, p);
     // 手掌
-    canvas.drawCircle(Offset(w * 0.52, h * 0.44), w * 0.05, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.52, h * 0.44), w * 0.05, Paint()..color = _dc(illustration.accent));
     // 箭头指向手
-    final arrowP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.75, h * 0.35, w * 0.58, h * 0.42, arrowP);
     // 箭头头
-    final headP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final headP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.62, h * 0.37, w * 0.58, h * 0.42, headP);
     _drawLine(canvas, w * 0.62, h * 0.45, w * 0.58, h * 0.42, headP);
     // 物品（书）
-    _drawRoundedRectAt(canvas, w * 0.7, h * 0.25, w * 0.15, h * 0.12, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawRoundedRectAt(canvas, w * 0.7, h * 0.25, w * 0.15, h * 0.12, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   void _drawBreak(Canvas canvas, Size size) {
     // 破碎的碎片
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 碎片
     final shardPath1 = Path()
       ..moveTo(w * 0.3, h * 0.3)
@@ -3884,13 +3989,13 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.72, h * 0.35)
       ..lineTo(w * 0.65, h * 0.52)
       ..close();
-    canvas.drawPath(shardPath2, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(shardPath2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     final shardPath3 = Path()
       ..moveTo(w * 0.42, h * 0.52)
       ..lineTo(w * 0.58, h * 0.5)
       ..lineTo(w * 0.52, h * 0.7)
       ..close();
-    canvas.drawPath(shardPath3, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawPath(shardPath3, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // 裂缝线
     final crackP = Paint()..color = Colors.white..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.35, h * 0.32, w * 0.45, h * 0.45, crackP);
@@ -3903,12 +4008,12 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBrilliant(Canvas canvas, Size size) {
     // 灯泡 + 闪光
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 灯泡体
     canvas.drawCircle(Offset(w * 0.5, h * 0.38), w * 0.16, p);
     // 灯泡底座
-    _drawRoundedRectAt(canvas, w * 0.43, h * 0.52, w * 0.14, h * 0.06, Paint()..color = illustration.accent.withOpacity(0.7));
-    _drawRoundedRectAt(canvas, w * 0.45, h * 0.58, w * 0.1, h * 0.04, Paint()..color = illustration.accent.withOpacity(0.5));
+    _drawRoundedRectAt(canvas, w * 0.43, h * 0.52, w * 0.14, h * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
+    _drawRoundedRectAt(canvas, w * 0.45, h * 0.58, w * 0.1, h * 0.04, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // 灯丝
     final filP = Paint()..color = Colors.white..strokeWidth = w * 0.015..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     final filPath = Path()
@@ -3917,7 +4022,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.54, h * 0.44);
     canvas.drawPath(filPath, filP);
     // 光芒
-    final rayP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final rayP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4;
       _drawLine(canvas, w * 0.5 + cos(angle) * w * 0.22, h * 0.38 + sin(angle) * w * 0.22, w * 0.5 + cos(angle) * w * 0.28, h * 0.38 + sin(angle) * w * 0.28, rayP);
@@ -3931,14 +4036,14 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBrown(Canvas canvas, Size size) {
     // 咖啡杯 / 巧克力
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 杯体
     _drawRoundedRectAt(canvas, w * 0.3, h * 0.3, w * 0.3, h * 0.35, p);
     // 杯把手
-    final handleP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.03;
+    final handleP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.03;
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.63, h * 0.45), width: w * 0.12, height: h * 0.15), -pi * 0.4, pi * 0.8, false, handleP);
     // 蒸汽
-    final steamP = Paint()..color = illustration.accent.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
+    final steamP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final sx = w * (0.37 + i * 0.1);
       final steamPath = Path()
@@ -3952,19 +4057,19 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBuild(Canvas canvas, Size size) {
     // 砖块 + 锤子
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 砖墙
     for (int row = 0; row < 3; row++) {
       for (int col = 0; col < 4; col++) {
         final x = w * (0.15 + col * 0.18 + (row.isEven ? 0.09 : 0));
         final y = h * (0.45 + row * 0.13);
-        _drawRoundedRectAt(canvas, x, y, w * 0.16, h * 0.1, Paint()..color = illustration.accent.withOpacity(0.5 + col * 0.1));
+        _drawRoundedRectAt(canvas, x, y, w * 0.16, h * 0.1, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5 + col * 0.1)));
       }
     }
     // 锤子
-    final hammerP = Paint()..color = illustration.bg;
+    final hammerP = Paint()..color = _dc(illustration.bg);
     // 锤柄
-    _drawLine(canvas, w * 0.35, h * 0.2, w * 0.65, h * 0.55, Paint()..color = illustration.bg..strokeWidth = w * 0.03..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.35, h * 0.2, w * 0.65, h * 0.55, Paint()..color = _dc(illustration.bg)..strokeWidth = w * 0.03..strokeCap = StrokeCap.round);
     // 锤头
     final headPath = Path()
       ..moveTo(w * 0.3, h * 0.22)
@@ -3984,7 +4089,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.75, h * 0.4, w * 0.65, h * 0.65)
       ..quadraticBezierTo(w * 0.5, h * 0.8, w * 0.35, h * 0.65)
       ..quadraticBezierTo(w * 0.25, h * 0.4, w * 0.5, h * 0.1);
-    canvas.drawPath(outerPath, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(outerPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // 内焰（黄）
     final innerPath = Path()
       ..moveTo(w * 0.5, h * 0.25)
@@ -3999,23 +4104,23 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBusy(Canvas canvas, Size size) {
     // 旋转的齿轮（忙碌）
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 大齿轮
     _drawGearShape(canvas, w * 0.4, h * 0.42, w * 0.18, 8, p);
     // 小齿轮
-    _drawGearShape(canvas, w * 0.68, h * 0.55, w * 0.1, 6, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawGearShape(canvas, w * 0.68, h * 0.55, w * 0.1, 6, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // 中心圆
     canvas.drawCircle(Offset(w * 0.4, h * 0.42), w * 0.06, Paint()..color = Colors.white.withOpacity(0.3));
     canvas.drawCircle(Offset(w * 0.68, h * 0.55), w * 0.03, Paint()..color = Colors.white.withOpacity(0.3));
     // 旋转标记
-    final spinP = Paint()..color = illustration.accent.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
+    final spinP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.4, h * 0.42), width: w * 0.35, height: w * 0.35), -pi * 0.3, pi * 0.5, false, spinP);
   }
 
   void _drawCarry(Canvas canvas, Size size) {
     // 搬东西的人
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 箱子
     _drawRoundedRectAt(canvas, w * 0.55, h * 0.28, w * 0.28, h * 0.22, p);
     // 箱子条纹
@@ -4024,10 +4129,10 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawCircle(Offset(w * 0.32, h * 0.48), w * 0.06, p);
     _drawRoundedRectAt(canvas, w * 0.26, h * 0.55, w * 0.12, h * 0.18, p);
     // 手臂托箱子
-    _drawLine(canvas, w * 0.38, h * 0.58, w * 0.55, h * 0.45, Paint()..color = illustration.accent..strokeWidth = w * 0.03..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.38, h * 0.58, w * 0.55, h * 0.45, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.03..strokeCap = StrokeCap.round);
     // 腿
-    _drawLine(canvas, w * 0.3, h * 0.73, w * 0.25, h * 0.88, Paint()..color = illustration.accent..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
-    _drawLine(canvas, w * 0.36, h * 0.73, w * 0.4, h * 0.88, Paint()..color = illustration.accent..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.3, h * 0.73, w * 0.25, h * 0.88, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.36, h * 0.73, w * 0.4, h * 0.88, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
   }
 
   void _drawChat(Canvas canvas, Size size) {
@@ -4038,27 +4143,27 @@ class WordIllustrationPainter extends CustomPainter {
       Rect.fromLTWH(w * 0.12, h * 0.18, w * 0.5, h * 0.28),
       Radius.circular(w * 0.06),
     );
-    canvas.drawRRect(bubble1, Paint()..color = illustration.accent);
+    canvas.drawRRect(bubble1, Paint()..color = _dc(illustration.accent));
     // 小气泡尾巴
     final tail1 = Path()
       ..moveTo(w * 0.25, h * 0.46)
       ..lineTo(w * 0.18, h * 0.56)
       ..lineTo(w * 0.32, h * 0.46)
       ..close();
-    canvas.drawPath(tail1, Paint()..color = illustration.accent);
+    canvas.drawPath(tail1, Paint()..color = _dc(illustration.accent));
     // 小气泡（回复）
     final bubble2 = RRect.fromRectAndRadius(
       Rect.fromLTWH(w * 0.35, h * 0.55, w * 0.38, h * 0.2),
       Radius.circular(w * 0.05),
     );
-    canvas.drawRRect(bubble2, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawRRect(bubble2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // 气泡尾巴
     final tail2 = Path()
       ..moveTo(w * 0.55, h * 0.75)
       ..lineTo(w * 0.62, h * 0.82)
       ..lineTo(w * 0.5, h * 0.75)
       ..close();
-    canvas.drawPath(tail2, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawPath(tail2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // 文字点
     for (int i = 0; i < 3; i++) {
       canvas.drawCircle(Offset(w * (0.25 + i * 0.1), h * 0.32), w * 0.02, Paint()..color = Colors.white);
@@ -4068,7 +4173,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawCheap(Canvas canvas, Size size) {
     // 低价标签
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 价格标签
     final tagPath = Path()
       ..moveTo(w * 0.2, h * 0.3)
@@ -4092,9 +4197,9 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawChoose(Canvas canvas, Size size) {
     // 分岔路 + 选择标记
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    final p = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     // 主路
-    _drawLine(canvas, w * 0.5, h * 0.85, w * 0.5, h * 0.5, Paint()..color = illustration.accent..strokeWidth = w * 0.04..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.5, h * 0.85, w * 0.5, h * 0.5, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.04..strokeCap = StrokeCap.round);
     // 分岔左
     final leftPath = Path()
       ..moveTo(w * 0.5, h * 0.5)
@@ -4117,7 +4222,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawClap(Canvas canvas, Size size) {
     // 鼓掌双手
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 左手掌
     final leftHand = Path()
       ..moveTo(w * 0.3, h * 0.6)
@@ -4139,7 +4244,7 @@ class WordIllustrationPainter extends CustomPainter {
     // 碰撞效果
     _drawStarShape(canvas, w * 0.5, h * 0.35, w * 0.06, w * 0.025, 5, Paint()..color = Colors.yellow.withOpacity(0.7));
     // 音效线
-    final effectP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
+    final effectP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.35, h * 0.22, w * 0.3, h * 0.15, effectP);
     _drawLine(canvas, w * 0.65, h * 0.22, w * 0.7, h * 0.15, effectP);
   }
@@ -4147,10 +4252,10 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawClever(Canvas canvas, Size size) {
     // 灯泡（聪明）
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 灯泡
     canvas.drawCircle(Offset(w * 0.5, h * 0.35), w * 0.15, p);
-    _drawRoundedRectAt(canvas, w * 0.44, h * 0.48, w * 0.12, h * 0.05, Paint()..color = illustration.accent.withOpacity(0.7));
+    _drawRoundedRectAt(canvas, w * 0.44, h * 0.48, w * 0.12, h * 0.05, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // 灯丝
     final filP = Paint()..color = Colors.white..strokeWidth = w * 0.012..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     final filPath = Path()
@@ -4162,7 +4267,7 @@ class WordIllustrationPainter extends CustomPainter {
     final brainP = Paint()..color = Colors.white.withOpacity(0.4)..strokeWidth = w * 0.01..style = PaintingStyle.stroke;
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.47, h * 0.35), width: w * 0.06, height: h * 0.06), 0, pi * 1.5, false, brainP);
     // 光芒
-    final rayP = Paint()..color = illustration.accent.withOpacity(0.25)..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
+    final rayP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
     for (int i = 0; i < 6; i++) {
       final angle = i * pi / 3 + pi / 6;
       _drawLine(canvas, w * 0.5 + cos(angle) * w * 0.2, h * 0.35 + sin(angle) * w * 0.2, w * 0.5 + cos(angle) * w * 0.25, h * 0.35 + sin(angle) * w * 0.25, rayP);
@@ -4172,19 +4277,19 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawClosed(Canvas canvas, Size size) {
     // 关闭的门
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 门框
     _drawRoundedRectAt(canvas, w * 0.25, h * 0.15, w * 0.5, h * 0.7, p);
     // 门
-    _drawRoundedRectAt(canvas, w * 0.28, h * 0.18, w * 0.44, h * 0.67, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawRoundedRectAt(canvas, w * 0.28, h * 0.18, w * 0.44, h * 0.67, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // 门缝
-    _drawLine(canvas, w * 0.5, h * 0.2, w * 0.5, h * 0.83, Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = w * 0.01);
+    _drawLine(canvas, w * 0.5, h * 0.2, w * 0.5, h * 0.83, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = w * 0.01);
     // 门把手
     canvas.drawCircle(Offset(w * 0.6, h * 0.52), w * 0.025, Paint()..color = Colors.white);
     // 锁
     _drawRoundedRectAt(canvas, w * 0.57, h * 0.6, w * 0.05, h * 0.06, Paint()..color = Colors.white.withOpacity(0.6));
     // X标记（关闭）
-    final xP = Paint()..color = illustration.bg..strokeWidth = w * 0.03..strokeCap = StrokeCap.round;
+    final xP = Paint()..color = _dc(illustration.bg)..strokeWidth = w * 0.03..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.75, h * 0.1, w * 0.9, h * 0.22, xP);
     _drawLine(canvas, w * 0.9, h * 0.1, w * 0.75, h * 0.22, xP);
   }
@@ -4193,15 +4298,15 @@ class WordIllustrationPainter extends CustomPainter {
     // 云朵
     final w = size.width, h = size.height;
     // 大云
-    canvas.drawCircle(Offset(w * 0.4, h * 0.42), w * 0.14, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(w * 0.55, h * 0.38), w * 0.16, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(w * 0.3, h * 0.48), w * 0.1, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(w * 0.65, h * 0.45), w * 0.12, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.4, h * 0.42), w * 0.14, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(w * 0.55, h * 0.38), w * 0.16, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(w * 0.3, h * 0.48), w * 0.1, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(w * 0.65, h * 0.45), w * 0.12, Paint()..color = _dc(illustration.accent));
     // 底部填充
-    _drawRoundedRectAt(canvas, w * 0.2, h * 0.43, w * 0.55, h * 0.12, Paint()..color = illustration.accent);
+    _drawRoundedRectAt(canvas, w * 0.2, h * 0.43, w * 0.55, h * 0.12, Paint()..color = _dc(illustration.accent));
     // 小云（远景）
-    canvas.drawCircle(Offset(w * 0.2, h * 0.25), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.3));
-    canvas.drawCircle(Offset(w * 0.28, h * 0.23), w * 0.07, Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawCircle(Offset(w * 0.2, h * 0.25), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    canvas.drawCircle(Offset(w * 0.28, h * 0.23), w * 0.07, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
     // 阴影
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.48, h * 0.6), width: w * 0.5, height: h * 0.04), Paint()..color = Colors.black.withOpacity(0.05));
   }
@@ -4210,10 +4315,10 @@ class WordIllustrationPainter extends CustomPainter {
     // 完成的圆环 + 对勾
     final w = size.width, h = size.height;
     // 圆环（进度100%）
-    final ringP = Paint()..color = illustration.accent.withOpacity(0.2)..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
+    final ringP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.25, ringP);
     // 完成弧
-    final doneP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
+    final doneP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.5, h * 0.45), width: w * 0.5, height: w * 0.5), -pi * 0.5, pi * 2, false, doneP);
     // 大对勾
     final checkP = Paint()..color = Colors.white..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
@@ -4227,12 +4332,12 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawCool(Canvas canvas, Size size) {
     // 太阳镜（酷）
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 镜框
-    final frameP = Paint()..color = illustration.accent..strokeWidth = w * 0.02..style = PaintingStyle.stroke;
-    _drawLine(canvas, w * 0.15, h * 0.4, w * 0.3, h * 0.4, Paint()..color = illustration.accent..strokeWidth = w * 0.02..strokeCap = StrokeCap.round);
-    _drawLine(canvas, w * 0.7, h * 0.4, w * 0.85, h * 0.4, Paint()..color = illustration.accent..strokeWidth = w * 0.02..strokeCap = StrokeCap.round);
-    _drawLine(canvas, w * 0.45, h * 0.4, w * 0.55, h * 0.4, Paint()..color = illustration.accent..strokeWidth = w * 0.015..strokeCap = StrokeCap.round);
+    final frameP = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.02..style = PaintingStyle.stroke;
+    _drawLine(canvas, w * 0.15, h * 0.4, w * 0.3, h * 0.4, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.02..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.7, h * 0.4, w * 0.85, h * 0.4, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.02..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.45, h * 0.4, w * 0.55, h * 0.4, Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.015..strokeCap = StrokeCap.round);
     // 左镜片
     _drawRoundedRectAt(canvas, w * 0.15, h * 0.3, w * 0.25, h * 0.18, p);
     // 右镜片
@@ -4241,7 +4346,7 @@ class WordIllustrationPainter extends CustomPainter {
     _drawLine(canvas, w * 0.2, h * 0.33, w * 0.3, h * 0.38, Paint()..color = Colors.white.withOpacity(0.3)..strokeWidth = w * 0.015..strokeCap = StrokeCap.round);
     _drawLine(canvas, w * 0.65, h * 0.33, w * 0.75, h * 0.38, Paint()..color = Colors.white.withOpacity(0.3)..strokeWidth = w * 0.015..strokeCap = StrokeCap.round);
     // 微笑
-    final smileP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final smileP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.5, h * 0.62), width: w * 0.2, height: h * 0.1), pi * 0.1, pi * 0.8, false, smileP);
   }
 
@@ -4249,47 +4354,47 @@ class WordIllustrationPainter extends CustomPainter {
     // 绿色大对勾
     final w = size.width, h = size.height;
     // 圆形背景
-    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.28, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.28, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
     // 对勾
-    final checkP = Paint()..color = illustration.accent..strokeWidth = w * 0.06..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    final checkP = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.06..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     final checkPath = Path()
       ..moveTo(w * 0.28, h * 0.45)
       ..lineTo(w * 0.44, h * 0.6)
       ..lineTo(w * 0.72, h * 0.3);
     canvas.drawPath(checkPath, checkP);
     // 光环
-    final haloP = Paint()..color = illustration.accent.withOpacity(0.1)..style = PaintingStyle.stroke..strokeWidth = w * 0.02;
+    final haloP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.1))..style = PaintingStyle.stroke..strokeWidth = w * 0.02;
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.35, haloP);
   }
 
   void _drawCount(Canvas canvas, Size size) {
     // 数字 + 手指
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 数字123
     _drawText(canvas, '1', w * 0.25, h * 0.3, w * 0.12, illustration.accent);
-    _drawText(canvas, '2', w * 0.5, h * 0.35, w * 0.12, illustration.accent.withOpacity(0.7));
-    _drawText(canvas, '3', w * 0.75, h * 0.3, w * 0.12, illustration.accent.withOpacity(0.5));
+    _drawText(canvas, '2', w * 0.5, h * 0.35, w * 0.12, illustration.accent.withOpacity(_minOp(0.7)));
+    _drawText(canvas, '3', w * 0.75, h * 0.3, w * 0.12, illustration.accent.withOpacity(_minOp(0.5)));
     // 手（数数手势）
-    final handP = Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = w * 0.03..strokeCap = StrokeCap.round;
+    final handP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = w * 0.03..strokeCap = StrokeCap.round;
     // 手掌
-    _drawRoundedRectAt(canvas, w * 0.25, h * 0.55, w * 0.18, h * 0.15, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawRoundedRectAt(canvas, w * 0.25, h * 0.55, w * 0.18, h * 0.15, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // 手指
     for (int i = 0; i < 5; i++) {
       final fx = w * (0.26 + i * 0.04);
       final fh = h * (0.1 + (i == 2 ? 0.06 : 0) + (i == 3 ? 0.03 : 0));
-      _drawRoundedRectAt(canvas, fx, h * 0.5 - fh, w * 0.03, fh, Paint()..color = illustration.accent.withOpacity(0.5));
+      _drawRoundedRectAt(canvas, fx, h * 0.5 - fh, w * 0.03, fh, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     }
   }
 
   void _drawCurly(Canvas canvas, Size size) {
     // 卷发
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 头
-    canvas.drawCircle(Offset(w * 0.5, h * 0.5), w * 0.15, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.5), w * 0.15, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // 卷发螺旋
-    final curlP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
+    final curlP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
     for (int i = 0; i < 7; i++) {
       final angle = i * pi / 3.5;
       final r = w * 0.15;
@@ -4311,14 +4416,14 @@ class WordIllustrationPainter extends CustomPainter {
     // 思考 + 决定（灯泡亮起）
     final w = size.width, h = size.height;
     // 思考气泡
-    final thinkP = Paint()..color = illustration.accent.withOpacity(0.2)..style = PaintingStyle.stroke..strokeWidth = w * 0.015;
+    final thinkP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..style = PaintingStyle.stroke..strokeWidth = w * 0.015;
     canvas.drawCircle(Offset(w * 0.5, h * 0.35), w * 0.2, thinkP);
     // 小点连到头
-    canvas.drawCircle(Offset(w * 0.35, h * 0.55), w * 0.02, Paint()..color = illustration.accent.withOpacity(0.3));
-    canvas.drawCircle(Offset(w * 0.3, h * 0.6), w * 0.025, Paint()..color = illustration.accent.withOpacity(0.25));
-    canvas.drawCircle(Offset(w * 0.25, h * 0.65), w * 0.03, Paint()..color = illustration.accent.withOpacity(0.2));
+    canvas.drawCircle(Offset(w * 0.35, h * 0.55), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    canvas.drawCircle(Offset(w * 0.3, h * 0.6), w * 0.025, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
+    canvas.drawCircle(Offset(w * 0.25, h * 0.65), w * 0.03, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
     // 灯泡亮起（决定）
-    canvas.drawCircle(Offset(w * 0.5, h * 0.35), w * 0.1, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.35), w * 0.1, Paint()..color = _dc(illustration.accent));
     // 对勾
     final checkP = Paint()..color = Colors.white..strokeWidth = w * 0.025..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     final checkPath = Path()
@@ -4331,11 +4436,11 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawDelicious(Canvas canvas, Size size) {
     // 美食（蛋糕/冰淇淋）
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     // 蛋糕底
     _drawRoundedRectAt(canvas, w * 0.2, h * 0.55, w * 0.6, h * 0.2, p);
     // 蛋糕层
-    _drawRoundedRectAt(canvas, w * 0.25, h * 0.42, w * 0.5, h * 0.15, Paint()..color = illustration.accent.withOpacity(0.7));
+    _drawRoundedRectAt(canvas, w * 0.25, h * 0.42, w * 0.5, h * 0.15, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // 糖霜
     final frostP = Paint()..color = Colors.white.withOpacity(0.6)..style = PaintingStyle.stroke..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
     final frostPath = Path();
@@ -4360,7 +4465,7 @@ class WordIllustrationPainter extends CustomPainter {
     // 铅笔 + 草图
     final w = size.width, h = size.height;
     // 铅笔
-    final pencilP = Paint()..color = illustration.accent;
+    final pencilP = Paint()..color = _dc(illustration.accent);
     final pencilPath = Path()
       ..moveTo(w * 0.25, h * 0.75)
       ..lineTo(w * 0.7, h * 0.2)
@@ -4374,9 +4479,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.22, h * 0.82)
       ..lineTo(w * 0.3, h * 0.77)
       ..close();
-    canvas.drawPath(tipPath, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawPath(tipPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // 草图线
-    final sketchP = Paint()..color = illustration.accent.withOpacity(0.25)..style = PaintingStyle.stroke..strokeWidth = w * 0.01..strokeCap = StrokeCap.round;
+    final sketchP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..style = PaintingStyle.stroke..strokeWidth = w * 0.01..strokeCap = StrokeCap.round;
     // 画圆
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.55, h * 0.55), width: w * 0.2, height: h * 0.15), sketchP);
     // 画方
@@ -4394,16 +4499,16 @@ class WordIllustrationPainter extends CustomPainter {
     // 渐隐的人/物
     final w = size.width, h = size.height;
     // 完全显示
-    canvas.drawCircle(Offset(w * 0.35, h * 0.4), w * 0.08, Paint()..color = illustration.accent);
-    _drawRoundedRectAt(canvas, w * 0.28, h * 0.48, w * 0.14, h * 0.2, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.35, h * 0.4), w * 0.08, Paint()..color = _dc(illustration.accent));
+    _drawRoundedRectAt(canvas, w * 0.28, h * 0.48, w * 0.14, h * 0.2, Paint()..color = _dc(illustration.accent));
     // 半透明
-    canvas.drawCircle(Offset(w * 0.55, h * 0.4), w * 0.08, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawRoundedRectAt(canvas, w * 0.48, h * 0.48, w * 0.14, h * 0.2, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.55, h * 0.4), w * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawRoundedRectAt(canvas, w * 0.48, h * 0.48, w * 0.14, h * 0.2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // 几乎消失
-    canvas.drawCircle(Offset(w * 0.75, h * 0.4), w * 0.08, Paint()..color = illustration.accent.withOpacity(0.12));
-    _drawRoundedRectAt(canvas, w * 0.68, h * 0.48, w * 0.14, h * 0.2, Paint()..color = illustration.accent.withOpacity(0.12));
+    canvas.drawCircle(Offset(w * 0.75, h * 0.4), w * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.12)));
+    _drawRoundedRectAt(canvas, w * 0.68, h * 0.48, w * 0.14, h * 0.2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.12)));
     // 消散粒子
-    final partP = Paint()..color = illustration.accent.withOpacity(0.15);
+    final partP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15));
     canvas.drawCircle(Offset(w * 0.82, h * 0.35), w * 0.015, partP);
     canvas.drawCircle(Offset(w * 0.85, h * 0.42), w * 0.01, partP);
     canvas.drawCircle(Offset(w * 0.88, h * 0.38), w * 0.008, partP);
@@ -4416,23 +4521,23 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawDo(Canvas canvas, Size size) {
     // 勾号 ✓ 表示"做"
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.06..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.06..strokeCap = StrokeCap.round;
     final path = Path()
       ..moveTo(w * 0.25, h * 0.5)
       ..lineTo(w * 0.42, h * 0.68)
       ..lineTo(w * 0.75, h * 0.32);
     canvas.drawPath(path, p);
     // circle behind
-    canvas.drawCircle(Offset(w * 0.5, h * 0.5), w * 0.3, Paint()..color = illustration.bg.withOpacity(0.3));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.5), w * 0.3, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
   }
 
   void _drawDouble(Canvas canvas, Size size) {
     // 双层/两个重叠矩形
     final w = size.width, h = size.height;
-    _drawRoundedRectAt(canvas, w * 0.22, h * 0.3, w * 0.32, h * 0.4, Paint()..color = illustration.accent.withOpacity(0.5));
-    _drawRoundedRectAt(canvas, w * 0.38, h * 0.25, w * 0.32, h * 0.4, Paint()..color = illustration.accent);
+    _drawRoundedRectAt(canvas, w * 0.22, h * 0.3, w * 0.32, h * 0.4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    _drawRoundedRectAt(canvas, w * 0.38, h * 0.25, w * 0.32, h * 0.4, Paint()..color = _dc(illustration.accent));
     // "x2" text
-    _drawText(canvas, '×2', w * 0.5, h * 0.78, w * 0.1, illustration.accent.withOpacity(0.6));
+    _drawText(canvas, '×2', w * 0.5, h * 0.78, w * 0.1, illustration.accent.withOpacity(_minOp(0.6)));
   }
 
   void _drawDrop(Canvas canvas, Size size) {
@@ -4444,24 +4549,24 @@ class WordIllustrationPainter extends CustomPainter {
       ..moveTo(cx, cy - r * 1.5)
       ..cubicTo(cx + r, cy - r * 0.5, cx + r, cy + r, cx, cy + r * 1.2)
       ..cubicTo(cx - r, cy + r, cx - r, cy - r * 0.5, cx, cy - r * 1.5);
-    canvas.drawPath(path, Paint()..color = illustration.accent);
+    canvas.drawPath(path, Paint()..color = _dc(illustration.accent));
     // splash
-    canvas.drawCircle(Offset(w * 0.35, h * 0.78), w * 0.04, Paint()..color = illustration.accent.withOpacity(0.3));
-    canvas.drawCircle(Offset(w * 0.62, h * 0.75), w * 0.03, Paint()..color = illustration.accent.withOpacity(0.25));
+    canvas.drawCircle(Offset(w * 0.35, h * 0.78), w * 0.04, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    canvas.drawCircle(Offset(w * 0.62, h * 0.75), w * 0.03, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
   }
 
   void _drawEarly(Canvas canvas, Size size) {
     // 日出 + 时钟
     final w = size.width, h = size.height;
     // horizon
-    canvas.drawRect(Rect.fromLTWH(0, h * 0.6, w, h * 0.4), Paint()..color = illustration.bg.withOpacity(0.3));
+    canvas.drawRect(Rect.fromLTWH(0, h * 0.6, w, h * 0.4), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     // sun rising
-    canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.12, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.12, Paint()..color = _dc(illustration.accent));
     // rays
     for (int i = 0; i < 7; i++) {
       final a = -pi * 0.8 + i * pi * 0.8 / 6;
       final r1 = w * 0.14, r2 = w * 0.22;
-      _drawLine(canvas, w * 0.5 + cos(a) * r1, h * 0.55 + sin(a) * r1, w * 0.5 + cos(a) * r2, h * 0.55 + sin(a) * r2, Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2);
+      _drawLine(canvas, w * 0.5 + cos(a) * r1, h * 0.55 + sin(a) * r1, w * 0.5 + cos(a) * r2, h * 0.55 + sin(a) * r2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2);
     }
   }
 
@@ -4474,32 +4579,32 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.65, h * 0.75)
       ..lineTo(w * 0.7, h * 0.25)
       ..close();
-    canvas.drawPath(path, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3);
+    canvas.drawPath(path, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3);
     // drip lines inside
-    _drawLine(canvas, w * 0.42, h * 0.4, w * 0.42, h * 0.65, Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 2);
-    _drawLine(canvas, w * 0.55, h * 0.45, w * 0.55, h * 0.6, Paint()..color = illustration.accent.withOpacity(0.15)..strokeWidth = 2);
+    _drawLine(canvas, w * 0.42, h * 0.4, w * 0.42, h * 0.65, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 2);
+    _drawLine(canvas, w * 0.55, h * 0.45, w * 0.55, h * 0.6, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15))..strokeWidth = 2);
   }
 
   void _drawEnormous(Canvas canvas, Size size) {
     // 巨大的东西 vs 小参照
     final w = size.width, h = size.height;
     // small circle
-    canvas.drawCircle(Offset(w * 0.25, h * 0.7), w * 0.04, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.25, h * 0.7), w * 0.04, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // enormous circle
-    canvas.drawCircle(Offset(w * 0.55, h * 0.45), w * 0.25, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.55, h * 0.45), w * 0.25, Paint()..color = _dc(illustration.accent));
     // arrow
-    _drawLine(canvas, w * 0.3, h * 0.65, w * 0.42, h * 0.52, Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = 2);
+    _drawLine(canvas, w * 0.3, h * 0.65, w * 0.42, h * 0.52, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = 2);
   }
 
   void _drawEnter(Canvas canvas, Size size) {
     // 进入箭头 → 门口
     final w = size.width, h = size.height;
     // door frame
-    _drawRoundedRectAt(canvas, w * 0.35, h * 0.2, w * 0.3, h * 0.55, Paint()..color = illustration.accent.withOpacity(0.25));
+    _drawRoundedRectAt(canvas, w * 0.35, h * 0.2, w * 0.3, h * 0.55, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
     // door opening
-    canvas.drawRect(Rect.fromLTWH(w * 0.4, h * 0.35, w * 0.2, h * 0.4), Paint()..color = illustration.bg);
+    canvas.drawRect(Rect.fromLTWH(w * 0.4, h * 0.35, w * 0.2, h * 0.4), Paint()..color = _dc(illustration.bg));
     // arrow pointing in
-    final ap = Paint()..color = illustration.accent..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final ap = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     final path = Path()
       ..moveTo(w * 0.5, h * 0.88)
       ..lineTo(w * 0.5, h * 0.6)
@@ -4512,12 +4617,12 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawExcellent(Canvas canvas, Size size) {
     // A+ 星星
     final w = size.width, h = size.height;
-    _drawStarShape(canvas, w * 0.5, h * 0.4, w * 0.22, w * 0.1, 5, Paint()..color = illustration.accent);
+    _drawStarShape(canvas, w * 0.5, h * 0.4, w * 0.22, w * 0.1, 5, Paint()..color = _dc(illustration.accent));
     _drawText(canvas, 'A+', w * 0.5, h * 0.42, w * 0.1, Colors.white);
     // sparkle dots
-    canvas.drawCircle(Offset(w * 0.25, h * 0.3), w * 0.025, Paint()..color = illustration.accent.withOpacity(0.5));
-    canvas.drawCircle(Offset(w * 0.78, h * 0.28), w * 0.02, Paint()..color = illustration.accent.withOpacity(0.4));
-    canvas.drawCircle(Offset(w * 0.72, h * 0.65), w * 0.018, Paint()..color = illustration.accent.withOpacity(0.35));
+    canvas.drawCircle(Offset(w * 0.25, h * 0.3), w * 0.025, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(w * 0.78, h * 0.28), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    canvas.drawCircle(Offset(w * 0.72, h * 0.65), w * 0.018, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
   }
 
   void _drawExciting(Canvas canvas, Size size) {
@@ -4529,9 +4634,9 @@ class WordIllustrationPainter extends CustomPainter {
       final a = i * pi / 6;
       final r1 = w * 0.06, r2 = w * 0.2 + (i % 3) * w * 0.04;
       _drawLine(canvas, cx + cos(a) * r1, cy + sin(a) * r1, cx + cos(a) * r2, cy + sin(a) * r2,
-          Paint()..color = illustration.accent.withOpacity(0.5 + (i % 3) * 0.15)..strokeWidth = 2..strokeCap = StrokeCap.round);
+          Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5 + (i % 3) * 0.15))..strokeWidth = 2..strokeCap = StrokeCap.round);
     }
-    canvas.drawCircle(Offset(cx, cy), w * 0.05, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(cx, cy), w * 0.05, Paint()..color = _dc(illustration.accent));
   }
 
   void _drawExpensive(Canvas canvas, Size size) {
@@ -4551,10 +4656,10 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     // speech bubble
     final bubble = RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.15, h * 0.2, w * 0.55, h * 0.35), Radius.circular(w * 0.06));
-    canvas.drawRRect(bubble, Paint()..color = illustration.accent);
+    canvas.drawRRect(bubble, Paint()..color = _dc(illustration.accent));
     // tail
     final tail = Path()..moveTo(w * 0.35, h * 0.55)..lineTo(w * 0.3, h * 0.65)..lineTo(w * 0.45, h * 0.55)..close();
-    canvas.drawPath(tail, Paint()..color = illustration.accent);
+    canvas.drawPath(tail, Paint()..color = _dc(illustration.accent));
     // lines inside bubble
     _drawLine(canvas, w * 0.25, h * 0.32, w * 0.6, h * 0.32, Paint()..color = Colors.white.withOpacity(0.7)..strokeWidth = 2);
     _drawLine(canvas, w * 0.25, h * 0.4, w * 0.52, h * 0.4, Paint()..color = Colors.white.withOpacity(0.5)..strokeWidth = 2);
@@ -4567,13 +4672,13 @@ class WordIllustrationPainter extends CustomPainter {
     // 放大镜 + 指南针
     final w = size.width, h = size.height;
     // magnifying glass
-    canvas.drawCircle(Offset(w * 0.4, h * 0.4), w * 0.15, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4);
-    _drawLine(canvas, w * 0.5, h * 0.52, w * 0.65, h * 0.68, Paint()..color = illustration.accent..strokeWidth = 4..strokeCap = StrokeCap.round);
+    canvas.drawCircle(Offset(w * 0.4, h * 0.4), w * 0.15, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4);
+    _drawLine(canvas, w * 0.5, h * 0.52, w * 0.65, h * 0.68, Paint()..color = _dc(illustration.accent)..strokeWidth = 4..strokeCap = StrokeCap.round);
     // sparkles inside
-    canvas.drawCircle(Offset(w * 0.35, h * 0.35), w * 0.02, Paint()..color = illustration.accent.withOpacity(0.4));
-    canvas.drawCircle(Offset(w * 0.45, h * 0.38), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawCircle(Offset(w * 0.35, h * 0.35), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    canvas.drawCircle(Offset(w * 0.45, h * 0.38), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
     // compass marks
-    canvas.drawCircle(Offset(w * 0.75, h * 0.3), w * 0.08, Paint()..color = illustration.accent.withOpacity(0.2));
+    canvas.drawCircle(Offset(w * 0.75, h * 0.3), w * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
     _drawText(canvas, 'N', w * 0.75, h * 0.24, w * 0.06, illustration.accent);
   }
 
@@ -4581,33 +4686,33 @@ class WordIllustrationPainter extends CustomPainter {
     // 天平/平衡
     final w = size.width, h = size.height;
     // base
-    _drawLine(canvas, w * 0.5, h * 0.3, w * 0.5, h * 0.7, Paint()..color = illustration.accent..strokeWidth = 3);
+    _drawLine(canvas, w * 0.5, h * 0.3, w * 0.5, h * 0.7, Paint()..color = _dc(illustration.accent)..strokeWidth = 3);
     // beam
-    _drawLine(canvas, w * 0.2, h * 0.35, w * 0.8, h * 0.35, Paint()..color = illustration.accent..strokeWidth = 3);
+    _drawLine(canvas, w * 0.2, h * 0.35, w * 0.8, h * 0.35, Paint()..color = _dc(illustration.accent)..strokeWidth = 3);
     // left pan
-    _drawLine(canvas, w * 0.2, h * 0.35, w * 0.2, h * 0.5, Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = 2);
-    canvas.drawCircle(Offset(w * 0.2, h * 0.52), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawLine(canvas, w * 0.2, h * 0.35, w * 0.2, h * 0.5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = 2);
+    canvas.drawCircle(Offset(w * 0.2, h * 0.52), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // right pan
-    _drawLine(canvas, w * 0.8, h * 0.35, w * 0.8, h * 0.5, Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = 2);
-    canvas.drawCircle(Offset(w * 0.8, h * 0.52), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawLine(canvas, w * 0.8, h * 0.35, w * 0.8, h * 0.5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = 2);
+    canvas.drawCircle(Offset(w * 0.8, h * 0.52), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // fulcrum
     final tri = Path()..moveTo(w * 0.5, h * 0.7)..lineTo(w * 0.43, h * 0.78)..lineTo(w * 0.57, h * 0.78)..close();
-    canvas.drawPath(tri, Paint()..color = illustration.accent);
+    canvas.drawPath(tri, Paint()..color = _dc(illustration.accent));
   }
 
   void _drawFantastic(Canvas canvas, Size size) {
     // 魔杖 + 星星
     final w = size.width, h = size.height;
     // wand
-    _drawLine(canvas, w * 0.2, h * 0.75, w * 0.6, h * 0.25, Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.2, h * 0.75, w * 0.6, h * 0.25, Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round);
     // star at tip
-    _drawStarShape(canvas, w * 0.6, h * 0.25, w * 0.1, w * 0.04, 5, Paint()..color = illustration.accent);
+    _drawStarShape(canvas, w * 0.6, h * 0.25, w * 0.1, w * 0.04, 5, Paint()..color = _dc(illustration.accent));
     // trailing sparkles
     for (int i = 0; i < 5; i++) {
       final frac = i / 5;
       final sx = w * (0.35 + frac * 0.2) + sin(i * 1.5) * w * 0.05;
       final sy = h * (0.55 - frac * 0.25) + cos(i * 2) * h * 0.04;
-      canvas.drawCircle(Offset(sx, sy), w * 0.015 * (1 - frac), Paint()..color = illustration.accent.withOpacity(0.3 + 0.3 * (1 - frac)));
+      canvas.drawCircle(Offset(sx, sy), w * 0.015 * (1 - frac), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3 + 0.3 * (1 - frac))));
     }
   }
 
@@ -4615,27 +4720,27 @@ class WordIllustrationPainter extends CustomPainter {
     // 远山 + 路径
     final w = size.width, h = size.height;
     // ground
-    canvas.drawRect(Rect.fromLTWH(0, h * 0.65, w, h * 0.35), Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawRect(Rect.fromLTWH(0, h * 0.65, w, h * 0.35), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
     // near mountain
     final m1 = Path()..moveTo(w * 0.1, h * 0.65)..lineTo(w * 0.35, h * 0.3)..lineTo(w * 0.6, h * 0.65)..close();
-    canvas.drawPath(m1, Paint()..color = illustration.accent);
+    canvas.drawPath(m1, Paint()..color = _dc(illustration.accent));
     // far mountain (smaller, faded)
     final m2 = Path()..moveTo(w * 0.45, h * 0.65)..lineTo(w * 0.65, h * 0.42)..lineTo(w * 0.85, h * 0.65)..close();
-    canvas.drawPath(m2, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawPath(m2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // path going far
-    _drawLine(canvas, w * 0.5, h * 0.65, w * 0.65, h * 0.55, Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.5, h * 0.65, w * 0.65, h * 0.55, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2..strokeCap = StrokeCap.round);
   }
 
   void _drawFat(Canvas canvas, Size size) {
     // 胖胖的圆形
     final w = size.width, h = size.height;
     // big round body
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.5), width: w * 0.55, height: h * 0.5), Paint()..color = illustration.accent);
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.5), width: w * 0.55, height: h * 0.5), Paint()..color = _dc(illustration.accent));
     // head
-    canvas.drawCircle(Offset(w * 0.5, h * 0.22), w * 0.1, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.22), w * 0.1, Paint()..color = _dc(illustration.accent));
     // arms
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.22, h * 0.48), width: w * 0.12, height: h * 0.08), Paint()..color = illustration.accent.withOpacity(0.8));
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.78, h * 0.48), width: w * 0.12, height: h * 0.08), Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.22, h * 0.48), width: w * 0.12, height: h * 0.08), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.78, h * 0.48), width: w * 0.12, height: h * 0.08), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // smile
     _drawFace(canvas, w * 0.5, h * 0.22, w * 0.08, illustration.accent);
   }
@@ -4648,49 +4753,49 @@ class WordIllustrationPainter extends CustomPainter {
       ..moveTo(w * 0.2, h * 0.45)
       ..quadraticBezierTo(w * 0.5, h * 0.75, w * 0.8, h * 0.45)
       ..close();
-    canvas.drawPath(bowl, Paint()..color = illustration.accent);
+    canvas.drawPath(bowl, Paint()..color = _dc(illustration.accent));
     // food on top
-    canvas.drawCircle(Offset(w * 0.4, h * 0.4), w * 0.05, Paint()..color = illustration.accent.withOpacity(0.6));
-    canvas.drawCircle(Offset(w * 0.55, h * 0.38), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.5));
-    canvas.drawCircle(Offset(w * 0.48, h * 0.33), w * 0.04, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(w * 0.4, h * 0.4), w * 0.05, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
+    canvas.drawCircle(Offset(w * 0.55, h * 0.38), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(w * 0.48, h * 0.33), w * 0.04, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // spoon
-    _drawLine(canvas, w * 0.7, h * 0.3, w * 0.78, h * 0.55, Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 3..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.7, h * 0.3, w * 0.78, h * 0.55, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 3..strokeCap = StrokeCap.round);
   }
 
   void _drawFetch(Canvas canvas, Size size) {
     // 狗追球
     final w = size.width, h = size.height;
     // ball
-    canvas.drawCircle(Offset(w * 0.7, h * 0.35), w * 0.08, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.7, h * 0.35), w * 0.08, Paint()..color = _dc(illustration.accent));
     // dog body
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.35, h * 0.55), width: w * 0.25, height: h * 0.18), Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.35, h * 0.55), width: w * 0.25, height: h * 0.18), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // dog head
-    canvas.drawCircle(Offset(w * 0.52, h * 0.45), w * 0.08, Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawCircle(Offset(w * 0.52, h * 0.45), w * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // ear
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.55, h * 0.38), width: w * 0.06, height: h * 0.08), Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.55, h * 0.38), width: w * 0.06, height: h * 0.08), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // tail wagging
     final tail = Path()..moveTo(w * 0.22, h * 0.5)..quadraticBezierTo(w * 0.15, h * 0.35, w * 0.18, h * 0.3);
-    canvas.drawPath(tail, Paint()..color = illustration.accent.withOpacity(0.6)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round);
+    canvas.drawPath(tail, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round);
     // motion lines
-    _drawLine(canvas, w * 0.58, h * 0.48, w * 0.62, h * 0.48, Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2);
-    _drawLine(canvas, w * 0.56, h * 0.52, w * 0.61, h * 0.52, Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 2);
+    _drawLine(canvas, w * 0.58, h * 0.48, w * 0.62, h * 0.48, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2);
+    _drawLine(canvas, w * 0.56, h * 0.52, w * 0.61, h * 0.52, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 2);
   }
 
   void _drawFine(Canvas canvas, Size size) {
     // 微笑 + 阳光
     final w = size.width, h = size.height;
     // sun
-    canvas.drawCircle(Offset(w * 0.5, h * 0.35), w * 0.15, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.35), w * 0.15, Paint()..color = _dc(illustration.accent));
     // rays
     for (int i = 0; i < 8; i++) {
       final a = i * pi / 4;
       _drawLine(canvas, w * 0.5 + cos(a) * w * 0.17, h * 0.35 + sin(a) * w * 0.17,
-          w * 0.5 + cos(a) * w * 0.24, h * 0.35 + sin(a) * w * 0.24, Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2);
+          w * 0.5 + cos(a) * w * 0.24, h * 0.35 + sin(a) * w * 0.24, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2);
     }
     // smile
     _drawFace(canvas, w * 0.5, h * 0.35, w * 0.12, illustration.accent);
     // thumbs up small
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.35, h * 0.68, w * 0.3, h * 0.12), Radius.circular(w * 0.03)), Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.35, h * 0.68, w * 0.3, h * 0.12), Radius.circular(w * 0.03)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
   }
 
   void _drawFirst(Canvas canvas, Size size) {
@@ -4703,13 +4808,13 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.5, h * 0.62, w * 0.64, h * 0.55)
       ..lineTo(w * 0.68, h * 0.25)
       ..close();
-    canvas.drawPath(cup, Paint()..color = illustration.accent);
+    canvas.drawPath(cup, Paint()..color = _dc(illustration.accent));
     // handles
-    canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.28, h * 0.38), width: w * 0.12, height: h * 0.16), -pi * 0.4, pi * 0.8, false, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3);
-    canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.72, h * 0.38), width: w * 0.12, height: h * 0.16), pi * 0.6, pi * 0.8, false, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3);
+    canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.28, h * 0.38), width: w * 0.12, height: h * 0.16), -pi * 0.4, pi * 0.8, false, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3);
+    canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.72, h * 0.38), width: w * 0.12, height: h * 0.16), pi * 0.6, pi * 0.8, false, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3);
     // base
-    _drawRoundedRectAt(canvas, w * 0.38, h * 0.62, w * 0.24, h * 0.06, Paint()..color = illustration.accent);
-    _drawRoundedRectAt(canvas, w * 0.42, h * 0.68, w * 0.16, h * 0.06, Paint()..color = illustration.accent);
+    _drawRoundedRectAt(canvas, w * 0.38, h * 0.62, w * 0.24, h * 0.06, Paint()..color = _dc(illustration.accent));
+    _drawRoundedRectAt(canvas, w * 0.42, h * 0.68, w * 0.16, h * 0.06, Paint()..color = _dc(illustration.accent));
     // #1
     _drawText(canvas, '1', w * 0.5, h * 0.4, w * 0.12, Colors.white);
   }
@@ -4718,18 +4823,18 @@ class WordIllustrationPainter extends CustomPainter {
     // 扳手/工具
     final w = size.width, h = size.height;
     // wrench shape
-    final p = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.05..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.05..strokeCap = StrokeCap.round;
     final path = Path()
       ..moveTo(w * 0.3, h * 0.7)
       ..lineTo(w * 0.65, h * 0.35);
     canvas.drawPath(path, p);
     // wrench head
-    canvas.drawCircle(Offset(w * 0.65, h * 0.33), w * 0.08, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.04);
-    canvas.drawCircle(Offset(w * 0.65, h * 0.33), w * 0.04, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.65, h * 0.33), w * 0.08, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.04);
+    canvas.drawCircle(Offset(w * 0.65, h * 0.33), w * 0.04, Paint()..color = _dc(illustration.accent));
     // gear
-    _drawGearShape(canvas, w * 0.3, h * 0.72, w * 0.1, 8, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawGearShape(canvas, w * 0.3, h * 0.72, w * 0.1, 8, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // bolt
-    canvas.drawCircle(Offset(w * 0.78, h * 0.6), w * 0.04, Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawCircle(Offset(w * 0.78, h * 0.6), w * 0.04, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
   }
 
   void _drawFoggy(Canvas canvas, Size size) {
@@ -4743,11 +4848,11 @@ class WordIllustrationPainter extends CustomPainter {
           Rect.fromLTWH(w * (0.05 + i * 0.03), y, w * (0.9 - i * 0.06), h * 0.06),
           Radius.circular(w * 0.03),
         ),
-        Paint()..color = illustration.accent.withOpacity(opacity),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(opacity)),
       );
     }
     // faint sun behind
-    canvas.drawCircle(Offset(w * 0.7, h * 0.2), w * 0.08, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(w * 0.7, h * 0.2), w * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
   }
 
   void _drawFollow(Canvas canvas, Size size) {
@@ -4758,14 +4863,14 @@ class WordIllustrationPainter extends CustomPainter {
       final y = h * (0.45 + sin(i * 0.5) * h * 0.03);
       final scale = 1.0 - i * 0.12;
       // head
-      canvas.drawCircle(Offset(x, y - h * 0.08 * scale), w * 0.05 * scale, Paint()..color = illustration.accent.withOpacity(0.9 - i * 0.15));
+      canvas.drawCircle(Offset(x, y - h * 0.08 * scale), w * 0.05 * scale, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.9 - i * 0.15)));
       // body
-      _drawRoundedRectAt(canvas, x - w * 0.04 * scale, y, w * 0.08 * scale, h * 0.14 * scale, Paint()..color = illustration.accent.withOpacity(0.8 - i * 0.15));
+      _drawRoundedRectAt(canvas, x - w * 0.04 * scale, y, w * 0.08 * scale, h * 0.14 * scale, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8 - i * 0.15)));
     }
     // arrows between
     for (int i = 0; i < 3; i++) {
       final ax = w * (0.3 + i * 0.17);
-      _drawLine(canvas, ax, h * 0.42, ax + w * 0.06, h * 0.42, Paint()..color = illustration.accent.withOpacity(0.25)..strokeWidth = 2..strokeCap = StrokeCap.round);
+      _drawLine(canvas, ax, h * 0.42, ax + w * 0.06, h * 0.42, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..strokeWidth = 2..strokeCap = StrokeCap.round);
     }
   }
 
@@ -4773,20 +4878,20 @@ class WordIllustrationPainter extends CustomPainter {
     // 泡泡消失 + 空脑袋
     final w = size.width, h = size.height;
     // head outline
-    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.2, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.2, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3);
     // fading thought bubbles
-    canvas.drawCircle(Offset(w * 0.35, h * 0.28), w * 0.03, Paint()..color = illustration.accent.withOpacity(0.15));
-    canvas.drawCircle(Offset(w * 0.42, h * 0.2), w * 0.02, Paint()..color = illustration.accent.withOpacity(0.1));
-    canvas.drawCircle(Offset(w * 0.5, h * 0.14), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.06));
+    canvas.drawCircle(Offset(w * 0.35, h * 0.28), w * 0.03, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
+    canvas.drawCircle(Offset(w * 0.42, h * 0.2), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.1)));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.14), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.06)));
     // question mark fading
-    _drawText(canvas, '?', w * 0.5, h * 0.45, w * 0.12, illustration.accent.withOpacity(0.3));
+    _drawText(canvas, '?', w * 0.5, h * 0.45, w * 0.12, illustration.accent.withOpacity(_minOp(0.3)));
   }
 
   void _drawFrightened(Canvas canvas, Size size) {
     // 害怕的脸
     final w = size.width, h = size.height;
     // face
-    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.2, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.2, Paint()..color = _dc(illustration.accent));
     // wide eyes
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.42, h * 0.4), width: w * 0.06, height: w * 0.07), Paint()..color = Colors.white);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.58, h * 0.4), width: w * 0.06, height: w * 0.07), Paint()..color = Colors.white);
@@ -4801,8 +4906,8 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.64, h * 0.38, w * 0.68, h * 0.3);
     canvas.drawPath(drop, Paint()..color = const Color(0xFF64B5F6));
     // shaking lines
-    _drawLine(canvas, w * 0.22, h * 0.35, w * 0.18, h * 0.32, Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2);
-    _drawLine(canvas, w * 0.78, h * 0.35, w * 0.82, h * 0.32, Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2);
+    _drawLine(canvas, w * 0.22, h * 0.35, w * 0.18, h * 0.32, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2);
+    _drawLine(canvas, w * 0.78, h * 0.35, w * 0.82, h * 0.32, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2);
   }
 
   void _drawFull(Canvas canvas, Size size) {
@@ -4815,7 +4920,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.65, h * 0.75)
       ..lineTo(w * 0.7, h * 0.3)
       ..close();
-    canvas.drawPath(cup, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3);
+    canvas.drawPath(cup, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3);
     // fill to brim
     final fill = Path()
       ..moveTo(w * 0.32, h * 0.35)
@@ -4823,16 +4928,16 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.64, h * 0.73)
       ..lineTo(w * 0.68, h * 0.35)
       ..close();
-    canvas.drawPath(fill, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(fill, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // overflow drops
-    canvas.drawCircle(Offset(w * 0.5, h * 0.28), w * 0.02, Paint()..color = illustration.accent.withOpacity(0.4));
-    canvas.drawCircle(Offset(w * 0.44, h * 0.25), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.28), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    canvas.drawCircle(Offset(w * 0.44, h * 0.25), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
   }
 
   void _drawFun(Canvas canvas, Size size) {
     // 笑脸 + 派对
     final w = size.width, h = size.height;
-    canvas.drawCircle(Offset(w * 0.5, h * 0.42), w * 0.2, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.42), w * 0.2, Paint()..color = _dc(illustration.accent));
     _drawFace(canvas, w * 0.5, h * 0.42, w * 0.18, illustration.accent);
     // confetti
     final colors = [Colors.red, Colors.blue, Colors.yellow, Colors.green, Colors.orange];
@@ -4851,15 +4956,15 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawFunny(Canvas canvas, Size size) {
     // 搞笑脸 + 哈哈
     final w = size.width, h = size.height;
-    canvas.drawCircle(Offset(w * 0.5, h * 0.4), w * 0.2, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.4), w * 0.2, Paint()..color = _dc(illustration.accent));
     // squinting happy eyes (arcs)
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.42, h * 0.36), width: w * 0.07, height: w * 0.05), pi * 0.1, pi * 0.8, false, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.58, h * 0.36), width: w * 0.07, height: w * 0.05), pi * 0.1, pi * 0.8, false, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
     // big grin
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.5, h * 0.46), width: w * 0.12, height: w * 0.08), 0, pi, false, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5);
     // HA HA text
-    _drawText(canvas, 'Ha!', w * 0.75, h * 0.25, w * 0.08, illustration.accent.withOpacity(0.5));
-    _drawText(canvas, 'Ha!', w * 0.22, h * 0.65, w * 0.06, illustration.accent.withOpacity(0.4));
+    _drawText(canvas, 'Ha!', w * 0.75, h * 0.25, w * 0.08, illustration.accent.withOpacity(_minOp(0.5)));
+    _drawText(canvas, 'Ha!', w * 0.22, h * 0.65, w * 0.06, illustration.accent.withOpacity(_minOp(0.4)));
   }
 
   void _drawFurry(Canvas canvas, Size size) {
@@ -4878,22 +4983,22 @@ class WordIllustrationPainter extends CustomPainter {
       else path.lineTo(x, y);
     }
     path.close();
-    canvas.drawPath(path, Paint()..color = illustration.accent);
+    canvas.drawPath(path, Paint()..color = _dc(illustration.accent));
     // eyes
     canvas.drawCircle(Offset(w * 0.43, h * 0.45), w * 0.025, Paint()..color = Colors.white);
     canvas.drawCircle(Offset(w * 0.57, h * 0.45), w * 0.025, Paint()..color = Colors.white);
     canvas.drawCircle(Offset(w * 0.43, h * 0.45), w * 0.012, Paint()..color = Colors.black);
     canvas.drawCircle(Offset(w * 0.57, h * 0.45), w * 0.012, Paint()..color = Colors.black);
     // ears
-    canvas.drawCircle(Offset(w * 0.35, h * 0.32), w * 0.06, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(w * 0.65, h * 0.32), w * 0.06, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.35, h * 0.32), w * 0.06, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(w * 0.65, h * 0.32), w * 0.06, Paint()..color = _dc(illustration.accent));
   }
 
   void _drawGood(Canvas canvas, Size size) {
     // 大拇指 + 对勾
     final w = size.width, h = size.height;
     // thumbs up shape
-    final thumb = Paint()..color = illustration.accent;
+    final thumb = Paint()..color = _dc(illustration.accent);
     // palm
     _drawRoundedRectAt(canvas, w * 0.3, h * 0.45, w * 0.15, h * 0.25, thumb);
     // thumb up
@@ -4913,7 +5018,7 @@ class WordIllustrationPainter extends CustomPainter {
     // 灰色云
     final w = size.width, h = size.height;
     // cloud shape from overlapping circles
-    final gray = illustration.accent;
+    final gray = _dc(illustration.accent);
     canvas.drawCircle(Offset(w * 0.38, h * 0.45), w * 0.13, Paint()..color = gray);
     canvas.drawCircle(Offset(w * 0.55, h * 0.4), w * 0.15, Paint()..color = gray);
     canvas.drawCircle(Offset(w * 0.68, h * 0.47), w * 0.11, Paint()..color = gray);
@@ -4932,11 +5037,11 @@ class WordIllustrationPainter extends CustomPainter {
     // big question mark
     _drawText(canvas, '?', w * 0.5, h * 0.4, w * 0.25, illustration.accent);
     // thought bubbles
-    canvas.drawCircle(Offset(w * 0.65, h * 0.25), w * 0.03, Paint()..color = illustration.accent.withOpacity(0.2));
-    canvas.drawCircle(Offset(w * 0.72, h * 0.18), w * 0.02, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(w * 0.65, h * 0.25), w * 0.03, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
+    canvas.drawCircle(Offset(w * 0.72, h * 0.18), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
     // question marks around
-    _drawText(canvas, '?', w * 0.25, h * 0.25, w * 0.07, illustration.accent.withOpacity(0.3));
-    _drawText(canvas, '?', w * 0.78, h * 0.55, w * 0.06, illustration.accent.withOpacity(0.25));
+    _drawText(canvas, '?', w * 0.25, h * 0.25, w * 0.07, illustration.accent.withOpacity(_minOp(0.3)));
+    _drawText(canvas, '?', w * 0.78, h * 0.55, w * 0.06, illustration.accent.withOpacity(_minOp(0.25)));
   }
 
   void _drawHalf(Canvas canvas, Size size) {
@@ -4944,11 +5049,11 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45, r = w * 0.22;
     // left half filled
-    canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: r * 2, height: r * 2), pi * 0.5, pi, true, Paint()..color = illustration.accent);
+    canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: r * 2, height: r * 2), pi * 0.5, pi, true, Paint()..color = _dc(illustration.accent));
     // right half outline
-    canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: r * 2, height: r * 2), -pi * 0.5, pi, true, Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: r * 2, height: r * 2), -pi * 0.5, pi, true, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
     // dividing line
-    _drawLine(canvas, cx, cy - r, cx, cy + r, Paint()..color = illustration.accent..strokeWidth = 3);
+    _drawLine(canvas, cx, cy - r, cx, cy + r, Paint()..color = _dc(illustration.accent)..strokeWidth = 3);
     // 1/2 label
     _drawText(canvas, '1/2', cx, cy, w * 0.08, Colors.white);
   }
@@ -4957,14 +5062,14 @@ class WordIllustrationPainter extends CustomPainter {
     // 惊叹号 + 礼花
     final w = size.width, h = size.height;
     // exclamation mark
-    _drawRoundedRectAt(canvas, w * 0.44, h * 0.2, w * 0.12, h * 0.35, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(w * 0.5, h * 0.65), w * 0.04, Paint()..color = illustration.accent);
+    _drawRoundedRectAt(canvas, w * 0.44, h * 0.2, w * 0.12, h * 0.35, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.65), w * 0.04, Paint()..color = _dc(illustration.accent));
     // sparkles
-    _drawStarShape(canvas, w * 0.25, h * 0.3, w * 0.06, w * 0.025, 4, Paint()..color = illustration.accent.withOpacity(0.5));
-    _drawStarShape(canvas, w * 0.78, h * 0.25, w * 0.05, w * 0.02, 4, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawStarShape(canvas, w * 0.72, h * 0.6, w * 0.04, w * 0.015, 4, Paint()..color = illustration.accent.withOpacity(0.35));
+    _drawStarShape(canvas, w * 0.25, h * 0.3, w * 0.06, w * 0.025, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    _drawStarShape(canvas, w * 0.78, h * 0.25, w * 0.05, w * 0.02, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, w * 0.72, h * 0.6, w * 0.04, w * 0.015, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
     // ring
-    canvas.drawCircle(Offset(w * 0.3, h * 0.6), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.2)..style = PaintingStyle.stroke..strokeWidth = 2);
+    canvas.drawCircle(Offset(w * 0.3, h * 0.6), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..style = PaintingStyle.stroke..strokeWidth = 2);
   }
 
   void _drawHard(Canvas canvas, Size size) {
@@ -4980,13 +5085,13 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.8, h * 0.55)
       ..lineTo(w * 0.78, h * 0.65)
       ..close();
-    canvas.drawPath(rock, Paint()..color = illustration.accent);
+    canvas.drawPath(rock, Paint()..color = _dc(illustration.accent));
     // crack lines
-    _drawLine(canvas, w * 0.45, h * 0.28, w * 0.5, h * 0.42, Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 1.5);
-    _drawLine(canvas, w * 0.5, h * 0.42, w * 0.48, h * 0.55, Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 1.5);
+    _drawLine(canvas, w * 0.45, h * 0.28, w * 0.5, h * 0.42, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 1.5);
+    _drawLine(canvas, w * 0.5, h * 0.42, w * 0.48, h * 0.55, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 1.5);
     // impact lines
-    _drawLine(canvas, w * 0.3, h * 0.2, w * 0.25, h * 0.15, Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2);
-    _drawLine(canvas, w * 0.7, h * 0.18, w * 0.75, h * 0.13, Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2);
+    _drawLine(canvas, w * 0.3, h * 0.2, w * 0.25, h * 0.15, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2);
+    _drawLine(canvas, w * 0.7, h * 0.18, w * 0.75, h * 0.13, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2);
   }
 
   void _drawHate(Canvas canvas, Size size) {
@@ -5001,18 +5106,18 @@ class WordIllustrationPainter extends CustomPainter {
       ..cubicTo(cx - hw * 1.2, cy - hh * 0.2, cx - hw * 0.5, cy - hh, cx - 2, cy - hh * 0.35)
       ..lineTo(cx - 2, cy + hh * 0.6)
       ..close();
-    canvas.drawPath(left, Paint()..color = illustration.accent);
+    canvas.drawPath(left, Paint()..color = _dc(illustration.accent));
     // right half (slightly shifted)
     final right = Path()
       ..moveTo(cx + 4, cy + hh * 0.65)
       ..cubicTo(cx + hw * 1.2, cy - hh * 0.2, cx + hw * 0.5, cy - hh, cx + 4, cy - hh * 0.3)
       ..lineTo(cx + 4, cy + hh * 0.65)
       ..close();
-    canvas.drawPath(right, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(right, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // crack line
-    _drawLine(canvas, cx - 2, cy - hh * 0.35, cx + 2, cy - hh * 0.1, Paint()..color = illustration.bg..strokeWidth = 2);
-    _drawLine(canvas, cx + 2, cy - hh * 0.1, cx - 1, cy + hh * 0.15, Paint()..color = illustration.bg..strokeWidth = 2);
-    _drawLine(canvas, cx - 1, cy + hh * 0.15, cx + 3, cy + hh * 0.4, Paint()..color = illustration.bg..strokeWidth = 2);
+    _drawLine(canvas, cx - 2, cy - hh * 0.35, cx + 2, cy - hh * 0.1, Paint()..color = _dc(illustration.bg)..strokeWidth = 2);
+    _drawLine(canvas, cx + 2, cy - hh * 0.1, cx - 1, cy + hh * 0.15, Paint()..color = _dc(illustration.bg)..strokeWidth = 2);
+    _drawLine(canvas, cx - 1, cy + hh * 0.15, cx + 3, cy + hh * 0.4, Paint()..color = _dc(illustration.bg)..strokeWidth = 2);
   }
 
   void _drawHave(Canvas canvas, Size size) {
@@ -5023,44 +5128,44 @@ class WordIllustrationPainter extends CustomPainter {
       ..moveTo(w * 0.25, h * 0.65)
       ..quadraticBezierTo(w * 0.2, h * 0.45, w * 0.35, h * 0.4)
       ..quadraticBezierTo(w * 0.45, h * 0.38, w * 0.5, h * 0.42);
-    canvas.drawPath(left, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round);
+    canvas.drawPath(left, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round);
     final right = Path()
       ..moveTo(w * 0.75, h * 0.65)
       ..quadraticBezierTo(w * 0.8, h * 0.45, w * 0.65, h * 0.4)
       ..quadraticBezierTo(w * 0.55, h * 0.38, w * 0.5, h * 0.42);
-    canvas.drawPath(right, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round);
+    canvas.drawPath(right, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round);
     // heart in hands
-    _drawHeartShape(canvas, w * 0.5, h * 0.38, w * 0.1, h * 0.1, Paint()..color = illustration.accent);
+    _drawHeartShape(canvas, w * 0.5, h * 0.38, w * 0.1, h * 0.1, Paint()..color = _dc(illustration.accent));
   }
 
   void _drawHeavy(Canvas canvas, Size size) {
     // 重物/杠铃
     final w = size.width, h = size.height;
     // bar
-    _drawLine(canvas, w * 0.15, h * 0.45, w * 0.85, h * 0.45, Paint()..color = illustration.accent..strokeWidth = 3);
+    _drawLine(canvas, w * 0.15, h * 0.45, w * 0.85, h * 0.45, Paint()..color = _dc(illustration.accent)..strokeWidth = 3);
     // left weights
-    _drawRoundedRectAt(canvas, w * 0.12, h * 0.3, w * 0.08, h * 0.3, Paint()..color = illustration.accent);
-    _drawRoundedRectAt(canvas, w * 0.2, h * 0.33, w * 0.06, h * 0.24, Paint()..color = illustration.accent.withOpacity(0.7));
+    _drawRoundedRectAt(canvas, w * 0.12, h * 0.3, w * 0.08, h * 0.3, Paint()..color = _dc(illustration.accent));
+    _drawRoundedRectAt(canvas, w * 0.2, h * 0.33, w * 0.06, h * 0.24, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // right weights
-    _drawRoundedRectAt(canvas, w * 0.8, h * 0.3, w * 0.08, h * 0.3, Paint()..color = illustration.accent);
-    _drawRoundedRectAt(canvas, w * 0.74, h * 0.33, w * 0.06, h * 0.24, Paint()..color = illustration.accent.withOpacity(0.7));
+    _drawRoundedRectAt(canvas, w * 0.8, h * 0.3, w * 0.08, h * 0.3, Paint()..color = _dc(illustration.accent));
+    _drawRoundedRectAt(canvas, w * 0.74, h * 0.33, w * 0.06, h * 0.24, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // weight label
-    _drawText(canvas, 'KG', w * 0.5, h * 0.7, w * 0.08, illustration.accent.withOpacity(0.4));
+    _drawText(canvas, 'KG', w * 0.5, h * 0.7, w * 0.08, illustration.accent.withOpacity(_minOp(0.4)));
     // ground shake lines
-    _drawLine(canvas, w * 0.35, h * 0.82, w * 0.42, h * 0.82, Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 2);
-    _drawLine(canvas, w * 0.55, h * 0.84, w * 0.65, h * 0.84, Paint()..color = illustration.accent.withOpacity(0.15)..strokeWidth = 2);
+    _drawLine(canvas, w * 0.35, h * 0.82, w * 0.42, h * 0.82, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 2);
+    _drawLine(canvas, w * 0.55, h * 0.84, w * 0.65, h * 0.84, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15))..strokeWidth = 2);
   }
 
   void _drawHide(Canvas canvas, Size size) {
     // 躲在物体后面
     final w = size.width, h = size.height;
     // wall/obstacle
-    _drawRoundedRectAt(canvas, w * 0.4, h * 0.25, w * 0.25, h * 0.5, Paint()..color = illustration.accent);
+    _drawRoundedRectAt(canvas, w * 0.4, h * 0.25, w * 0.25, h * 0.5, Paint()..color = _dc(illustration.accent));
     // eyes peeking from behind
     canvas.drawCircle(Offset(w * 0.33, h * 0.4), w * 0.03, Paint()..color = Colors.white);
     canvas.drawCircle(Offset(w * 0.33, h * 0.4), w * 0.015, Paint()..color = Colors.black);
     // partial head
-    canvas.drawCircle(Offset(w * 0.32, h * 0.42), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawCircle(Offset(w * 0.32, h * 0.42), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // shadow
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.52, h * 0.82), width: w * 0.3, height: h * 0.04), Paint()..color = Colors.black.withOpacity(0.06));
   }
@@ -5069,7 +5174,7 @@ class WordIllustrationPainter extends CustomPainter {
     // 高塔/向上箭头
     final w = size.width, h = size.height;
     // arrow going up
-    final ap = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
+    final ap = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
     final arrow = Path()
       ..moveTo(w * 0.5, h * 0.8)
       ..lineTo(w * 0.5, h * 0.2)
@@ -5080,18 +5185,18 @@ class WordIllustrationPainter extends CustomPainter {
     // height marks
     for (int i = 0; i < 4; i++) {
       final y = h * (0.75 - i * 0.15);
-      _drawLine(canvas, w * 0.62, y, w * 0.68, y, Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5);
+      _drawLine(canvas, w * 0.62, y, w * 0.68, y, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5);
     }
     // cloud at top
-    canvas.drawCircle(Offset(w * 0.35, h * 0.15), w * 0.05, Paint()..color = illustration.accent.withOpacity(0.15));
-    canvas.drawCircle(Offset(w * 0.4, h * 0.13), w * 0.04, Paint()..color = illustration.accent.withOpacity(0.12));
+    canvas.drawCircle(Offset(w * 0.35, h * 0.15), w * 0.05, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
+    canvas.drawCircle(Offset(w * 0.4, h * 0.13), w * 0.04, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.12)));
   }
 
   void _drawHold(Canvas canvas, Size size) {
     // 双手握住
     final w = size.width, h = size.height;
     // object being held (cylinder)
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.38, h * 0.25, w * 0.24, h * 0.35), Radius.circular(w * 0.04)), Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.38, h * 0.25, w * 0.24, h * 0.35), Radius.circular(w * 0.04)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // left hand
     final lh = Path()
       ..moveTo(w * 0.33, h * 0.7)
@@ -5099,7 +5204,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.38, h * 0.42)
       ..quadraticBezierTo(w * 0.32, h * 0.55, w * 0.36, h * 0.7)
       ..close();
-    canvas.drawPath(lh, Paint()..color = illustration.accent);
+    canvas.drawPath(lh, Paint()..color = _dc(illustration.accent));
     // right hand
     final rh = Path()
       ..moveTo(w * 0.67, h * 0.7)
@@ -5107,7 +5212,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.62, h * 0.42)
       ..quadraticBezierTo(w * 0.68, h * 0.55, w * 0.64, h * 0.7)
       ..close();
-    canvas.drawPath(rh, Paint()..color = illustration.accent);
+    canvas.drawPath(rh, Paint()..color = _dc(illustration.accent));
     // grip lines
     _drawLine(canvas, w * 0.4, h * 0.38, w * 0.6, h * 0.38, Paint()..color = Colors.white.withOpacity(0.3)..strokeWidth = 1.5);
     _drawLine(canvas, w * 0.4, h * 0.44, w * 0.6, h * 0.44, Paint()..color = Colors.white.withOpacity(0.2)..strokeWidth = 1.5);
@@ -5120,12 +5225,12 @@ class WordIllustrationPainter extends CustomPainter {
     // bed frame
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.15, h * 0.5, w * 0.7, h * 0.2), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
     // mattress
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.18, h * 0.45, w * 0.64, h * 0.12), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.3),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)),
     );
     // pillow
     canvas.drawRRect(
@@ -5135,15 +5240,15 @@ class WordIllustrationPainter extends CustomPainter {
     // blanket
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.42, h * 0.45, w * 0.38, h * 0.12), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.bg.withOpacity(0.4),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)),
     );
     // bed legs
-    canvas.drawRect(Rect.fromLTWH(w * 0.18, h * 0.7, w * 0.04, h * 0.1), Paint()..color = illustration.accent.withOpacity(0.6));
-    canvas.drawRect(Rect.fromLTWH(w * 0.78, h * 0.7, w * 0.04, h * 0.1), Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawRect(Rect.fromLTWH(w * 0.18, h * 0.7, w * 0.04, h * 0.1), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
+    canvas.drawRect(Rect.fromLTWH(w * 0.78, h * 0.7, w * 0.04, h * 0.1), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // moon
     final moonPaint = Paint()..color = Colors.amber.shade300;
     canvas.drawCircle(Offset(w * 0.75, h * 0.18), w * 0.09, moonPaint);
-    canvas.drawCircle(Offset(w * 0.8, h * 0.16), w * 0.08, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(w * 0.8, h * 0.16), w * 0.08, Paint()..color = _dc(illustration.bg));
     // stars
     final starPaint = Paint()..color = Colors.amber.shade200;
     canvas.drawCircle(Offset(w * 0.3, h * 0.12), w * 0.015, starPaint);
@@ -5155,14 +5260,14 @@ class WordIllustrationPainter extends CustomPainter {
     // 入睡：closed eyes + zzz
     final w = size.width, h = size.height;
     // face circle
-    canvas.drawCircle(Offset(w * 0.5, h * 0.5), w * 0.28, Paint()..color = illustration.accent.withOpacity(0.2));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.5), w * 0.28, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
     // closed eyes - two arcs
-    final eyeL = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
-    final eyeR = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final eyeL = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final eyeR = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.38, h * 0.45), width: w * 0.12, height: w * 0.06), 0, pi, false, eyeL);
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.62, h * 0.45), width: w * 0.12, height: w * 0.06), 0, pi, false, eyeR);
     // small smile
-    canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.5, h * 0.58), width: w * 0.1, height: w * 0.05), 0.2, pi - 0.4, false, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 2.5);
+    canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.5, h * 0.58), width: w * 0.1, height: w * 0.05), 0.2, pi - 0.4, false, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 2.5);
     // blush
     canvas.drawCircle(Offset(w * 0.32, h * 0.54), w * 0.035, Paint()..color = Colors.pink.withOpacity(0.2));
     canvas.drawCircle(Offset(w * 0.68, h * 0.54), w * 0.035, Paint()..color = Colors.pink.withOpacity(0.2));
@@ -5214,17 +5319,17 @@ class WordIllustrationPainter extends CustomPainter {
     // gift box
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.3, h * 0.3, w * 0.4, h * 0.3), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.7),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)),
     );
     // ribbon vertical
-    canvas.drawRect(Rect.fromLTWH(w * 0.47, h * 0.3, w * 0.06, h * 0.3), Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawRect(Rect.fromLTWH(w * 0.47, h * 0.3, w * 0.06, h * 0.3), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     // ribbon horizontal
-    canvas.drawRect(Rect.fromLTWH(w * 0.3, h * 0.42, w * 0.4, h * 0.06), Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawRect(Rect.fromLTWH(w * 0.3, h * 0.42, w * 0.4, h * 0.06), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     // bow on top
-    final bowPaint = Paint()..color = illustration.bg.withOpacity(0.6);
+    final bowPaint = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6));
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.45, h * 0.26), width: w * 0.1, height: w * 0.07), bowPaint);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.55, h * 0.26), width: w * 0.1, height: w * 0.07), bowPaint);
-    canvas.drawCircle(Offset(w * 0.5, h * 0.28), w * 0.025, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.28), w * 0.025, Paint()..color = _dc(illustration.accent));
     // left hand
     final lh = Path()
       ..moveTo(w * 0.2, h * 0.85)
@@ -5232,7 +5337,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.32, h * 0.6)
       ..quadraticBezierTo(w * 0.22, h * 0.68, w * 0.25, h * 0.85)
       ..close();
-    canvas.drawPath(lh, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(lh, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // right hand
     final rh = Path()
       ..moveTo(w * 0.8, h * 0.85)
@@ -5240,7 +5345,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.68, h * 0.6)
       ..quadraticBezierTo(w * 0.78, h * 0.68, w * 0.75, h * 0.85)
       ..close();
-    canvas.drawPath(rh, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(rh, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
   }
 
   void _drawHer(Canvas canvas, Size size) {
@@ -5251,7 +5356,7 @@ class WordIllustrationPainter extends CustomPainter {
       leftLegAngle: 0.35, rightLegAngle: -0.35, legLen: w * 0.18, bodyTopY: h * 0.32,
     );
     // hair - long flowing
-    final hairPaint = Paint()..color = illustration.accent.withOpacity(0.7)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final hairPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7))..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     // left hair
     final lh = Path()
       ..moveTo(w * 0.38, h * 0.2)
@@ -5278,7 +5383,7 @@ class WordIllustrationPainter extends CustomPainter {
       leftLegAngle: 0.3, rightLegAngle: -0.3, legLen: w * 0.2, bodyTopY: h * 0.28,
     );
     // short hair - just a cap-like arc
-    final hairPaint = Paint()..color = illustration.accent.withOpacity(0.6)..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    final hairPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.5, h * 0.14), width: w * 0.26, height: w * 0.14), pi + 0.3, pi - 0.6, false, hairPaint);
     // small tie
     final tiePath = Path()
@@ -5287,21 +5392,21 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.5, h * 0.45)
       ..lineTo(w * 0.54, h * 0.38)
       ..close();
-    canvas.drawPath(tiePath, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawPath(tiePath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   void _drawHope(Canvas canvas, Size size) {
     // 希望：sunrise with light rays
     final w = size.width, h = size.height;
     // horizon line
-    _drawLine(canvas, w * 0.05, h * 0.65, w * 0.95, h * 0.65, Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2);
+    _drawLine(canvas, w * 0.05, h * 0.65, w * 0.95, h * 0.65, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2);
     // sun circle (rising)
-    canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.15, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.15, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // glow around sun
-    canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.2, Paint()..color = illustration.accent.withOpacity(0.15));
-    canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.25, Paint()..color = illustration.accent.withOpacity(0.08));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.25, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.08)));
     // rays
-    final rayPaint = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final rayPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
       final angle = -pi / 2 + (i - 3.5) * 0.3;
       final r1 = w * 0.2;
@@ -5314,7 +5419,7 @@ class WordIllustrationPainter extends CustomPainter {
       );
     }
     // ground below horizon
-    canvas.drawRect(Rect.fromLTWH(0, h * 0.65, w, h * 0.35), Paint()..color = illustration.bg.withOpacity(0.3));
+    canvas.drawRect(Rect.fromLTWH(0, h * 0.65, w, h * 0.35), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
   }
 
   void _drawHorrible(Canvas canvas, Size size) {
@@ -5332,7 +5437,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.8, h * 0.85, w * 0.5, h * 0.9)
       ..quadraticBezierTo(w * 0.2, h * 0.85, w * 0.15, h * 0.5)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // angry eyes
     _drawFace(canvas, w * 0.5, h * 0.45, w * 0.3, illustration.accent, hasAngryBrows: true, smileFactor: -1);
     // sharp teeth
@@ -5347,7 +5452,7 @@ class WordIllustrationPainter extends CustomPainter {
       canvas.drawPath(toothPath, teethPaint);
     }
     // horns
-    final hornPaint = Paint()..color = illustration.accent.withOpacity(0.8);
+    final hornPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8));
     final hornL = Path()
       ..moveTo(w * 0.3, h * 0.15)
       ..lineTo(w * 0.2, h * 0.02)
@@ -5365,13 +5470,13 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawHuge(Canvas canvas, Size size) {
     // 巨大的：elephant silhouette
     final w = size.width, h = size.height;
-    final elephantPaint = Paint()..color = illustration.accent.withOpacity(0.6);
+    final elephantPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     // body
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.45, h * 0.5), width: w * 0.55, height: h * 0.35), elephantPaint);
     // head
     canvas.drawCircle(Offset(w * 0.72, h * 0.38), w * 0.15, elephantPaint);
     // ear
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.82, h * 0.3), width: w * 0.14, height: w * 0.18), Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.82, h * 0.3), width: w * 0.14, height: w * 0.18), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // trunk
     final trunk = Path()
       ..moveTo(w * 0.82, h * 0.42)
@@ -5409,15 +5514,15 @@ class WordIllustrationPainter extends CustomPainter {
       leftLegAngle: 0.7, rightLegAngle: -0.5, legLen: w * 0.18, bodyTopY: h * 0.3,
     );
     // speed lines
-    final speedPaint = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final speedPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.1, h * 0.35, w * 0.3, h * 0.35, speedPaint);
     _drawLine(canvas, w * 0.08, h * 0.45, w * 0.28, h * 0.45, speedPaint..strokeWidth = 2);
     _drawLine(canvas, w * 0.12, h * 0.55, w * 0.32, h * 0.55, speedPaint..strokeWidth = 1.5);
     // motion blur circles
-    canvas.drawCircle(Offset(w * 0.15, h * 0.42), w * 0.02, Paint()..color = illustration.accent.withOpacity(0.1));
-    canvas.drawCircle(Offset(w * 0.1, h * 0.5), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.08));
+    canvas.drawCircle(Offset(w * 0.15, h * 0.42), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.1)));
+    canvas.drawCircle(Offset(w * 0.1, h * 0.5), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.08)));
     // dust particles
-    final dustPaint = Paint()..color = illustration.accent.withOpacity(0.2);
+    final dustPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2));
     canvas.drawCircle(Offset(w * 0.35, h * 0.78), w * 0.02, dustPaint);
     canvas.drawCircle(Offset(w * 0.3, h * 0.82), w * 0.015, dustPaint);
     canvas.drawCircle(Offset(w * 0.4, h * 0.85), w * 0.01, dustPaint);
@@ -5427,7 +5532,7 @@ class WordIllustrationPainter extends CustomPainter {
     // 生病的：sick face with thermometer
     final w = size.width, h = size.height;
     // face
-    canvas.drawCircle(Offset(w * 0.45, h * 0.45), w * 0.22, Paint()..color = illustration.accent.withOpacity(0.25));
+    canvas.drawCircle(Offset(w * 0.45, h * 0.45), w * 0.22, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
     _drawFace(canvas, w * 0.45, h * 0.45, w * 0.2, illustration.accent, smileFactor: -0.5, hasTears: true);
     // thermometer in mouth area
     final thermoPaint = Paint()..color = Colors.grey.shade400..style = PaintingStyle.stroke..strokeWidth = 2.5;
@@ -5462,9 +5567,9 @@ class WordIllustrationPainter extends CustomPainter {
     // 重要的：star with exclamation mark
     final w = size.width, h = size.height;
     // large star
-    _drawStarShape(canvas, w * 0.5, h * 0.45, w * 0.3, w * 0.13, 5, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawStarShape(canvas, w * 0.5, h * 0.45, w * 0.3, w * 0.13, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // inner glow
-    _drawStarShape(canvas, w * 0.5, h * 0.45, w * 0.2, w * 0.09, 5, Paint()..color = illustration.accent.withOpacity(0.2));
+    _drawStarShape(canvas, w * 0.5, h * 0.45, w * 0.2, w * 0.09, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
     // exclamation mark
     final exclPaint = Paint()..color = Colors.white;
     // vertical line
@@ -5475,7 +5580,7 @@ class WordIllustrationPainter extends CustomPainter {
     // dot
     canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.035, exclPaint);
     // small sparkles around star
-    final sparklePaint = Paint()..color = illustration.accent.withOpacity(0.4);
+    final sparklePaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4));
     _drawStarShape(canvas, w * 0.2, h * 0.2, w * 0.04, w * 0.015, 4, sparklePaint);
     _drawStarShape(canvas, w * 0.82, h * 0.25, w * 0.035, w * 0.012, 4, sparklePaint);
     _drawStarShape(canvas, w * 0.15, h * 0.7, w * 0.03, w * 0.01, 4, sparklePaint);
@@ -5486,13 +5591,13 @@ class WordIllustrationPainter extends CustomPainter {
     // 改善：upward trending arrow
     final w = size.width, h = size.height;
     // chart background - subtle grid
-    final gridPaint = Paint()..color = illustration.accent.withOpacity(0.08)..strokeWidth = 1;
+    final gridPaint = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.08))..strokeWidth = 1;
     for (int i = 0; i < 4; i++) {
       final y = h * (0.3 + i * 0.15);
       _drawLine(canvas, w * 0.1, y, w * 0.9, y, gridPaint);
     }
     // upward trend line
-    final trendPaint = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+    final trendPaint = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
     final trendPath = Path()
       ..moveTo(w * 0.15, h * 0.75)
       ..lineTo(w * 0.35, h * 0.6)
@@ -5506,22 +5611,22 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.87, h * 0.18)
       ..lineTo(w * 0.83, h * 0.3)
       ..close();
-    canvas.drawPath(arrowHead, Paint()..color = illustration.accent);
+    canvas.drawPath(arrowHead, Paint()..color = _dc(illustration.accent));
     // data points
-    final dotPaint = Paint()..color = illustration.accent;
+    final dotPaint = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(w * 0.15, h * 0.75), w * 0.025, dotPaint);
     canvas.drawCircle(Offset(w * 0.35, h * 0.6), w * 0.025, dotPaint);
     canvas.drawCircle(Offset(w * 0.5, h * 0.55), w * 0.025, dotPaint);
     canvas.drawCircle(Offset(w * 0.65, h * 0.38), w * 0.025, dotPaint);
     canvas.drawCircle(Offset(w * 0.85, h * 0.2), w * 0.025, dotPaint);
     // highlight glow at end
-    canvas.drawCircle(Offset(w * 0.85, h * 0.2), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(w * 0.85, h * 0.2), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
   }
 
   void _drawInterested(Canvas canvas, Size size) {
     // ear with a question mark
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // ear shape
     final ear = Path()
       ..moveTo(w * 0.5, h * 0.2)
@@ -5533,17 +5638,17 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(ear, paint);
     // inner ear
-    canvas.drawCircle(Offset(w * 0.53, h * 0.48), w * 0.08, Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.53, h * 0.48), w * 0.08, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
     // question mark
-    final qm = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final qm = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCircle(center: Offset(w * 0.3, h * 0.45), radius: w * 0.08), -pi * 0.3, pi * 1.6, false, qm);
-    canvas.drawCircle(Offset(w * 0.3, h * 0.62), w * 0.015, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.3, h * 0.62), w * 0.015, Paint()..color = _dc(illustration.accent));
   }
 
   void _drawInteresting(Canvas canvas, Size size) {
     // lightbulb (idea)
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // bulb
     canvas.drawCircle(Offset(w * 0.5, h * 0.35), w * 0.18, paint);
     // base of bulb
@@ -5552,11 +5657,11 @@ class WordIllustrationPainter extends CustomPainter {
     final base2 = RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.44, h * 0.57, w * 0.12, h * 0.06), Radius.circular(3));
     canvas.drawRRect(base2, paint);
     // filament inside
-    final filament = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final filament = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.46, h * 0.7), Offset(w * 0.46, h * 0.65), filament);
     canvas.drawLine(Offset(w * 0.54, h * 0.7), Offset(w * 0.54, h * 0.65), filament);
     // rays
-    final ray = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final ray = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 6; i++) {
       final angle = -pi / 2 + i * pi / 5 - pi * 0.4;
       final r1 = w * 0.22;
@@ -5568,16 +5673,16 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawInvent(Canvas canvas, Size size) {
     // gears and a lightbulb
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // gear 1
     _drawGear(canvas, w * 0.35, h * 0.5, w * 0.12, 8, paint);
     // gear 2 smaller
-    _drawGear(canvas, w * 0.58, h * 0.42, w * 0.08, 6, Paint()..color = illustration.accent.withOpacity(0.7));
+    _drawGear(canvas, w * 0.58, h * 0.42, w * 0.08, 6, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // small lightbulb on top
     canvas.drawCircle(Offset(w * 0.5, h * 0.22), w * 0.08, paint);
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.46, h * 0.29, w * 0.08, h * 0.04), Radius.circular(2)), paint);
     // rays from bulb
-    final ray = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final ray = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 4; i++) {
       final angle = -pi / 2 + i * pi / 3 - pi / 3;
       canvas.drawLine(Offset(w * 0.5 + cos(angle) * w * 0.1, h * 0.22 + sin(angle) * w * 0.1), Offset(w * 0.5 + cos(angle) * w * 0.14, h * 0.22 + sin(angle) * w * 0.14), ray);
@@ -5587,7 +5692,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawInvite(Canvas canvas, Size size) {
     // envelope with a heart
     final w = size.width, h = size.height;
-    final envPaint = Paint()..color = illustration.accent;
+    final envPaint = Paint()..color = _dc(illustration.accent);
     // envelope body
     final env = Path()
       ..moveTo(w * 0.2, h * 0.35)
@@ -5602,7 +5707,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.5, h * 0.55)
       ..lineTo(w * 0.8, h * 0.35)
       ..close();
-    canvas.drawPath(flap, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(flap, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // heart on envelope
     _drawHeartShape(canvas, w * 0.5, h * 0.52, w * 0.07, h * 0.06, Paint()..color = Colors.white.withOpacity(0.9));
   }
@@ -5610,7 +5715,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawIts(Canvas canvas, Size size) {
     // paw print
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // main pad
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.5, h * 0.55), width: w * 0.22, height: h * 0.2), paint);
     // toe pads
@@ -5624,14 +5729,14 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawKeep(Canvas canvas, Size size) {
     // box with a lid
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // box body
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.25, h * 0.42, w * 0.5, h * 0.3), Radius.circular(w * 0.03)), paint);
     // lid
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.22, h * 0.34, w * 0.56, h * 0.12), Radius.circular(w * 0.03)), Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.22, h * 0.34, w * 0.56, h * 0.12), Radius.circular(w * 0.03)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // lock
     canvas.drawCircle(Offset(w * 0.5, h * 0.56), w * 0.04, Paint()..color = Colors.white.withOpacity(0.8));
-    canvas.drawCircle(Offset(w * 0.5, h * 0.56), w * 0.025, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.56), w * 0.025, Paint()..color = _dc(illustration.accent));
     // keyhole
     canvas.drawCircle(Offset(w * 0.5, h * 0.565), w * 0.01, Paint()..color = Colors.white.withOpacity(0.8));
   }
@@ -5639,10 +5744,10 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawKind(Canvas canvas, Size size) {
     // two hearts (kindness)
     final w = size.width, h = size.height;
-    _drawHeartShape(canvas, w * 0.38, h * 0.42, w * 0.13, h * 0.11, Paint()..color = illustration.accent);
-    _drawHeartShape(canvas, w * 0.6, h * 0.48, w * 0.1, h * 0.08, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawHeartShape(canvas, w * 0.38, h * 0.42, w * 0.13, h * 0.11, Paint()..color = _dc(illustration.accent));
+    _drawHeartShape(canvas, w * 0.6, h * 0.48, w * 0.1, h * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // small sparkles
-    final spark = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final spark = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.25, h * 0.28), Offset(w * 0.25, h * 0.22), spark);
     canvas.drawLine(Offset(w * 0.22, h * 0.25), Offset(w * 0.28, h * 0.25), spark);
     canvas.drawLine(Offset(w * 0.75, h * 0.32), Offset(w * 0.75, h * 0.27), spark);
@@ -5652,7 +5757,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLarge(Canvas canvas, Size size) {
     // big circle with arrows expanding outward
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.18, paint);
     // expansion arrows
     final arrow = Paint()..color = Colors.white.withOpacity(0.7)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
@@ -5670,7 +5775,7 @@ class WordIllustrationPainter extends CustomPainter {
     // finish flag (checkered)
     final w = size.width, h = size.height;
     // pole
-    canvas.drawRect(Rect.fromLTWH(w * 0.35, h * 0.2, w * 0.04, h * 0.6), Paint()..color = illustration.accent);
+    canvas.drawRect(Rect.fromLTWH(w * 0.35, h * 0.2, w * 0.04, h * 0.6), Paint()..color = _dc(illustration.accent));
     // flag
     final flagW = w * 0.35;
     final flagH = h * 0.22;
@@ -5685,17 +5790,17 @@ class WordIllustrationPainter extends CustomPainter {
       }
     }
     // medal at bottom
-    canvas.drawCircle(Offset(w * 0.5, h * 0.82), w * 0.06, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.82), w * 0.06, Paint()..color = _dc(illustration.accent));
     _drawStarShape(canvas, w * 0.5, h * 0.82, w * 0.04, w * 0.02, 5, Paint()..color = Colors.white.withOpacity(0.8));
   }
 
   void _drawLate(Canvas canvas, Size size) {
     // clock with hands pointing to late hour
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // clock face
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.22, paint);
-    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.19, Paint()..color = illustration.bg.withOpacity(0.3));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.19, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     // hour marks
     for (int i = 0; i < 12; i++) {
       final angle = i * pi / 6 - pi / 2;
@@ -5715,7 +5820,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLazy(Canvas canvas, Size size) {
     // reclining figure (lazy)
     final w = size.width, h = size.height;
-    final color = illustration.accent;
+    final color = _dc(illustration.accent);
     // head
     canvas.drawCircle(Offset(w * 0.3, h * 0.38), w * 0.07, Paint()..color = color);
     // body line (horizontal-ish)
@@ -5741,11 +5846,11 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLeft(Canvas canvas, Size size) {
     // left arrow
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent..strokeWidth = 4..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    final paint = Paint()..color = _dc(illustration.accent)..strokeWidth = 4..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     // arrow shaft
     canvas.drawLine(Offset(w * 0.75, h * 0.5), Offset(w * 0.25, h * 0.5), paint);
     // arrowhead
-    final arrowHead = Paint()..color = illustration.accent;
+    final arrowHead = Paint()..color = _dc(illustration.accent);
     final head = Path()
       ..moveTo(w * 0.25, h * 0.5)
       ..lineTo(w * 0.35, h * 0.38)
@@ -5753,14 +5858,14 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(head, arrowHead);
     // L label
-    final tp = _textPainter('L', fontSize: w * 0.12, color: illustration.accent.withOpacity(0.3));
+    final tp = _textPainter('L', fontSize: w * 0.12, color: illustration.accent.withOpacity(_minOp(0.3)));
     tp.paint(canvas, Offset(w * 0.55, h * 0.58));
   }
 
   void _drawLet(Canvas canvas, Size size) {
     // open gate / door
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // gate posts
     canvas.drawRect(Rect.fromLTWH(w * 0.25, h * 0.2, w * 0.05, h * 0.6), paint);
     canvas.drawRect(Rect.fromLTWH(w * 0.7, h * 0.2, w * 0.05, h * 0.6), paint);
@@ -5771,12 +5876,12 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.translate(w * 0.3, h * 0.25);
     canvas.rotate(-0.3);
     final door = RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, w * 0.35, h * 0.52), Radius.circular(w * 0.02));
-    canvas.drawRRect(door, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawRRect(door, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // door handle
     canvas.drawCircle(Offset(w * 0.28, h * 0.28), w * 0.02, Paint()..color = Colors.white.withOpacity(0.8));
     canvas.restore();
     // sparkles
-    final spark = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final spark = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.78, h * 0.35), Offset(w * 0.78, h * 0.28), spark);
     canvas.drawLine(Offset(w * 0.75, h * 0.32), Offset(w * 0.81, h * 0.32), spark);
   }
@@ -5784,7 +5889,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLets(Canvas canvas, Size size) {
     // two figures walking together
     final w = size.width, h = size.height;
-    final color = illustration.accent;
+    final color = _dc(illustration.accent);
     // figure 1
     _drawStickFigure(canvas, w * 0.35, h * 0.25, w * 0.28, color, headR: w * 0.06, bodyEndY: h * 0.52, leftArmAngle: -0.5, rightArmAngle: 0.5, armLen: w * 0.1, leftLegAngle: 0.4, rightLegAngle: -0.4, legLen: w * 0.12, bodyTopY: h * 0.35);
     // figure 2
@@ -5796,9 +5901,9 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLie(Canvas canvas, Size size) {
     // figure lying down
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // pillow
-    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.3, h * 0.48), width: w * 0.18, height: h * 0.1), Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.3, h * 0.48), width: w * 0.18, height: h * 0.1), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
     // head
     canvas.drawCircle(Offset(w * 0.28, h * 0.44), w * 0.07, paint);
     // body (horizontal)
@@ -5817,9 +5922,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.78, h * 0.56)
       ..quadraticBezierTo(w * 0.55, h * 0.58, w * 0.4, h * 0.52)
       ..close();
-    canvas.drawPath(blanket, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawPath(blanket, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
     // Zzz
-    final zz = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final zz = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.82, h * 0.3, w * 0.86, h * 0.3, zz);
     _drawLine(canvas, w * 0.86, h * 0.3, w * 0.82, h * 0.34, zz);
     _drawLine(canvas, w * 0.82, h * 0.34, w * 0.86, h * 0.34, zz);
@@ -5828,7 +5933,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLift(Canvas canvas, Size size) {
     // arms lifting a weight up
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // figure body
     canvas.drawCircle(Offset(w * 0.5, h * 0.22), w * 0.07, paint);
     final body = Paint()..color = paint.color..strokeWidth = 3..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
@@ -5840,7 +5945,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawLine(Offset(w * 0.5, h * 0.36), Offset(w * 0.35, h * 0.18), body);
     canvas.drawLine(Offset(w * 0.5, h * 0.36), Offset(w * 0.65, h * 0.18), body);
     // barbell
-    canvas.drawLine(Offset(w * 0.3, h * 0.15), Offset(w * 0.7, h * 0.15), Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(w * 0.3, h * 0.15), Offset(w * 0.7, h * 0.15), Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round);
     // weights
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.25, h * 0.1, w * 0.08, h * 0.12), Radius.circular(3)), paint);
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.67, h * 0.1, w * 0.08, h * 0.12), Radius.circular(3)), paint);
@@ -5849,11 +5954,11 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLittle(Canvas canvas, Size size) {
     // tiny cute circle next to a big one
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // big circle
     canvas.drawCircle(Offset(w * 0.38, h * 0.45), w * 0.18, paint);
     // small circle
-    canvas.drawCircle(Offset(w * 0.68, h * 0.55), w * 0.08, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(w * 0.68, h * 0.55), w * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // cute face on small one
     canvas.drawCircle(Offset(w * 0.65, h * 0.53), w * 0.01, Paint()..color = Colors.white);
     canvas.drawCircle(Offset(w * 0.71, h * 0.53), w * 0.01, Paint()..color = Colors.white);
@@ -5861,14 +5966,14 @@ class WordIllustrationPainter extends CustomPainter {
     final smile = Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCircle(center: Offset(w * 0.68, h * 0.56), radius: w * 0.025), 0.2, pi - 0.4, false, smile);
     // comparison arrow
-    final arr = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final arr = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.56, h * 0.5, w * 0.6, h * 0.5, arr);
   }
 
   void _drawLong(Canvas canvas, Size size) {
     // long horizontal snake-like line
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    final paint = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.04..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     final snake = Path()
       ..moveTo(w * 0.1, h * 0.4)
       ..quadraticBezierTo(w * 0.25, h * 0.25, w * 0.4, h * 0.4)
@@ -5876,13 +5981,13 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.8, h * 0.32, w * 0.9, h * 0.38);
     canvas.drawPath(snake, paint);
     // snake head
-    canvas.drawCircle(Offset(w * 0.9, h * 0.38), w * 0.035, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.9, h * 0.38), w * 0.035, Paint()..color = _dc(illustration.accent));
     // eye
     canvas.drawCircle(Offset(w * 0.91, h * 0.365), w * 0.01, Paint()..color = Colors.white);
     // tail
-    canvas.drawLine(Offset(w * 0.1, h * 0.4), Offset(w * 0.06, h * 0.36), Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(w * 0.1, h * 0.4), Offset(w * 0.06, h * 0.36), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2..strokeCap = StrokeCap.round);
     // length indicator arrows
-    final arr = Paint()..color = illustration.accent.withOpacity(0.25)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final arr = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawArrowLine(canvas, w * 0.15, h * 0.7, w * 0.85, h * 0.7, arr);
     _drawArrowLine(canvas, w * 0.85, h * 0.7, w * 0.15, h * 0.7, arr);
   }
@@ -5890,7 +5995,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLookAfter(Canvas canvas, Size size) {
     // umbrella sheltering something
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // umbrella canopy
     final canopy = Path()
       ..moveTo(w * 0.2, h * 0.45)
@@ -5905,7 +6010,7 @@ class WordIllustrationPainter extends CustomPainter {
     // small heart under umbrella (being sheltered)
     _drawHeartShape(canvas, w * 0.5, h * 0.55, w * 0.06, h * 0.05, Paint()..color = Colors.white.withOpacity(0.8));
     // raindrops on sides
-    final drop = Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final drop = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.15, h * 0.35, w * 0.13, h * 0.45, drop);
     _drawLine(canvas, w * 0.85, h * 0.35, w * 0.87, h * 0.45, drop);
     _drawLine(canvas, w * 0.1, h * 0.5, w * 0.08, h * 0.6, drop);
@@ -5915,7 +6020,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLookAt(Canvas canvas, Size size) {
     // eye with a focus point
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // eye shape
     final eye = Path()
       ..moveTo(w * 0.2, h * 0.45)
@@ -5926,13 +6031,13 @@ class WordIllustrationPainter extends CustomPainter {
     // white of eye
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.13, Paint()..color = Colors.white);
     // iris
-    canvas.drawCircle(Offset(w * 0.52, h * 0.45), w * 0.08, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.52, h * 0.45), w * 0.08, Paint()..color = _dc(illustration.accent));
     // pupil
     canvas.drawCircle(Offset(w * 0.53, h * 0.45), w * 0.035, Paint()..color = Colors.black87);
     // highlight
     canvas.drawCircle(Offset(w * 0.55, h * 0.43), w * 0.015, Paint()..color = Colors.white.withOpacity(0.8));
     // focus lines
-    final focus = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final focus = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.65, h * 0.35), Offset(w * 0.72, h * 0.28), focus);
     canvas.drawLine(Offset(w * 0.65, h * 0.45), Offset(w * 0.75, h * 0.45), focus);
     canvas.drawLine(Offset(w * 0.65, h * 0.55), Offset(w * 0.72, h * 0.62), focus);
@@ -5941,10 +6046,10 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLookFor(Canvas canvas, Size size) {
     // magnifying glass
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // glass circle
     canvas.drawCircle(Offset(w * 0.42, h * 0.4), w * 0.18, paint);
-    canvas.drawCircle(Offset(w * 0.42, h * 0.4), w * 0.15, Paint()..color = illustration.bg.withOpacity(0.3));
+    canvas.drawCircle(Offset(w * 0.42, h * 0.4), w * 0.15, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     // handle
     canvas.drawLine(Offset(w * 0.55, h * 0.53), Offset(w * 0.75, h * 0.73), Paint()..color = paint.color..strokeWidth = 4..strokeCap = StrokeCap.round);
     // sparkle on glass
@@ -5952,32 +6057,32 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawLine(Offset(w * 0.35, h * 0.32), Offset(w * 0.33, h * 0.28), spark);
     canvas.drawLine(Offset(w * 0.38, h * 0.3), Offset(w * 0.36, h * 0.26), spark);
     // question mark inside glass
-    final qm = Paint()..color = illustration.accent.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final qm = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCircle(center: Offset(w * 0.42, h * 0.4), radius: w * 0.06), -pi * 0.3, pi * 1.5, false, qm);
-    canvas.drawCircle(Offset(w * 0.42, h * 0.48), w * 0.012, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.42, h * 0.48), w * 0.012, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   void _drawLookLike(Canvas canvas, Size size) {
     // two similar shapes side by side
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // shape 1
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.18, h * 0.3, w * 0.22, h * 0.3), Radius.circular(w * 0.04)), paint);
     // shape 2
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.58, h * 0.3, w * 0.22, h * 0.3), Radius.circular(w * 0.04)), Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.58, h * 0.3, w * 0.22, h * 0.3), Radius.circular(w * 0.04)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // equals sign
-    final eq = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final eq = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.45, h * 0.4, w * 0.53, h * 0.4, eq);
     _drawLine(canvas, w * 0.45, h * 0.48, w * 0.53, h * 0.48, eq);
     // cute faces on both
     _drawFace(canvas, w * 0.29, h * 0.45, w * 0.04, illustration.accent, smileFactor: 0.8);
-    _drawFace(canvas, w * 0.69, h * 0.45, w * 0.04, illustration.accent.withOpacity(0.7), smileFactor: 0.8);
+    _drawFace(canvas, w * 0.69, h * 0.45, w * 0.04, illustration.accent.withOpacity(_minOp(0.7)), smileFactor: 0.8);
   }
 
   void _drawLoud(Canvas canvas, Size size) {
     // megaphone / speaker with sound waves
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // speaker body
     final body = Path()
       ..moveTo(w * 0.25, h * 0.4)
@@ -5989,9 +6094,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(body, paint);
     // handle
-    canvas.drawRect(Rect.fromLTWH(w * 0.22, h * 0.38, w * 0.06, h * 0.14), Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawRect(Rect.fromLTWH(w * 0.22, h * 0.38, w * 0.06, h * 0.14), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // sound waves
-    final wave = Paint()..color = illustration.accent.withOpacity(0.35)..strokeWidth = 2.5..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    final wave = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35))..strokeWidth = 2.5..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     for (int i = 1; i <= 3; i++) {
       canvas.drawArc(Rect.fromCircle(center: Offset(w * 0.55, h * 0.45), radius: w * 0.08 * i), -pi * 0.3, pi * 0.6, false, wave);
     }
@@ -6001,19 +6106,19 @@ class WordIllustrationPainter extends CustomPainter {
     // heart with flowers around it
     final w = size.width, h = size.height;
     // heart
-    _drawHeartShape(canvas, w * 0.5, h * 0.42, w * 0.16, h * 0.14, Paint()..color = illustration.accent);
+    _drawHeartShape(canvas, w * 0.5, h * 0.42, w * 0.16, h * 0.14, Paint()..color = _dc(illustration.accent));
     // flowers around
-    final flowerColor = illustration.accent.withOpacity(0.5);
+    final flowerColor = illustration.accent.withOpacity(_minOp(0.5));
     _drawFlower(canvas, w * 0.2, h * 0.28, w * 0.04, flowerColor);
     _drawFlower(canvas, w * 0.8, h * 0.3, w * 0.035, flowerColor);
     _drawFlower(canvas, w * 0.25, h * 0.65, w * 0.03, flowerColor);
     _drawFlower(canvas, w * 0.78, h * 0.62, w * 0.035, flowerColor);
     // leaves
-    final leaf = Paint()..color = illustration.accent.withOpacity(0.25);
+    final leaf = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25));
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.18, h * 0.55), width: w * 0.06, height: h * 0.03), leaf);
     canvas.drawOval(Rect.fromCenter(center: Offset(w * 0.82, h * 0.52), width: w * 0.06, height: h * 0.03), leaf);
     // sparkles
-    final spark = Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final spark = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.5, h * 0.18), Offset(w * 0.5, h * 0.13), spark);
     canvas.drawLine(Offset(w * 0.47, h * 0.15), Offset(w * 0.53, h * 0.15), spark);
   }
@@ -6021,7 +6126,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawLow(Canvas canvas, Size size) {
     // downward arrow near the bottom
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // arrow shaft going down
     final line = Paint()..color = paint.color..strokeWidth = 4..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.5, h * 0.2), Offset(w * 0.5, h * 0.7), line);
@@ -6033,16 +6138,16 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(head, paint);
     // ground line
-    canvas.drawLine(Offset(w * 0.2, h * 0.8), Offset(w * 0.8, h * 0.8), Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(w * 0.2, h * 0.8), Offset(w * 0.8, h * 0.8), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2..strokeCap = StrokeCap.round);
     // height indicators
-    _drawLine(canvas, w * 0.18, h * 0.2, w * 0.22, h * 0.2, Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 1.5);
-    _drawLine(canvas, w * 0.18, h * 0.5, w * 0.22, h * 0.5, Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 1.5);
+    _drawLine(canvas, w * 0.18, h * 0.2, w * 0.22, h * 0.2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 1.5);
+    _drawLine(canvas, w * 0.18, h * 0.5, w * 0.22, h * 0.5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 1.5);
   }
 
   void _drawLucky(Canvas canvas, Size size) {
     // four-leaf clover
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     final cx = w * 0.5, cy = h * 0.42;
     final r = w * 0.12;
     // four leaves
@@ -6051,7 +6156,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx - r * 0.6, cy + r * 0.6), r, paint);
     canvas.drawCircle(Offset(cx + r * 0.6, cy + r * 0.6), r, paint);
     // stem
-    canvas.drawLine(Offset(cx, cy + r * 0.8), Offset(cx, h * 0.75), Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = 3..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(cx, cy + r * 0.8), Offset(cx, h * 0.75), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = 3..strokeCap = StrokeCap.round);
     // sparkle (lucky!)
     _drawStarShape(canvas, w * 0.78, h * 0.25, w * 0.03, w * 0.015, 4, Paint()..color = Colors.white.withOpacity(0.5));
     _drawStarShape(canvas, w * 0.22, h * 0.3, w * 0.025, w * 0.012, 4, Paint()..color = Colors.white.withOpacity(0.4));
@@ -6060,7 +6165,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawMakeSure(Canvas canvas, Size size) {
     // checkmark with a shield
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // shield shape
     final shield = Path()
       ..moveTo(w * 0.5, h * 0.15)
@@ -6076,7 +6181,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.72, h * 0.52, w * 0.5, h * 0.68)
       ..quadraticBezierTo(w * 0.28, h * 0.52, w * 0.28, h * 0.3)
       ..close();
-    canvas.drawPath(inner, Paint()..color = illustration.bg.withOpacity(0.3));
+    canvas.drawPath(inner, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     // checkmark
     final check = Paint()..color = Colors.white..strokeWidth = 4..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     final checkPath = Path()
@@ -6089,24 +6194,24 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawMarried(Canvas canvas, Size size) {
     // two rings intertwined
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // ring 1
     canvas.drawCircle(Offset(w * 0.4, h * 0.45), w * 0.14, paint);
-    canvas.drawCircle(Offset(w * 0.4, h * 0.45), w * 0.11, Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.4, h * 0.45), w * 0.11, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
     // ring 2
-    canvas.drawCircle(Offset(w * 0.6, h * 0.45), w * 0.14, Paint()..color = illustration.accent.withOpacity(0.7));
-    canvas.drawCircle(Offset(w * 0.6, h * 0.45), w * 0.11, Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.6, h * 0.45), w * 0.14, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
+    canvas.drawCircle(Offset(w * 0.6, h * 0.45), w * 0.11, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
     // diamonds on rings
     _drawStarShape(canvas, w * 0.4, h * 0.31, w * 0.025, w * 0.012, 4, Paint()..color = Colors.white.withOpacity(0.9));
     _drawStarShape(canvas, w * 0.6, h * 0.31, w * 0.025, w * 0.012, 4, Paint()..color = Colors.white.withOpacity(0.7));
     // hearts between
-    _drawHeartShape(canvas, w * 0.5, h * 0.62, w * 0.04, h * 0.035, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawHeartShape(canvas, w * 0.5, h * 0.62, w * 0.04, h * 0.035, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   void _drawMean(Canvas canvas, Size size) {
     // frowning face
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // face circle
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.2, paint);
     // eyes (angry)
@@ -6126,7 +6231,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawMetal(Canvas canvas, Size size) {
     // nut/bolt
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // hexagonal nut
     final nutPath = Path();
     final nutR = w * 0.14;
@@ -6140,9 +6245,9 @@ class WordIllustrationPainter extends CustomPainter {
     nutPath.close();
     canvas.drawPath(nutPath, paint);
     // hole in center
-    canvas.drawCircle(Offset(nutCx, nutCy), w * 0.06, Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(nutCx, nutCy), w * 0.06, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
     // bolt below
-    canvas.drawRect(Rect.fromLTWH(w * 0.46, h * 0.58, w * 0.08, h * 0.15), Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawRect(Rect.fromLTWH(w * 0.46, h * 0.58, w * 0.08, h * 0.15), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // bolt head
     final boltR = w * 0.06;
     final boltPath = Path();
@@ -6153,7 +6258,7 @@ class WordIllustrationPainter extends CustomPainter {
       if (i == 0) boltPath.moveTo(px, py); else boltPath.lineTo(px, py);
     }
     boltPath.close();
-    canvas.drawPath(boltPath, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(boltPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // metallic shine
     canvas.drawLine(Offset(w * 0.38, h * 0.38), Offset(w * 0.45, h * 0.35), Paint()..color = Colors.white.withOpacity(0.4)..strokeWidth = 2..strokeCap = StrokeCap.round);
   }
@@ -6161,24 +6266,24 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawMiddle(Canvas canvas, Size size) {
     // dot in the center of a circle
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // outer circle
     canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.22, paint);
     // inner circle (dashed feel)
-    canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.15, Paint()..color = illustration.accent.withOpacity(0.2));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.15, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
     // cross-hairs
-    final cross = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final cross = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.5, h * 0.22), Offset(w * 0.5, h * 0.74), cross);
     canvas.drawLine(Offset(w * 0.24, h * 0.48), Offset(w * 0.76, h * 0.48), cross);
     // center dot
-    canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.05, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.05, Paint()..color = _dc(illustration.accent));
     canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.02, Paint()..color = Colors.white.withOpacity(0.8));
   }
 
   void _drawMind(Canvas canvas, Size size) {
     // brain shape
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // left hemisphere
     final leftBrain = Path()
       ..moveTo(w * 0.5, h * 0.25)
@@ -6194,7 +6299,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.8, h * 0.58, w * 0.7, h * 0.65)
       ..quadraticBezierTo(w * 0.6, h * 0.7, w * 0.5, h * 0.65)
       ..close();
-    canvas.drawPath(rightBrain, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(rightBrain, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // center line
     canvas.drawLine(Offset(w * 0.5, h * 0.25), Offset(w * 0.5, h * 0.65), Paint()..color = Colors.white.withOpacity(0.5)..strokeWidth = 1.5..strokeCap = StrokeCap.round);
     // brain folds (squiggles)
@@ -6215,18 +6320,18 @@ class WordIllustrationPainter extends CustomPainter {
     for (final pos in positions) {
       final x = startX + pos[0] * cellW;
       final y = startY + pos[1] * cellH;
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x + 2, y + 2, cellW - 4, cellH - 4), Radius.circular(w * 0.02)), Paint()..color = illustration.accent.withOpacity(0.6));
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x + 2, y + 2, cellW - 4, cellH - 4), Radius.circular(w * 0.02)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     }
     // missing piece outline (dashed feel)
     final missingX = startX + cellW;
     final missingY = startY + cellH;
-    final outline = Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 2..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    final outline = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 2..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(missingX + 2, missingY + 2, cellW - 4, cellH - 4), Radius.circular(w * 0.02)), outline);
     // question mark in missing spot
-    final tp = _textPainter('?', fontSize: w * 0.12, color: illustration.accent.withOpacity(0.25));
+    final tp = _textPainter('?', fontSize: w * 0.12, color: illustration.accent.withOpacity(_minOp(0.25)));
     tp.paint(canvas, Offset(missingX + cellW * 0.3, missingY + cellH * 0.15));
     // puzzle tab nubs on existing pieces
-    final nub = Paint()..color = illustration.accent.withOpacity(0.5);
+    final nub = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawCircle(Offset(startX + cellW, startY + cellH * 0.5), w * 0.03, nub);
     canvas.drawCircle(Offset(startX + cellW * 0.5, startY + cellH), w * 0.03, nub);
   }
@@ -6235,7 +6340,7 @@ class WordIllustrationPainter extends CustomPainter {
     // two colors swirling together
     final w = size.width, h = size.height;
     // swirl 1
-    final swirl1 = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
+    final swirl1 = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
     final s1 = Path()
       ..moveTo(w * 0.25, h * 0.35)
       ..quadraticBezierTo(w * 0.45, h * 0.2, w * 0.55, h * 0.4)
@@ -6243,7 +6348,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.3, h * 0.68, w * 0.35, h * 0.55);
     canvas.drawPath(s1, swirl1);
     // swirl 2
-    final swirl2 = Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
+    final swirl2 = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
     final s2 = Path()
       ..moveTo(w * 0.7, h * 0.3)
       ..quadraticBezierTo(w * 0.55, h * 0.25, w * 0.5, h * 0.45)
@@ -6251,9 +6356,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(w * 0.75, h * 0.7, w * 0.65, h * 0.5);
     canvas.drawPath(s2, swirl2);
     // overlap circle (mix point)
-    canvas.drawCircle(Offset(w * 0.52, h * 0.48), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.52, h * 0.48), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // arrows indicating mixing
-    final arr = Paint()..color = illustration.accent.withOpacity(0.25)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final arr = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawArrowLine(canvas, w * 0.2, h * 0.8, w * 0.45, h * 0.72, arr);
     _drawArrowLine(canvas, w * 0.8, h * 0.8, w * 0.55, h * 0.72, arr);
   }
@@ -6261,7 +6366,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawMove(Canvas canvas, Size size) {
     // moving box with arrows
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // box
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.32, h * 0.32, w * 0.36, h * 0.32), Radius.circular(w * 0.02)), paint);
     // flaps
@@ -6271,19 +6376,19 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.5, h * 0.25)
       ..lineTo(w * 0.5, h * 0.32)
       ..close();
-    canvas.drawPath(flapL, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(flapL, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     final flapR = Path()
       ..moveTo(w * 0.68, h * 0.32)
       ..lineTo(w * 0.72, h * 0.25)
       ..lineTo(w * 0.5, h * 0.25)
       ..close();
-    canvas.drawPath(flapR, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawPath(flapR, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // movement arrows
     final arr = Paint()..color = Colors.white.withOpacity(0.7)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawArrowLine(canvas, w * 0.15, h * 0.48, w * 0.28, h * 0.48, arr);
     _drawArrowLine(canvas, w * 0.85, h * 0.48, w * 0.72, h * 0.48, arr);
     // speed lines
-    final speed = Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final speed = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.1, h * 0.38, w * 0.18, h * 0.38, speed);
     _drawLine(canvas, w * 0.1, h * 0.48, w * 0.16, h * 0.48, speed);
     _drawLine(canvas, w * 0.1, h * 0.58, w * 0.18, h * 0.58, speed);
@@ -6292,17 +6397,17 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawMust(Canvas canvas, Size size) {
     // exclamation mark in a circle
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // circle
     canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.22, paint);
     // inner circle
-    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.19, Paint()..color = illustration.bg.withOpacity(0.25));
+    canvas.drawCircle(Offset(w * 0.5, h * 0.45), w * 0.19, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.25)));
     // exclamation line
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.47, h * 0.25, w * 0.06, h * 0.22), Radius.circular(w * 0.03)), Paint()..color = Colors.white);
     // exclamation dot
     canvas.drawCircle(Offset(w * 0.5, h * 0.58), w * 0.03, Paint()..color = Colors.white);
     // urgency lines
-    final urg = Paint()..color = illustration.accent.withOpacity(0.2)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final urg = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2))..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.18, h * 0.3, w * 0.25, h * 0.3, urg);
     _drawLine(canvas, w * 0.75, h * 0.3, w * 0.82, h * 0.3, urg);
     _drawLine(canvas, w * 0.15, h * 0.5, w * 0.22, h * 0.5, urg);
@@ -6312,13 +6417,13 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawMy(Canvas canvas, Size size) {
     // pointing hand toward self
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // body silhouette
     canvas.drawCircle(Offset(w * 0.5, h * 0.3), w * 0.1, paint);
     // torso
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.4, h * 0.4, w * 0.2, h * 0.25), Radius.circular(w * 0.04)), Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.4, h * 0.4, w * 0.2, h * 0.25), Radius.circular(w * 0.04)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // pointing hand to chest
-    final hand = Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final hand = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.65, h * 0.48), Offset(w * 0.52, h * 0.5), hand);
     // finger
     canvas.drawLine(Offset(w * 0.52, h * 0.5), Offset(w * 0.5, h * 0.48), hand);
@@ -6334,7 +6439,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawNaughty(Canvas canvas, Size size) {
     // mischievous face with horns
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // face
     canvas.drawCircle(Offset(w * 0.5, h * 0.48), w * 0.18, paint);
     // horns
@@ -6363,7 +6468,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawNext(Canvas canvas, Size size) {
     // right arrow or >> symbol
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // double arrows >>
     final arr1 = Path()
       ..moveTo(w * 0.25, h * 0.35)
@@ -6376,9 +6481,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.62, h * 0.5)
       ..lineTo(w * 0.45, h * 0.65)
       ..close();
-    canvas.drawPath(arr2, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(arr2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // arrow line
-    final line = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final line = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 3..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.55, h * 0.5), Offset(w * 0.8, h * 0.5), line);
     // arrowhead at end
     _drawArrowLine(canvas, w * 0.7, h * 0.5, w * 0.82, h * 0.5, line);
@@ -6387,7 +6492,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawNice(Canvas canvas, Size size) {
     // flower with a smile
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // petals
     final cx = w * 0.5, cy = h * 0.4;
     for (int i = 0; i < 6; i++) {
@@ -6395,13 +6500,13 @@ class WordIllustrationPainter extends CustomPainter {
       canvas.drawOval(Rect.fromCenter(center: Offset(cx + cos(angle) * w * 0.1, cy + sin(angle) * w * 0.1), width: w * 0.12, height: h * 0.1), paint);
     }
     // center
-    canvas.drawCircle(Offset(cx, cy), w * 0.08, Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawCircle(Offset(cx, cy), w * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // smile in center
     _drawFace(canvas, cx, cy, w * 0.06, Colors.white, smileFactor: 0.9);
     // stem
-    canvas.drawLine(Offset(cx, cy + w * 0.1), Offset(cx, h * 0.78), Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 3..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(cx, cy + w * 0.1), Offset(cx, h * 0.78), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 3..strokeCap = StrokeCap.round);
     // leaves
-    final leaf = Paint()..color = illustration.accent.withOpacity(0.3);
+    final leaf = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3));
     canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.08, h * 0.62), width: w * 0.1, height: h * 0.04), leaf);
     canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.08, h * 0.55), width: w * 0.1, height: h * 0.04), leaf);
   }
@@ -6409,25 +6514,25 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawOk(Canvas canvas, Size size) {
     // thumbs up
     final w = size.width, h = size.height;
-    final paint = Paint()..color = illustration.accent;
+    final paint = Paint()..color = _dc(illustration.accent);
     // thumb
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.42, h * 0.18, w * 0.16, h * 0.28), Radius.circular(w * 0.05)), paint);
     // fist/palm
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.35, h * 0.42, w * 0.3, h * 0.28), Radius.circular(w * 0.04)), paint);
     // fingers
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.37, h * 0.5, w * 0.06, h * 0.2), Radius.circular(w * 0.03)), Paint()..color = illustration.accent.withOpacity(0.8));
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.45, h * 0.5, w * 0.06, h * 0.22), Radius.circular(w * 0.03)), Paint()..color = illustration.accent.withOpacity(0.8));
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.53, h * 0.5, w * 0.06, h * 0.2), Radius.circular(w * 0.03)), Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.37, h * 0.5, w * 0.06, h * 0.2), Radius.circular(w * 0.03)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.45, h * 0.5, w * 0.06, h * 0.22), Radius.circular(w * 0.03)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.53, h * 0.5, w * 0.06, h * 0.2), Radius.circular(w * 0.03)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // sparkle
-    _drawStarShape(canvas, w * 0.78, h * 0.25, w * 0.03, w * 0.015, 4, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawStarShape(canvas, w * 0.22, h * 0.35, w * 0.025, w * 0.012, 4, Paint()..color = illustration.accent.withOpacity(0.3));
+    _drawStarShape(canvas, w * 0.78, h * 0.25, w * 0.03, w * 0.015, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, w * 0.22, h * 0.35, w * 0.025, w * 0.012, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
   }
 
   // ── online: 在线的 ────────────────────────────────────────────────────────
   void _drawOnline(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // laptop base
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.2, h * 0.52, w * 0.6, h * 0.06), Radius.circular(w * 0.02)),
@@ -6441,10 +6546,10 @@ class WordIllustrationPainter extends CustomPainter {
     // screen inner
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.28, h * 0.23, w * 0.44, h * 0.27), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent.withOpacity(0.3),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)),
     );
     // wifi arcs
-    final wifiP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final wifiP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final r = w * (0.06 + i * 0.05);
       canvas.drawArc(Rect.fromCenter(center: Offset(cx, h * 0.15), width: r * 2, height: r * 2), pi * 1.25, pi * 0.5, false, wifiP);
@@ -6457,16 +6562,16 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawOrange(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.48;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // orange body
     canvas.drawCircle(Offset(cx, cy), w * 0.22, accentP);
     // texture dots
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4;
-      canvas.drawCircle(Offset(cx + cos(angle) * w * 0.12, cy + sin(angle) * w * 0.12), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.5));
+      canvas.drawCircle(Offset(cx + cos(angle) * w * 0.12, cy + sin(angle) * w * 0.12), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     }
     // navel
-    canvas.drawCircle(Offset(cx, cy - w * 0.18), w * 0.03, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(cx, cy - w * 0.18), w * 0.03, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // stem
     final stemP = Paint()..color = const Color(0xFF5D4037)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx, cy - w * 0.22), Offset(cx + w * 0.02, cy - w * 0.32), stemP);
@@ -6481,7 +6586,7 @@ class WordIllustrationPainter extends CustomPainter {
   // ── our: 我们的 ───────────────────────────────────────────────────────────
   void _drawOur(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final color = illustration.accent;
+    final color = _dc(illustration.accent);
     // three stick figures holding hands
     _drawStickFigure(canvas, w * 0.25, h * 0.4, w * 0.18, color);
     _drawStickFigure(canvas, w * 0.5, h * 0.36, w * 0.2, color);
@@ -6501,7 +6606,7 @@ class WordIllustrationPainter extends CustomPainter {
     // brush ferrule
     canvas.drawLine(Offset(w * 0.35, h * 0.65), Offset(w * 0.28, h * 0.78), Paint()..color = const Color(0xFFBDBDBD)..strokeWidth = w * 0.05..strokeCap = StrokeCap.round);
     // brush bristles
-    final bristleP = Paint()..color = illustration.accent.withOpacity(0.85)..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
+    final bristleP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.85))..strokeWidth = w * 0.04..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.28, h * 0.78), Offset(w * 0.2, h * 0.92), bristleP);
     // paint drops
     canvas.drawCircle(Offset(w * 0.72, h * 0.38), w * 0.04, Paint()..color = const Color(0xFFE91E63).withOpacity(0.6));
@@ -6520,16 +6625,16 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.75, h * 0.82)
       ..lineTo(w * 0.25, h * 0.82)
       ..close();
-    canvas.drawPath(paperPath, Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawPath(paperPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // folded corner
     final foldPath = Path()
       ..moveTo(w * 0.65, h * 0.12)
       ..lineTo(w * 0.65, h * 0.22)
       ..lineTo(w * 0.75, h * 0.22)
       ..close();
-    canvas.drawPath(foldPath, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawPath(foldPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // text lines
-    final lineP = Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final lineP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 5; i++) {
       final y = h * (0.32 + i * 0.1);
       final endX = i == 4 ? w * 0.55 : w * 0.68;
@@ -6541,32 +6646,32 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPickUp(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     // hand/arm reaching down
-    final armP = Paint()..color = illustration.accent.withOpacity(0.8)..strokeWidth = w * 0.06..strokeCap = StrokeCap.round;
+    final armP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8))..strokeWidth = w * 0.06..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.5, h * 0.12), Offset(w * 0.45, h * 0.45), armP);
     // hand
-    canvas.drawCircle(Offset(w * 0.44, h * 0.5), w * 0.06, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(w * 0.44, h * 0.5), w * 0.06, Paint()..color = _dc(illustration.accent));
     // fingers reaching down
     for (int i = 0; i < 3; i++) {
       final fx = w * (0.38 + i * 0.04);
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(fx, h * 0.54, w * 0.025, h * 0.06), Radius.circular(w * 0.01)),
-        Paint()..color = illustration.accent.withOpacity(0.7),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)),
       );
     }
     // small object on ground
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.42, h * 0.72, w * 0.12, h * 0.08), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
     // ground line
-    canvas.drawLine(Offset(w * 0.2, h * 0.82), Offset(w * 0.8, h * 0.82), Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(w * 0.2, h * 0.82), Offset(w * 0.8, h * 0.82), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round);
   }
 
   // ── pink: 粉色花 ─────────────────────────────────────────────────────────
   void _drawPink(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.4;
-    final petalP = Paint()..color = illustration.accent;
+    final petalP = Paint()..color = _dc(illustration.accent);
     // petals
     for (int i = 0; i < 5; i++) {
       final angle = i * 2 * pi / 5 - pi / 2;
@@ -6593,11 +6698,11 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPlastic(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // bottle cap
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.06, h * 0.12, w * 0.12, h * 0.08), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent.withOpacity(0.7),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)),
     );
     // bottle neck
     canvas.drawRRect(
@@ -6612,12 +6717,12 @@ class WordIllustrationPainter extends CustomPainter {
     // label area
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.12, h * 0.4, w * 0.24, h * 0.2), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.4),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)),
     );
     // highlight
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.1, h * 0.32, w * 0.04, h * 0.4), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.bg.withOpacity(0.4),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)),
     );
   }
 
@@ -6625,7 +6730,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPleased(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // face circle
     canvas.drawCircle(Offset(cx, cy), w * 0.24, accentP);
     // eyes (happy squints)
@@ -6641,14 +6746,14 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx - w * 0.15, cy + h * 0.04), w * 0.04, Paint()..color = const Color(0xFFFF8A80).withOpacity(0.5));
     canvas.drawCircle(Offset(cx + w * 0.15, cy + h * 0.04), w * 0.04, Paint()..color = const Color(0xFFFF8A80).withOpacity(0.5));
     // sparkles
-    _drawStarShape(canvas, w * 0.82, h * 0.2, w * 0.03, w * 0.015, 4, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawStarShape(canvas, w * 0.18, h * 0.25, w * 0.025, w * 0.012, 4, Paint()..color = illustration.accent.withOpacity(0.3));
+    _drawStarShape(canvas, w * 0.82, h * 0.2, w * 0.03, w * 0.015, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, w * 0.18, h * 0.25, w * 0.025, w * 0.012, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
   }
 
   // ── point: 指向 ──────────────────────────────────────────────────────────
   void _drawPoint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // hand/palm
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.32, h * 0.45, w * 0.2, h * 0.2), Radius.circular(w * 0.04)),
@@ -6661,14 +6766,14 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.85, h * 0.33)
       ..lineTo(w * 0.55, h * 0.52)
       ..close();
-    canvas.drawPath(fingerPath, Paint()..color = illustration.accent.withOpacity(0.9));
+    canvas.drawPath(fingerPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.9)));
     // finger tip
     canvas.drawCircle(Offset(w * 0.84, h * 0.3), w * 0.025, accentP);
     // other curled fingers
     for (int i = 0; i < 3; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(w * (0.35 + i * 0.05), h * 0.55, w * 0.04, h * 0.1), Radius.circular(w * 0.02)),
-        Paint()..color = illustration.accent.withOpacity(0.7),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)),
       );
     }
   }
@@ -6677,21 +6782,21 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPoor(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.48;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // piggy bank body
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.45, height: h * 0.35), accentP);
     // ears
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.15, cy - h * 0.18), width: w * 0.1, height: h * 0.08), Paint()..color = illustration.accent.withOpacity(0.8));
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.15, cy - h * 0.18), width: w * 0.1, height: h * 0.08), Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx - w * 0.15, cy - h * 0.18), width: w * 0.1, height: h * 0.08), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.15, cy - h * 0.18), width: w * 0.1, height: h * 0.08), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // snout
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.2, cy + h * 0.02), width: w * 0.12, height: h * 0.08), Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.2, cy + h * 0.02), width: w * 0.12, height: h * 0.08), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // nostrils
-    canvas.drawCircle(Offset(cx + w * 0.18, cy + h * 0.02), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.4));
-    canvas.drawCircle(Offset(cx + w * 0.23, cy + h * 0.02), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(cx + w * 0.18, cy + h * 0.02), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    canvas.drawCircle(Offset(cx + w * 0.23, cy + h * 0.02), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // coin slot on top
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.04, cy - h * 0.22, w * 0.08, h * 0.03), Radius.circular(w * 0.015)), Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.04, cy - h * 0.22, w * 0.08, h * 0.03), Radius.circular(w * 0.015)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // cracks showing emptiness
-    final crackP = Paint()..color = illustration.bg.withOpacity(0.6)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final crackP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6))..strokeWidth = 2..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx - w * 0.05, cy + h * 0.1), Offset(cx + w * 0.02, cy + h * 0.14), crackP);
     canvas.drawLine(Offset(cx + w * 0.05, cy + h * 0.08), Offset(cx + w * 0.1, cy + h * 0.13), crackP);
     // legs
@@ -6704,9 +6809,9 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // big center star
-    _drawStarShape(canvas, cx, cy, w * 0.18, w * 0.09, 5, Paint()..color = illustration.accent);
+    _drawStarShape(canvas, cx, cy, w * 0.18, w * 0.09, 5, Paint()..color = _dc(illustration.accent));
     // small surrounding stars
-    final smallStarP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final smallStarP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final angles = [0, pi / 3, 2 * pi / 3, pi, 4 * pi / 3, 5 * pi / 3];
     for (final angle in angles) {
       final sx = cx + cos(angle) * w * 0.3;
@@ -6719,7 +6824,7 @@ class WordIllustrationPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(cx + cos(angle) * w * 0.38, cy + sin(angle) * w * 0.38),
         w * 0.015,
-        Paint()..color = illustration.accent.withOpacity(0.3),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)),
       );
     }
   }
@@ -6728,7 +6833,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPost(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // mailbox body
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.18, h * 0.3, w * 0.36, h * 0.4), Radius.circular(w * 0.04)),
@@ -6740,11 +6845,11 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx, h * 0.15)
       ..lineTo(cx + w * 0.22, h * 0.3)
       ..close();
-    canvas.drawPath(roofPath, Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawPath(roofPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // mail slot
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.1, h * 0.38, w * 0.2, h * 0.05), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.bg.withOpacity(0.5),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)),
     );
     // letter partially inserted
     canvas.drawRRect(
@@ -6761,7 +6866,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // repeat/loop arrows
-    final arrowP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round;
     // top arc (clockwise arrow)
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.45, height: h * 0.35), -pi * 0.1, pi * 0.7, false, arrowP);
     // arrowhead top
@@ -6781,19 +6886,19 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(botEnd.dx - w * 0.06, botEnd.dy - h * 0.02);
     canvas.drawPath(ahPath2, arrowP);
     // center dot
-    canvas.drawCircle(Offset(cx, cy), w * 0.04, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(cx, cy), w * 0.04, Paint()..color = _dc(illustration.accent));
   }
 
   // ── prefer: 更喜欢 ──────────────────────────────────────────────────────
   void _drawPrefer(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     // two items (circles)
-    canvas.drawCircle(Offset(w * 0.3, h * 0.5), w * 0.12, Paint()..color = illustration.accent.withOpacity(0.4));
-    canvas.drawCircle(Offset(w * 0.7, h * 0.5), w * 0.12, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(w * 0.3, h * 0.5), w * 0.12, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    canvas.drawCircle(Offset(w * 0.7, h * 0.5), w * 0.12, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // heart over the preferred one (right)
-    _drawHeartShape(canvas, w * 0.7, h * 0.35, w * 0.08, h * 0.07, Paint()..color = illustration.accent);
+    _drawHeartShape(canvas, w * 0.7, h * 0.35, w * 0.08, h * 0.07, Paint()..color = _dc(illustration.accent));
     // X over the other one
-    final xP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final xP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.24, h * 0.44), Offset(w * 0.36, h * 0.56), xP);
     canvas.drawLine(Offset(w * 0.36, h * 0.44), Offset(w * 0.24, h * 0.56), xP);
   }
@@ -6802,7 +6907,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPrepare(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // clipboard
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.2, h * 0.15, w * 0.4, h * 0.6), Radius.circular(w * 0.03)),
@@ -6811,17 +6916,17 @@ class WordIllustrationPainter extends CustomPainter {
     // clip at top
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.06, h * 0.1, w * 0.12, h * 0.08), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.7),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)),
     );
     // checklist lines with checkmarks
-    final lineP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final lineP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     final checkP = Paint()..color = Colors.white..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 4; i++) {
       final y = h * (0.3 + i * 0.1);
       // checkbox
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.15, y - h * 0.02, w * 0.06, h * 0.05), Radius.circular(w * 0.01)),
-        Paint()..color = illustration.accent.withOpacity(0.5),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
       );
       // checkmark
       if (i < 3) {
@@ -6840,9 +6945,9 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPull(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // large arrow pointing left (toward viewer)
-    final arrowP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
     // arrow shaft
     canvas.drawLine(Offset(cx + w * 0.25, cy), Offset(cx - w * 0.1, cy), arrowP);
     // arrowhead (pointing left)
@@ -6851,21 +6956,21 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx - w * 0.02, cy - h * 0.1)
       ..lineTo(cx - w * 0.02, cy + h * 0.1)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
     // hands at left side pulling
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.28, cy - h * 0.06, w * 0.1, h * 0.12), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.7),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)),
     );
     // fingers
     for (int i = 0; i < 3; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.32, cy - h * (0.04 - i * 0.035), w * 0.03, h * 0.04), Radius.circular(w * 0.01)),
-        Paint()..color = illustration.accent.withOpacity(0.6),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)),
       );
     }
     // motion lines
-    final motionP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final motionP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final lx = cx + w * (0.15 + i * 0.06);
       canvas.drawLine(Offset(lx, cy - h * 0.05), Offset(lx, cy + h * 0.05), motionP);
@@ -6885,7 +6990,7 @@ class WordIllustrationPainter extends CustomPainter {
     ];
     for (final pos in positions) {
       final gx = w * pos[0], gy = h * pos[1];
-      canvas.drawCircle(Offset(gx, gy), w * 0.07, Paint()..color = illustration.accent.withOpacity(0.75));
+      canvas.drawCircle(Offset(gx, gy), w * 0.07, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.75)));
       // highlight
       canvas.drawCircle(Offset(gx - w * 0.02, gy - h * 0.02), w * 0.02, Paint()..color = Colors.white.withOpacity(0.2));
     }
@@ -6903,9 +7008,9 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPush(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // large arrow pointing right (away from viewer)
-    final arrowP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
     // arrow shaft
     canvas.drawLine(Offset(cx - w * 0.25, cy), Offset(cx + w * 0.1, cy), arrowP);
     // arrowhead (pointing right)
@@ -6914,21 +7019,21 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.02, cy - h * 0.1)
       ..lineTo(cx + w * 0.02, cy + h * 0.1)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
     // hands at left side pushing
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.32, cy - h * 0.06, w * 0.1, h * 0.12), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.7),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)),
     );
     // spread fingers pushing
     for (int i = 0; i < 4; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.24, cy - h * (0.06 - i * 0.035), w * 0.025, h * 0.045), Radius.circular(w * 0.01)),
-        Paint()..color = illustration.accent.withOpacity(0.6),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)),
       );
     }
     // force lines
-    final forceP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final forceP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final lx = cx - w * (0.05 + i * 0.06);
       canvas.drawLine(Offset(lx, cy - h * 0.05), Offset(lx, cy + h * 0.05), forceP);
@@ -6939,31 +7044,31 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPut(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // surface/shelf
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.15, h * 0.55, w * 0.7, h * 0.06), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
     // hand from above
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.08, h * 0.25, w * 0.16, h * 0.12), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.8),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)),
     );
     // fingers
     for (int i = 0; i < 3; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * (0.06 - i * 0.04), h * 0.35, w * 0.025, h * 0.06), Radius.circular(w * 0.01)),
-        Paint()..color = illustration.accent.withOpacity(0.6),
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)),
       );
     }
     // object being placed
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.08, h * 0.45, w * 0.16, h * 0.1), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent,
+      Paint()..color = _dc(illustration.accent),
     );
     // arrow pointing down
-    final arrowP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 2..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx, h * 0.38), Offset(cx, h * 0.44), arrowP);
   }
 
@@ -6971,7 +7076,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawPutOn(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // jacket body
     final jacketPath = Path()
       ..moveTo(cx - w * 0.18, cy - h * 0.2)
@@ -6991,7 +7096,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx, cy - h * 0.15)
       ..lineTo(cx + w * 0.05, cy - h * 0.1)
       ..lineTo(cx + w * 0.18, cy - h * 0.2);
-    canvas.drawPath(collarPath, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawPath(collarPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // left sleeve
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.32, cy - h * 0.12, w * 0.1, h * 0.3), Radius.circular(w * 0.03)),
@@ -7003,10 +7108,10 @@ class WordIllustrationPainter extends CustomPainter {
       accentP,
     );
     // zipper line
-    canvas.drawLine(Offset(cx, cy - h * 0.15), Offset(cx, cy + h * 0.25), Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(cx, cy - h * 0.15), Offset(cx, cy + h * 0.25), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round);
     // buttons
     for (int i = 0; i < 3; i++) {
-      canvas.drawCircle(Offset(cx, cy - i * h * 0.08), w * 0.015, Paint()..color = illustration.bg.withOpacity(0.4));
+      canvas.drawCircle(Offset(cx, cy - i * h * 0.08), w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
     }
   }
 
@@ -7023,9 +7128,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.15, h * 0.38)
       ..lineTo(cx, h * 0.4)
       ..close();
-    canvas.drawPath(boltPath, Paint()..color = illustration.accent);
+    canvas.drawPath(boltPath, Paint()..color = _dc(illustration.accent));
     // speed lines
-    final speedP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final speedP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(w * 0.12, h * 0.25), Offset(w * 0.25, h * 0.25), speedP);
     canvas.drawLine(Offset(w * 0.1, h * 0.4), Offset(w * 0.22, h * 0.4), speedP);
     canvas.drawLine(Offset(w * 0.15, h * 0.55), Offset(w * 0.28, h * 0.55), speedP);
@@ -7049,11 +7154,11 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.82, cy + h * 0.06)
       ..lineTo(w * 0.15, cy + h * 0.06)
       ..close();
-    canvas.drawPath(bodyPath, Paint()..color = illustration.accent);
+    canvas.drawPath(bodyPath, Paint()..color = _dc(illustration.accent));
     // cockpit window
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.38, cy - h * 0.16, w * 0.18, h * 0.1), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
     // wheels
     canvas.drawCircle(Offset(w * 0.28, cy + h * 0.08), w * 0.06, Paint()..color = const Color(0xFF424242));
@@ -7061,21 +7166,21 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawCircle(Offset(w * 0.7, cy + h * 0.08), w * 0.06, Paint()..color = const Color(0xFF424242));
     canvas.drawCircle(Offset(w * 0.7, cy + h * 0.08), w * 0.03, Paint()..color = const Color(0xFF757575));
     // speed lines behind car
-    final speedP = Paint()..color = illustration.accent.withOpacity(0.35)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final speedP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35))..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 4; i++) {
       final ly = cy - h * 0.1 + i * h * 0.06;
       canvas.drawLine(Offset(w * 0.02, ly), Offset(w * 0.12, ly), speedP);
     }
     // spoiler
-    canvas.drawLine(Offset(w * 0.72, cy - h * 0.1), Offset(w * 0.78, cy - h * 0.16), Paint()..color = illustration.accent.withOpacity(0.8)..strokeWidth = 3..strokeCap = StrokeCap.round);
-    canvas.drawLine(Offset(w * 0.74, cy - h * 0.16), Offset(w * 0.82, cy - h * 0.16), Paint()..color = illustration.accent.withOpacity(0.8)..strokeWidth = 2.5..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(w * 0.72, cy - h * 0.1), Offset(w * 0.78, cy - h * 0.16), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8))..strokeWidth = 3..strokeCap = StrokeCap.round);
+    canvas.drawLine(Offset(w * 0.74, cy - h * 0.16), Offset(w * 0.82, cy - h * 0.16), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8))..strokeWidth = 2.5..strokeCap = StrokeCap.round);
   }
 
   // ── ready: 准备好的 ─────────────────────────────────────────────────────
   void _drawReady(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final accentP = Paint()..color = illustration.accent;
+    final accentP = Paint()..color = _dc(illustration.accent);
     // circle
     canvas.drawCircle(Offset(cx, cy), w * 0.24, accentP);
     // big checkmark
@@ -7085,14 +7190,14 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.15, cy - h * 0.12);
     canvas.drawPath(checkPath, Paint()..color = Colors.white..strokeWidth = 4.5..strokeCap = StrokeCap.round..style = PaintingStyle.stroke);
     // sparkles around
-    _drawStarShape(canvas, w * 0.2, h * 0.22, w * 0.03, w * 0.015, 4, Paint()..color = illustration.accent.withOpacity(0.5));
-    _drawStarShape(canvas, w * 0.82, h * 0.28, w * 0.025, w * 0.012, 4, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawStarShape(canvas, w * 0.15, h * 0.65, w * 0.02, w * 0.01, 4, Paint()..color = illustration.accent.withOpacity(0.35));
-    _drawStarShape(canvas, w * 0.85, h * 0.6, w * 0.028, w * 0.014, 4, Paint()..color = illustration.accent.withOpacity(0.45));
+    _drawStarShape(canvas, w * 0.2, h * 0.22, w * 0.03, w * 0.015, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    _drawStarShape(canvas, w * 0.82, h * 0.28, w * 0.025, w * 0.012, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, w * 0.15, h * 0.65, w * 0.02, w * 0.01, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
+    _drawStarShape(canvas, w * 0.85, h * 0.6, w * 0.028, w * 0.014, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45)));
     // small dots
-    canvas.drawCircle(Offset(w * 0.3, h * 0.35), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.3));
-    canvas.drawCircle(Offset(w * 0.72, h * 0.32), w * 0.012, Paint()..color = illustration.accent.withOpacity(0.25));
-    canvas.drawCircle(Offset(w * 0.25, h * 0.58), w * 0.01, Paint()..color = illustration.accent.withOpacity(0.2));
+    canvas.drawCircle(Offset(w * 0.3, h * 0.35), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    canvas.drawCircle(Offset(w * 0.72, h * 0.32), w * 0.012, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
+    canvas.drawCircle(Offset(w * 0.25, h * 0.58), w * 0.01, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
   }
 
   // ── red: 红色 ───────────────────────────────────────────────────────────
@@ -7100,14 +7205,14 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // heart shape
-    _drawHeartShape(canvas, cx, cy, w * 0.25, h * 0.22, Paint()..color = illustration.accent);
+    _drawHeartShape(canvas, cx, cy, w * 0.25, h * 0.22, Paint()..color = _dc(illustration.accent));
     // inner highlight
     _drawHeartShape(canvas, cx - w * 0.06, cy - h * 0.06, w * 0.1, h * 0.09, Paint()..color = Colors.white.withOpacity(0.2));
     // small decorative hearts around
-    _drawHeartShape(canvas, w * 0.2, h * 0.25, w * 0.04, h * 0.035, Paint()..color = illustration.accent.withOpacity(0.3));
-    _drawHeartShape(canvas, w * 0.8, h * 0.3, w * 0.035, h * 0.03, Paint()..color = illustration.accent.withOpacity(0.25));
-    _drawHeartShape(canvas, w * 0.15, h * 0.65, w * 0.03, h * 0.025, Paint()..color = illustration.accent.withOpacity(0.2));
-    _drawHeartShape(canvas, w * 0.82, h * 0.6, w * 0.04, h * 0.035, Paint()..color = illustration.accent.withOpacity(0.3));
+    _drawHeartShape(canvas, w * 0.2, h * 0.25, w * 0.04, h * 0.035, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    _drawHeartShape(canvas, w * 0.8, h * 0.3, w * 0.035, h * 0.03, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
+    _drawHeartShape(canvas, w * 0.15, h * 0.65, w * 0.03, h * 0.025, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
+    _drawHeartShape(canvas, w * 0.82, h * 0.6, w * 0.04, h * 0.035, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
   }
 
   // ── all: 全部 ─────────────────────────────────────────────────────────────
@@ -7135,7 +7240,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawAllRight(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final fistP = Paint()..color = illustration.accent;
+    final fistP = Paint()..color = _dc(illustration.accent);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: Offset(cx, cy + h * 0.05), width: w * 0.2, height: h * 0.2),
@@ -7150,11 +7255,11 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.06, cy - h * 0.1)
       ..lineTo(cx + w * 0.06, cy - h * 0.05)
       ..close();
-    canvas.drawPath(thumbPath, Paint()..color = illustration.accent.withOpacity(0.85));
+    canvas.drawPath(thumbPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.85)));
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.18), width: w * 0.14, height: h * 0.08),
       0, pi, false,
-      Paint()..color = illustration.bg.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 2.5,
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 2.5,
     );
   }
 
@@ -7163,8 +7268,8 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.48;
     final r = w * 0.18;
-    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = illustration.bg.withOpacity(0.7));
-    final eyeP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.7)));
+    final eyeP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx - w * 0.07, cy - h * 0.02), width: w * 0.08, height: h * 0.04),
       0, pi, false, eyeP,
@@ -7176,14 +7281,14 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.06), width: w * 0.08, height: h * 0.04),
       0.2, pi - 0.4, false,
-      Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round,
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round,
     );
-    final zP = Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final zP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
     final zz = [[0.72, 0.28, 0.04], [0.78, 0.18, 0.05], [0.82, 0.08, 0.06]];
     for (final z in zz) {
       canvas.drawCircle(Offset(w * z[0], h * z[1]), w * z[2], zP);
     }
-    final dotP = Paint()..color = illustration.accent.withOpacity(0.35);
+    final dotP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35));
     for (final z in zz) {
       canvas.drawCircle(Offset(w * z[0], h * z[1]), w * 0.01, dotP);
     }
@@ -7193,7 +7298,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBack(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final mirrorP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final mirrorP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.35, height: h * 0.22),
@@ -7206,30 +7311,30 @@ class WordIllustrationPainter extends CustomPainter {
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.28, height: h * 0.16),
         Radius.circular(w * 0.04),
       ),
-      Paint()..color = illustration.bg.withOpacity(0.4),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)),
     );
     canvas.drawRect(
       Rect.fromLTWH(cx - w * 0.015, cy + h * 0.11, w * 0.03, h * 0.15),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
-    final arrowP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + w * 0.08, cy, cx - w * 0.06, cy, arrowP);
     final headPath = Path()
       ..moveTo(cx - w * 0.06, cy)
       ..lineTo(cx - w * 0.01, cy - h * 0.04)
       ..lineTo(cx - w * 0.01, cy + h * 0.04)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
   }
 
   // ── be: 是/存在 ──────────────────────────────────────────────────────────
   void _drawBe(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final eqP = Paint()..color = illustration.accent..strokeWidth = 4..strokeCap = StrokeCap.round;
+    final eqP = Paint()..color = _dc(illustration.accent)..strokeWidth = 4..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.15, cy - h * 0.05, cx + w * 0.15, cy - h * 0.05, eqP);
     _drawLine(canvas, cx - w * 0.15, cy + h * 0.05, cx + w * 0.15, cy + h * 0.05, eqP);
-    final sparkP = Paint()..color = illustration.bg.withOpacity(0.6);
+    final sparkP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6));
     final sparks = [
       [0.22, 0.25], [0.78, 0.28], [0.18, 0.65], [0.82, 0.62],
       [0.3, 0.18], [0.7, 0.72], [0.88, 0.42], [0.12, 0.48],
@@ -7239,7 +7344,7 @@ class WordIllustrationPainter extends CustomPainter {
       canvas.drawCircle(Offset(w * sparks[i][0], h * sparks[i][1]), sz, sparkP);
     }
     for (int i = 0; i < 3; i++) {
-      _drawStarShape(canvas, w * (0.25 + i * 0.25), h * (0.2 + i * 0.2), w * 0.025, w * 0.012, 4, Paint()..color = illustration.bg.withOpacity(0.35));
+      _drawStarShape(canvas, w * (0.25 + i * 0.25), h * (0.2 + i * 0.2), w * 0.025, w * 0.012, 4, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35)));
     }
   }
 
@@ -7247,7 +7352,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBeCalled(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final tagP = Paint()..color = illustration.accent.withOpacity(0.7);
+    final tagP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.38, height: h * 0.22),
@@ -7260,12 +7365,12 @@ class WordIllustrationPainter extends CustomPainter {
         Rect.fromCenter(center: Offset(cx, cy + h * 0.02), width: w * 0.32, height: h * 0.12),
         Radius.circular(w * 0.02),
       ),
-      Paint()..color = illustration.bg.withOpacity(0.5),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)),
     );
-    final lineP = Paint()..color = illustration.accent..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final lineP = Paint()..color = _dc(illustration.accent)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.1, cy - h * 0.01, cx + w * 0.1, cy - h * 0.01, lineP);
     _drawLine(canvas, cx - w * 0.07, cy + h * 0.05, cx + w * 0.07, cy + h * 0.05, lineP..strokeWidth = 2);
-    canvas.drawCircle(Offset(cx, cy - h * 0.15), w * 0.025, Paint()..color = illustration.accent);
+    canvas.drawCircle(Offset(cx, cy - h * 0.15), w * 0.025, Paint()..color = _dc(illustration.accent));
   }
 
   // ── blond(e): 金色头发 ───────────────────────────────────────────────────
@@ -7273,8 +7378,8 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
     final r = w * 0.14;
-    canvas.drawCircle(Offset(cx, cy + h * 0.05), r, Paint()..color = illustration.bg.withOpacity(0.6));
-    final hairP = Paint()..color = illustration.accent.withOpacity(0.8);
+    canvas.drawCircle(Offset(cx, cy + h * 0.05), r, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
+    final hairP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8));
     final hairTop = Path()
       ..moveTo(cx - r * 1.15, cy + h * 0.05)
       ..quadraticBezierTo(cx - r * 1.1, cy - h * 0.2, cx - r * 0.3, cy - h * 0.22)
@@ -7287,20 +7392,20 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(cx - r * 1.3, cy + h * 0.2, cx - r * 1.15, cy + h * 0.35)
       ..quadraticBezierTo(cx - r * 1.0, cy + h * 0.25, cx - r * 0.9, cy + h * 0.05)
       ..close();
-    canvas.drawPath(leftStrand, Paint()..color = illustration.accent.withOpacity(0.65));
+    canvas.drawPath(leftStrand, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.65)));
     final rightStrand = Path()
       ..moveTo(cx + r * 1.1, cy + h * 0.02)
       ..quadraticBezierTo(cx + r * 1.3, cy + h * 0.2, cx + r * 1.15, cy + h * 0.35)
       ..quadraticBezierTo(cx + r * 1.0, cy + h * 0.25, cx + r * 0.9, cy + h * 0.05)
       ..close();
-    canvas.drawPath(rightStrand, Paint()..color = illustration.accent.withOpacity(0.65));
-    final eyeP = Paint()..color = illustration.accent;
+    canvas.drawPath(rightStrand, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.65)));
+    final eyeP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx - w * 0.05, cy + h * 0.04), w * 0.02, eyeP);
     canvas.drawCircle(Offset(cx + w * 0.05, cy + h * 0.04), w * 0.02, eyeP);
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.1), width: w * 0.08, height: h * 0.04),
       0.2, pi - 0.4, false,
-      Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 2,
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 2,
     );
   }
 
@@ -7308,22 +7413,22 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawBottom(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final baseP = Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final baseP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.2, h * 0.78, w * 0.8, h * 0.78, baseP);
-    final arrowP = Paint()..color = illustration.accent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, h * 0.18, cx, h * 0.72, arrowP);
     final headPath = Path()
       ..moveTo(cx, h * 0.78)
       ..lineTo(cx - w * 0.07, h * 0.65)
       ..lineTo(cx + w * 0.07, h * 0.65)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: Offset(cx, h * 0.85), width: w * 0.2, height: h * 0.06),
         Radius.circular(w * 0.02),
       ),
-      Paint()..color = illustration.bg.withOpacity(0.4),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)),
     );
   }
 
@@ -7331,14 +7436,14 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawCamp(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final tentP = Paint()..color = illustration.accent.withOpacity(0.7);
+    final tentP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7));
     final tentPath = Path()
       ..moveTo(cx, h * 0.15)
       ..lineTo(cx - w * 0.28, h * 0.72)
       ..lineTo(cx + w * 0.28, h * 0.72)
       ..close();
     canvas.drawPath(tentPath, tentP);
-    final openP = Paint()..color = illustration.bg.withOpacity(0.5);
+    final openP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5));
     final openPath = Path()
       ..moveTo(cx, h * 0.38)
       ..lineTo(cx - w * 0.1, h * 0.72)
@@ -7347,15 +7452,15 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(openPath, openP);
     canvas.drawRect(
       Rect.fromLTWH(w * 0.15, h * 0.72, w * 0.7, h * 0.04),
-      Paint()..color = illustration.bg.withOpacity(0.3),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)),
     );
-    _drawLine(canvas, cx, h * 0.15, cx, h * 0.06, Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 1.5);
+    _drawLine(canvas, cx, h * 0.15, cx, h * 0.06, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 1.5);
     final flagPath = Path()
       ..moveTo(cx, h * 0.06)
       ..lineTo(cx + w * 0.08, h * 0.1)
       ..lineTo(cx, h * 0.14)
       ..close();
-    canvas.drawPath(flagPath, Paint()..color = illustration.accent);
+    canvas.drawPath(flagPath, Paint()..color = _dc(illustration.accent));
   }
 
   // ── can: 能/罐 ───────────────────────────────────────────────────────────
@@ -7367,27 +7472,27 @@ class WordIllustrationPainter extends CustomPainter {
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.28, height: h * 0.38),
         Radius.circular(w * 0.03),
       ),
-      Paint()..color = illustration.accent.withOpacity(0.6),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)),
     );
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy - h * 0.19), width: w * 0.28, height: h * 0.08),
-      Paint()..color = illustration.accent.withOpacity(0.8),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)),
     );
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.19), width: w * 0.28, height: h * 0.08),
-      Paint()..color = illustration.accent.withOpacity(0.4),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)),
     );
     canvas.drawRect(
       Rect.fromLTWH(cx - w * 0.14, cy - h * 0.06, w * 0.28, h * 0.12),
-      Paint()..color = illustration.bg.withOpacity(0.35),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35)),
     );
-    canvas.drawCircle(Offset(cx + w * 0.03, cy - h * 0.19), w * 0.02, Paint()..color = illustration.bg.withOpacity(0.6));
+    canvas.drawCircle(Offset(cx + w * 0.03, cy - h * 0.19), w * 0.02, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
   }
 
   // ── catch (a bus): 赶公交 ─────────────────────────────────────────────────
   void _drawCatchABus(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final busP = Paint()..color = illustration.accent.withOpacity(0.65);
+    final busP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.65));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(w * 0.4, h * 0.3, w * 0.52, h * 0.32),
@@ -7395,7 +7500,7 @@ class WordIllustrationPainter extends CustomPainter {
       ),
       busP,
     );
-    final winP = Paint()..color = illustration.bg.withOpacity(0.5);
+    final winP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5));
     for (int i = 0; i < 3; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
@@ -7405,16 +7510,16 @@ class WordIllustrationPainter extends CustomPainter {
         winP,
       );
     }
-    canvas.drawCircle(Offset(w * 0.52, h * 0.64), w * 0.04, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(w * 0.8, h * 0.64), w * 0.04, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(w * 0.52, h * 0.64), w * 0.02, Paint()..color = illustration.bg.withOpacity(0.5));
-    canvas.drawCircle(Offset(w * 0.8, h * 0.64), w * 0.02, Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawCircle(Offset(w * 0.52, h * 0.64), w * 0.04, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(w * 0.8, h * 0.64), w * 0.04, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(w * 0.52, h * 0.64), w * 0.02, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(w * 0.8, h * 0.64), w * 0.02, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     _drawStickFigure(canvas, w * 0.22, h * 0.3, w * 0.18, illustration.bg,
       leftArmAngle: -1.8, rightArmAngle: 0.8,
       leftLegAngle: 0.6, rightLegAngle: -0.8,
       bodyEndY: 0.85,
     );
-    final lineP = Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final lineP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.1, h * 0.35, w * 0.18, h * 0.35, lineP);
     _drawLine(canvas, w * 0.08, h * 0.42, w * 0.16, h * 0.42, lineP);
     _drawLine(canvas, w * 0.12, h * 0.49, w * 0.19, h * 0.49, lineP);
@@ -7424,10 +7529,10 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawCycle(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cy = h * 0.55;
-    final wheelP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3;
+    final wheelP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3;
     canvas.drawCircle(Offset(w * 0.28, cy), w * 0.12, wheelP);
     canvas.drawCircle(Offset(w * 0.72, cy), w * 0.12, wheelP);
-    final spokeP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1;
+    final spokeP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1;
     for (int i = 0; i < 6; i++) {
       final angle = i * pi / 3;
       _drawLine(canvas,
@@ -7441,27 +7546,27 @@ class WordIllustrationPainter extends CustomPainter {
         spokeP,
       );
     }
-    final frameP = Paint()..color = illustration.accent.withOpacity(0.7)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final frameP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.28, cy, w * 0.45, cy - h * 0.18, frameP);
     _drawLine(canvas, w * 0.45, cy - h * 0.18, w * 0.72, cy, frameP);
     _drawLine(canvas, w * 0.72, cy, w * 0.72, cy - h * 0.2, frameP);
     _drawLine(canvas, w * 0.68, cy - h * 0.2, w * 0.78, cy - h * 0.22, frameP..strokeWidth = 3);
     _drawLine(canvas, w * 0.42, cy - h * 0.2, w * 0.5, cy - h * 0.2, frameP..strokeWidth = 3);
-    canvas.drawCircle(Offset(w * 0.45, cy), w * 0.02, Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.45, cy), w * 0.02, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
   }
 
   // ── dear: 亲爱的 ─────────────────────────────────────────────────────────
   void _drawDear(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    _drawHeartShape(canvas, cx, cy, w * 0.22, h * 0.2, Paint()..color = illustration.accent.withOpacity(0.7));
+    _drawHeartShape(canvas, cx, cy, w * 0.22, h * 0.2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     final letterP = Paint()..color = Colors.white.withOpacity(0.7)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.03, cy - h * 0.06, cx - w * 0.03, cy + h * 0.06, letterP);
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx - w * 0.03, cy), width: w * 0.1, height: h * 0.12),
       -pi * 0.5, pi, false, letterP,
     );
-    final sparkP = Paint()..color = illustration.bg.withOpacity(0.5);
+    final sparkP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5));
     canvas.drawCircle(Offset(cx - w * 0.2, cy - h * 0.18), w * 0.015, sparkP);
     canvas.drawCircle(Offset(cx + w * 0.22, cy - h * 0.15), w * 0.02, sparkP);
     canvas.drawCircle(Offset(cx + w * 0.15, cy + h * 0.18), w * 0.012, sparkP);
@@ -7471,7 +7576,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawDressUp(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final bowP = Paint()..color = illustration.accent.withOpacity(0.8);
+    final bowP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8));
     final leftWing = Path()
       ..moveTo(cx, h * 0.18)
       ..lineTo(cx - w * 0.12, h * 0.13)
@@ -7484,8 +7589,8 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.12, h * 0.23)
       ..close();
     canvas.drawPath(rightWing, bowP);
-    canvas.drawCircle(Offset(cx, h * 0.18), w * 0.025, Paint()..color = illustration.accent);
-    final dressP = Paint()..color = illustration.accent.withOpacity(0.6);
+    canvas.drawCircle(Offset(cx, h * 0.18), w * 0.025, Paint()..color = _dc(illustration.accent));
+    final dressP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final dressPath = Path()
       ..moveTo(cx - w * 0.08, h * 0.25)
       ..lineTo(cx - w * 0.25, h * 0.75)
@@ -7495,17 +7600,17 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(dressPath, dressP);
     canvas.drawRect(
       Rect.fromLTWH(cx - w * 0.09, h * 0.32, w * 0.18, h * 0.04),
-      Paint()..color = illustration.bg.withOpacity(0.4),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)),
     );
-    _drawStarShape(canvas, cx - w * 0.12, h * 0.5, w * 0.02, w * 0.01, 4, Paint()..color = illustration.bg.withOpacity(0.4));
-    _drawStarShape(canvas, cx + w * 0.1, h * 0.55, w * 0.018, w * 0.009, 4, Paint()..color = illustration.bg.withOpacity(0.4));
+    _drawStarShape(canvas, cx - w * 0.12, h * 0.5, w * 0.02, w * 0.01, 4, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, cx + w * 0.1, h * 0.55, w * 0.018, w * 0.009, 4, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
   }
 
   // ── english: 英语 ────────────────────────────────────────────────────────
   void _drawEnglish(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
-    final bubbleP = Paint()..color = illustration.accent.withOpacity(0.65);
+    final bubbleP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.65));
     final bubbleRRect = RRect.fromRectAndRadius(
       Rect.fromCenter(center: Offset(cx, cy), width: w * 0.42, height: h * 0.26),
       Radius.circular(w * 0.06),
@@ -7525,7 +7630,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(aPath, letterP);
     _drawLine(canvas, cx - w * 0.12, cy + h * 0.01, cx - w * 0.08, cy + h * 0.01,
-      Paint()..color = illustration.accent.withOpacity(0.7)..strokeWidth = 2);
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7))..strokeWidth = 2);
     canvas.drawCircle(Offset(cx + w * 0.02, cy - h * 0.02), w * 0.025, letterP);
     canvas.drawCircle(Offset(cx + w * 0.02, cy + h * 0.03), w * 0.025, letterP);
     canvas.drawArc(
@@ -7539,7 +7644,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawExtinct(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final boneP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final boneP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.35, height: h * 0.06),
@@ -7551,10 +7656,10 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawCircle(Offset(cx - w * 0.18, cy + h * 0.03), w * 0.04, boneP);
     canvas.drawCircle(Offset(cx + w * 0.18, cy - h * 0.03), w * 0.04, boneP);
     canvas.drawCircle(Offset(cx + w * 0.18, cy + h * 0.03), w * 0.04, boneP);
-    final crackP = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final crackP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.05, cy - h * 0.03, cx - w * 0.02, cy + h * 0.03, crackP);
     _drawLine(canvas, cx + w * 0.08, cy - h * 0.02, cx + w * 0.06, cy + h * 0.03, crackP);
-    final partP = Paint()..color = illustration.bg.withOpacity(0.25);
+    final partP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.25));
     final particles = [[0.3, 0.25], [0.7, 0.28], [0.25, 0.65], [0.75, 0.62], [0.4, 0.2], [0.6, 0.72]];
     for (final p in particles) {
       canvas.drawCircle(Offset(w * p[0], h * p[1]), w * 0.012, partP);
@@ -7565,9 +7670,9 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawFavourite(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    _drawStarShape(canvas, cx, cy, w * 0.24, w * 0.11, 5, Paint()..color = illustration.accent.withOpacity(0.7));
+    _drawStarShape(canvas, cx, cy, w * 0.24, w * 0.11, 5, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     _drawHeartShape(canvas, cx, cy + h * 0.02, w * 0.08, h * 0.07, Paint()..color = Colors.white.withOpacity(0.75));
-    final sparkP = Paint()..color = illustration.bg.withOpacity(0.5);
+    final sparkP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5));
     _drawStarShape(canvas, cx - w * 0.28, cy - h * 0.15, w * 0.025, w * 0.012, 4, sparkP);
     _drawStarShape(canvas, cx + w * 0.26, cy - h * 0.12, w * 0.02, w * 0.01, 4, sparkP);
     _drawStarShape(canvas, cx + w * 0.2, cy + h * 0.2, w * 0.022, w * 0.011, 4, sparkP);
@@ -7579,13 +7684,13 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.42, cy = h * 0.38;
     final r = w * 0.15;
-    final glassP = Paint()..color = illustration.accent.withOpacity(0.6)..style = PaintingStyle.stroke..strokeWidth = 4;
+    final glassP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..style = PaintingStyle.stroke..strokeWidth = 4;
     canvas.drawCircle(Offset(cx, cy), r, glassP);
-    canvas.drawCircle(Offset(cx, cy), r - 2, Paint()..color = illustration.bg.withOpacity(0.2));
-    final handleP = Paint()..color = illustration.accent.withOpacity(0.7)..strokeWidth = 4.5..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy), r - 2, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2)));
+    final handleP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7))..strokeWidth = 4.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + r * 0.72, cy + r * 0.72, cx + r * 1.4, cy + r * 1.4, handleP);
     canvas.drawCircle(Offset(cx - w * 0.05, cy - h * 0.05), w * 0.015, Paint()..color = Colors.white.withOpacity(0.5));
-    final dotP = Paint()..color = illustration.bg.withOpacity(0.4);
+    final dotP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4));
     canvas.drawCircle(Offset(cx + w * 0.02, cy - h * 0.02), w * 0.015, dotP);
     canvas.drawCircle(Offset(cx + w * 0.02, cy + h * 0.04), w * 0.015, dotP);
     canvas.drawCircle(Offset(cx + w * 0.02, cy + h * 0.1), w * 0.015, dotP);
@@ -7595,7 +7700,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawFrightening(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final ghostP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final ghostP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final ghostPath = Path()
       ..moveTo(cx - w * 0.15, cy + h * 0.18)
       ..quadraticBezierTo(cx - w * 0.15, cy - h * 0.18, cx, cy - h * 0.2)
@@ -7615,12 +7720,12 @@ class WordIllustrationPainter extends CustomPainter {
       Rect.fromCenter(center: Offset(cx + w * 0.06, cy - h * 0.04), width: w * 0.06, height: h * 0.06),
       eyeP,
     );
-    final pupilP = Paint()..color = illustration.accent;
+    final pupilP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx - w * 0.06, cy - h * 0.03), w * 0.02, pupilP);
     canvas.drawCircle(Offset(cx + w * 0.06, cy - h * 0.03), w * 0.02, pupilP);
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.08), width: w * 0.06, height: h * 0.05),
-      Paint()..color = illustration.bg.withOpacity(0.5),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)),
     );
   }
 
@@ -7628,7 +7733,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawFront(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final frameP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final frameP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     final framePath = Path()
       ..moveTo(w * 0.15, h * 0.7)
       ..lineTo(w * 0.25, h * 0.2)
@@ -7642,16 +7747,16 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.72, h * 0.26)
       ..lineTo(w * 0.8, h * 0.65)
       ..close();
-    canvas.drawPath(glassPath, Paint()..color = illustration.bg.withOpacity(0.4));
-    final arrowP = Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round;
+    canvas.drawPath(glassPath, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
+    final arrowP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy + h * 0.15, cx, cy - h * 0.12, arrowP);
     final headPath = Path()
       ..moveTo(cx, cy - h * 0.18)
       ..lineTo(cx - w * 0.06, cy - h * 0.08)
       ..lineTo(cx + w * 0.06, cy - h * 0.08)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
-    final roadP = Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
+    final roadP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.02, cy + h * 0.15, cx - w * 0.15, cy + h * 0.3, roadP);
     _drawLine(canvas, cx + w * 0.02, cy + h * 0.15, cx + w * 0.15, cy + h * 0.3, roadP);
   }
@@ -7660,7 +7765,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawGetDressed(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.4;
-    final shirtP = Paint()..color = illustration.accent.withOpacity(0.65);
+    final shirtP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.65));
     final shirtPath = Path()
       ..moveTo(cx - w * 0.06, cy - h * 0.15)
       ..quadraticBezierTo(cx, cy - h * 0.1, cx + w * 0.06, cy - h * 0.15)
@@ -7677,9 +7782,9 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx, cy - h * 0.13), width: w * 0.1, height: h * 0.04),
       0.1, pi - 0.2, false,
-      Paint()..color = illustration.bg.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 2,
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 2,
     );
-    final btnP = Paint()..color = illustration.bg.withOpacity(0.5);
+    final btnP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5));
     for (int i = 0; i < 3; i++) {
       canvas.drawCircle(Offset(cx, cy - h * 0.06 + i * h * 0.06), w * 0.012, btnP);
     }
@@ -7689,7 +7794,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawGetOff(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final doorP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final doorP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.3, height: h * 0.5),
@@ -7702,25 +7807,25 @@ class WordIllustrationPainter extends CustomPainter {
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.24, height: h * 0.44),
         Radius.circular(w * 0.015),
       ),
-      Paint()..color = illustration.bg.withOpacity(0.4),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)),
     );
-    final arrowP = Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + w * 0.02, cy, cx - w * 0.12, cy, arrowP);
     final headPath = Path()
       ..moveTo(cx - w * 0.15, cy)
       ..lineTo(cx - w * 0.07, cy - h * 0.05)
       ..lineTo(cx - w * 0.07, cy + h * 0.05)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
     _drawStickFigure(canvas, cx + w * 0.04, cy - h * 0.05, w * 0.1, illustration.bg);
-    canvas.drawCircle(Offset(cx + w * 0.1, cy), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(cx + w * 0.1, cy), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
   }
 
   // ── get on: 上车 ─────────────────────────────────────────────────────────
   void _drawGetOn(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final vehicleP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final vehicleP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(w * 0.45, h * 0.15, w * 0.45, h * 0.5),
@@ -7730,23 +7835,23 @@ class WordIllustrationPainter extends CustomPainter {
     );
     canvas.drawRect(
       Rect.fromLTWH(w * 0.5, h * 0.35, w * 0.15, h * 0.28),
-      Paint()..color = illustration.bg.withOpacity(0.4),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)),
     );
-    final stepP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final stepP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     for (int i = 0; i < 3; i++) {
       canvas.drawRect(
         Rect.fromLTWH(w * (0.38 - i * 0.06), h * (0.63 - i * 0.08), w * 0.12, h * 0.04),
         stepP,
       );
     }
-    final arrowP = Paint()..color = illustration.accent..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.32, h * 0.68, w * 0.32, h * 0.35, arrowP);
     final headPath = Path()
       ..moveTo(w * 0.32, h * 0.3)
       ..lineTo(w * 0.28, h * 0.38)
       ..lineTo(w * 0.36, h * 0.38)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
     _drawStickFigure(canvas, w * 0.36, h * 0.4, w * 0.1, illustration.bg,
       leftArmAngle: -1.2, rightArmAngle: -0.8,
     );
@@ -7756,7 +7861,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawGetUndressed(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.4;
-    final shirtP = Paint()..color = illustration.accent.withOpacity(0.55);
+    final shirtP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55));
     final leftHalf = Path()
       ..moveTo(cx - w * 0.06, cy - h * 0.15)
       ..lineTo(cx - w * 0.14, cy - h * 0.12)
@@ -7777,12 +7882,12 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.01, cy - h * 0.1)
       ..close();
     canvas.drawPath(rightHalf, shirtP);
-    final openP = Paint()..color = illustration.bg.withOpacity(0.6)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final openP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6))..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy - h * 0.1, cx, cy + h * 0.2, openP);
-    final btnP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final btnP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     canvas.drawCircle(Offset(cx - w * 0.06, cy + h * 0.25), w * 0.012, btnP);
     canvas.drawCircle(Offset(cx + w * 0.05, cy + h * 0.28), w * 0.012, btnP);
-    final arrowP = Paint()..color = illustration.bg.withOpacity(0.35)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35))..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.22, cy - h * 0.05, cx - w * 0.3, cy - h * 0.12, arrowP);
     _drawLine(canvas, cx + w * 0.22, cy - h * 0.05, cx + w * 0.3, cy - h * 0.12, arrowP);
   }
@@ -7791,7 +7896,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawGetUp(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5;
-    final bedP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final bedP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(w * 0.15, h * 0.5, w * 0.7, h * 0.18),
@@ -7804,9 +7909,9 @@ class WordIllustrationPainter extends CustomPainter {
         Rect.fromLTWH(w * 0.18, h * 0.48, w * 0.18, h * 0.1),
         Radius.circular(w * 0.03),
       ),
-      Paint()..color = illustration.bg.withOpacity(0.5),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)),
     );
-    final blanketP = Paint()..color = illustration.accent.withOpacity(0.3);
+    final blanketP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3));
     final blanketPath = Path()
       ..moveTo(w * 0.38, h * 0.5)
       ..lineTo(w * 0.82, h * 0.5)
@@ -7819,7 +7924,7 @@ class WordIllustrationPainter extends CustomPainter {
       leftArmAngle: 0.5, rightArmAngle: -0.5,
       bodyEndY: 0.75,
     );
-    final actP = Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final actP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.28, h * 0.22, w * 0.22, h * 0.15, actP);
     _drawLine(canvas, w * 0.32, h * 0.18, w * 0.28, h * 0.1, actP);
     _drawLine(canvas, w * 0.38, h * 0.2, w * 0.38, h * 0.12, actP);
@@ -7829,7 +7934,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawGlass(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final glassP = Paint()..color = illustration.accent.withOpacity(0.45);
+    final glassP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45));
     final glassPath = Path()
       ..moveTo(cx - w * 0.06, cy + h * 0.2)
       ..lineTo(cx - w * 0.14, cy - h * 0.18)
@@ -7839,9 +7944,9 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawPath(glassPath, glassP);
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy - h * 0.18), width: w * 0.28, height: h * 0.06),
-      Paint()..color = illustration.accent.withOpacity(0.6),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)),
     );
-    final liquidP = Paint()..color = illustration.bg.withOpacity(0.35);
+    final liquidP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35));
     final liquidPath = Path()
       ..moveTo(cx - w * 0.1, cy - h * 0.05)
       ..lineTo(cx - w * 0.06, cy + h * 0.18)
@@ -7853,7 +7958,7 @@ class WordIllustrationPainter extends CustomPainter {
     _drawLine(canvas, cx - w * 0.1, cy - h * 0.1, cx - w * 0.08, cy + h * 0.1, shineP);
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.22), width: w * 0.16, height: h * 0.04),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
   }
 
@@ -7861,7 +7966,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawGoOut(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final frameP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final frameP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.32, height: h * 0.55),
@@ -7874,19 +7979,19 @@ class WordIllustrationPainter extends CustomPainter {
         Rect.fromCenter(center: Offset(cx, cy), width: w * 0.26, height: h * 0.48),
         Radius.circular(w * 0.015),
       ),
-      Paint()..color = illustration.bg.withOpacity(0.35),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35)),
     );
-    final arrowP = Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.06, cy, cx + w * 0.1, cy, arrowP);
     final headPath = Path()
       ..moveTo(cx + w * 0.14, cy)
       ..lineTo(cx + w * 0.06, cy - h * 0.05)
       ..lineTo(cx + w * 0.06, cy + h * 0.05)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(cx + w * 0.09, cy), w * 0.018, Paint()..color = illustration.accent.withOpacity(0.8));
-    canvas.drawCircle(Offset(cx + w * 0.22, cy - h * 0.15), w * 0.03, Paint()..color = illustration.bg.withOpacity(0.4));
-    final rayP = Paint()..color = illustration.bg.withOpacity(0.25)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(cx + w * 0.09, cy), w * 0.018, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
+    canvas.drawCircle(Offset(cx + w * 0.22, cy - h * 0.15), w * 0.03, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
+    final rayP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.25))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 4; i++) {
       final angle = i * pi / 2 + pi / 4;
       _drawLine(canvas,
@@ -7900,16 +8005,16 @@ class WordIllustrationPainter extends CustomPainter {
   // ── untidy: 不整洁的（散乱物品）────────────────────────────────────────
   void _drawUntidy(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final p = Paint()..color = illustration.accent.withOpacity(0.6);
+    final p = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     // scattered items: socks, book, crumpled paper
     canvas.drawOval(Rect.fromLTWH(w * 0.15, h * 0.25, w * 0.12, h * 0.08), p);
-    canvas.drawOval(Rect.fromLTWH(w * 0.6, h * 0.15, w * 0.1, h * 0.07), Paint()..color = illustration.accent.withOpacity(0.45));
-    canvas.drawRect(Rect.fromLTWH(w * 0.35, h * 0.55, w * 0.18, h * 0.12), Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawOval(Rect.fromLTWH(w * 0.6, h * 0.15, w * 0.1, h * 0.07), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45)));
+    canvas.drawRect(Rect.fromLTWH(w * 0.35, h * 0.55, w * 0.18, h * 0.12), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     canvas.drawOval(Rect.fromLTWH(w * 0.7, h * 0.5, w * 0.14, h * 0.1), p);
-    canvas.drawCircle(Offset(w * 0.25, h * 0.65), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.35));
-    canvas.drawRect(Rect.fromLTWH(w * 0.55, h * 0.7, w * 0.1, h * 0.15), Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(w * 0.25, h * 0.65), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
+    canvas.drawRect(Rect.fromLTWH(w * 0.55, h * 0.7, w * 0.1, h * 0.15), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
     // zigzag lines for mess
-    final zigzagP = Paint()..color = illustration.accent.withOpacity(0.25)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final zigzagP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.1, h * 0.4, w * 0.2, h * 0.35, zigzagP);
     _drawLine(canvas, w * 0.2, h * 0.35, w * 0.3, h * 0.42, zigzagP);
     _drawLine(canvas, w * 0.7, h * 0.35, w * 0.8, h * 0.3, zigzagP);
@@ -7921,14 +8026,14 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // circles
-    final cp = Paint()..color = illustration.accent.withOpacity(0.3);
+    final cp = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3));
     canvas.drawCircle(Offset(w * 0.2, h * 0.3), w * 0.08, cp);
     canvas.drawCircle(Offset(w * 0.75, h * 0.25), w * 0.07, cp);
     canvas.drawCircle(Offset(w * 0.3, h * 0.7), w * 0.09, cp);
     canvas.drawCircle(Offset(w * 0.78, h * 0.68), w * 0.06, cp);
     canvas.drawCircle(Offset(w * 0.15, h * 0.5), w * 0.05, cp);
     // diamond (rotated square) in center
-    final dP = Paint()..color = illustration.accent;
+    final dP = Paint()..color = _dc(illustration.accent);
     final path = Path()
       ..moveTo(cx, cy - w * 0.18)
       ..lineTo(cx + w * 0.14, cy)
@@ -7937,7 +8042,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(path, dP);
     // sparkle around diamond
-    _drawStarShape(canvas, cx + w * 0.2, cy - h * 0.15, w * 0.025, w * 0.012, 4, Paint()..color = illustration.accent.withOpacity(0.5));
+    _drawStarShape(canvas, cx + w * 0.2, cy - h * 0.15, w * 0.025, w * 0.012, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
   }
 
   // ── use: 使用（手持工具）────────────────────────────────────────────────
@@ -7945,7 +8050,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // hand/palm
-    final handP = Paint()..color = illustration.accent;
+    final handP = Paint()..color = _dc(illustration.accent);
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.3, h * 0.35, w * 0.22, h * 0.3), Radius.circular(w * 0.04)),
       handP,
@@ -7953,15 +8058,15 @@ class WordIllustrationPainter extends CustomPainter {
     // thumb
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.28, h * 0.28, w * 0.08, h * 0.14), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.85),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.85)),
     );
     // tool (wrench/pen)
-    final toolP = Paint()..color = illustration.bg.withOpacity(0.6)..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final toolP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6))..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + w * 0.02, h * 0.2, cx + w * 0.02, h * 0.75, toolP);
     // tool head
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.02, h * 0.18), width: w * 0.12, height: h * 0.06), Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.02, h * 0.18), width: w * 0.12, height: h * 0.06), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     // fingers
-    final fingerP = Paint()..color = illustration.accent.withOpacity(0.7);
+    final fingerP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7));
     for (int i = 0; i < 3; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(w * (0.33 + i * 0.06), h * 0.55, w * 0.05, h * 0.12), Radius.circular(w * 0.02)),
@@ -7977,22 +8082,22 @@ class WordIllustrationPainter extends CustomPainter {
     // door frame
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.28, h * 0.1, w * 0.44, h * 0.65), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
     // door
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.32, h * 0.14, w * 0.36, h * 0.58), Radius.circular(w * 0.015)),
-      Paint()..color = illustration.bg.withOpacity(0.45),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.45)),
     );
     // doorknob
-    canvas.drawCircle(Offset(w * 0.6, h * 0.42), w * 0.025, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(w * 0.6, h * 0.42), w * 0.025, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // welcome mat
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.3, h * 0.76, w * 0.4, h * 0.1), Radius.circular(w * 0.015)),
-      Paint()..color = illustration.accent.withOpacity(0.35),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)),
     );
     // mat stripes
-    final stripeP = Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 1.5;
+    final stripeP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 1.5;
     for (int i = 0; i < 3; i++) {
       _drawLine(canvas, w * 0.34, h * (0.79 + i * 0.02), w * 0.66, h * (0.79 + i * 0.02), stripeP);
     }
@@ -8003,23 +8108,23 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // alarm clock body
-    canvas.drawCircle(Offset(cx, cy), w * 0.22, Paint()..color = illustration.accent.withOpacity(0.5));
-    canvas.drawCircle(Offset(cx, cy), w * 0.19, Paint()..color = illustration.bg.withOpacity(0.3));
+    canvas.drawCircle(Offset(cx, cy), w * 0.22, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(cx, cy), w * 0.19, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     // clock hands
-    final handP = Paint()..color = illustration.accent..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final handP = Paint()..color = _dc(illustration.accent)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy, cx, cy - h * 0.12, handP);
     _drawLine(canvas, cx, cy, cx + w * 0.08, cy + h * 0.04, handP);
     // bells on top
-    canvas.drawCircle(Offset(cx - w * 0.16, cy - h * 0.24), w * 0.04, Paint()..color = illustration.accent.withOpacity(0.7));
-    canvas.drawCircle(Offset(cx + w * 0.16, cy - h * 0.24), w * 0.04, Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawCircle(Offset(cx - w * 0.16, cy - h * 0.24), w * 0.04, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
+    canvas.drawCircle(Offset(cx + w * 0.16, cy - h * 0.24), w * 0.04, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // alarm lines
-    final alarmP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final alarmP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.02, cy - h * 0.3, cx - w * 0.06, cy - h * 0.38, alarmP);
     _drawLine(canvas, cx + w * 0.02, cy - h * 0.3, cx + w * 0.06, cy - h * 0.38, alarmP);
     _drawLine(canvas, cx, cy - h * 0.3, cx, cy - h * 0.4, alarmP);
     // exclamation mark
-    _drawLine(canvas, cx + w * 0.28, cy - h * 0.1, cx + w * 0.28, cy + h * 0.05, Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round);
-    canvas.drawCircle(Offset(cx + w * 0.28, cy + h * 0.1), w * 0.02, Paint()..color = illustration.accent);
+    _drawLine(canvas, cx + w * 0.28, cy - h * 0.1, cx + w * 0.28, cy + h * 0.05, Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round);
+    canvas.drawCircle(Offset(cx + w * 0.28, cy + h * 0.1), w * 0.02, Paint()..color = _dc(illustration.accent));
   }
 
   // ── warm: 温暖的（杯子+蒸汽）──────────────────────────────────────────
@@ -8033,17 +8138,17 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.12, cy + h * 0.15)
       ..lineTo(cx + w * 0.15, cy - h * 0.12)
       ..close();
-    canvas.drawPath(cupPath, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawPath(cupPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // cup rim
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy - h * 0.12), width: w * 0.3, height: h * 0.06), Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy - h * 0.12), width: w * 0.3, height: h * 0.06), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // handle
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx + w * 0.2, cy + h * 0.02), width: w * 0.12, height: h * 0.16),
       -pi * 0.4, pi * 0.8, false,
-      Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 3,
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 3,
     );
     // steam wisps
-    final steamP = Paint()..color = illustration.bg.withOpacity(0.4)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final steamP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final sx = cx - w * 0.06 + i * w * 0.06;
       final wave1 = sin(t * pi * 2 + i) * w * 0.03;
@@ -8068,7 +8173,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(cx + w * 0.18, cy + h * 0.05, cx, cy + h * 0.15)
       ..quadraticBezierTo(cx - w * 0.18, cy + h * 0.05, cx, cy - h * 0.22)
       ..close();
-    canvas.drawPath(dropPath, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(dropPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // inner highlight
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx - w * 0.03, cy - h * 0.02), width: w * 0.06, height: h * 0.04),
@@ -8078,7 +8183,7 @@ class WordIllustrationPainter extends CustomPainter {
     final rippleP = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5;
     for (int i = 0; i < 3; i++) {
       final r = w * (0.12 + i * 0.08) * (1 + sin(t * pi * 2 - i * 0.5) * 0.1);
-      canvas.drawCircle(Offset(cx, cy + h * 0.3), r, rippleP..color = illustration.accent.withOpacity(0.35 - i * 0.1));
+      canvas.drawCircle(Offset(cx, cy + h * 0.3), r, rippleP..color = illustration.accent.withOpacity(_minOp(0.35 - i * 0.1)));
     }
   }
 
@@ -8089,25 +8194,25 @@ class WordIllustrationPainter extends CustomPainter {
     // well wall (stone cylinder)
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.25, h * 0.35, w * 0.5, h * 0.3), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
     // roof frame
-    _drawLine(canvas, w * 0.3, h * 0.35, w * 0.3, h * 0.12, Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..strokeCap = StrokeCap.round);
-    _drawLine(canvas, w * 0.7, h * 0.35, w * 0.7, h * 0.12, Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 3..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.3, h * 0.35, w * 0.3, h * 0.12, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..strokeCap = StrokeCap.round);
+    _drawLine(canvas, w * 0.7, h * 0.35, w * 0.7, h * 0.12, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 3..strokeCap = StrokeCap.round);
     // roof
     final roofPath = Path()
       ..moveTo(w * 0.2, h * 0.15)
       ..lineTo(w * 0.5, h * 0.02)
       ..lineTo(w * 0.8, h * 0.15)
       ..close();
-    canvas.drawPath(roofPath, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawPath(roofPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // bucket
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.44, h * 0.55, w * 0.12, h * 0.1), Radius.circular(w * 0.01)),
-      Paint()..color = illustration.bg.withOpacity(0.5),
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)),
     );
     // rope
-    final ropeP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final ropeP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.5, h * 0.55, w * 0.5, h * 0.35, ropeP);
   }
 
@@ -8116,17 +8221,17 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // face circle
-    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = illustration.accent.withOpacity(0.35));
+    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
     // eyes
-    canvas.drawCircle(Offset(cx - w * 0.08, cy - h * 0.06), w * 0.025, Paint()..color = illustration.bg.withOpacity(0.6));
-    canvas.drawCircle(Offset(cx + w * 0.08, cy - h * 0.06), w * 0.025, Paint()..color = illustration.bg.withOpacity(0.6));
+    canvas.drawCircle(Offset(cx - w * 0.08, cy - h * 0.06), w * 0.025, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
+    canvas.drawCircle(Offset(cx + w * 0.08, cy - h * 0.06), w * 0.025, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
     // small "o" mouth
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.08), width: w * 0.06, height: h * 0.04),
-      Paint()..color = illustration.bg.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 2,
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 2,
     );
     // "shh" curved lines
-    final shhP = Paint()..color = illustration.bg.withOpacity(0.35)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final shhP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final offset = i * w * 0.05;
       canvas.drawArc(
@@ -8141,29 +8246,29 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
     // face
-    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = illustration.accent.withOpacity(0.35));
+    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
     // puckered mouth
-    canvas.drawCircle(Offset(cx, cy + h * 0.06), w * 0.04, Paint()..color = illustration.bg.withOpacity(0.6));
+    canvas.drawCircle(Offset(cx, cy + h * 0.06), w * 0.04, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
     // cheeks
-    canvas.drawCircle(Offset(cx - w * 0.12, cy + h * 0.04), w * 0.03, Paint()..color = illustration.accent.withOpacity(0.2));
-    canvas.drawCircle(Offset(cx + w * 0.12, cy + h * 0.04), w * 0.03, Paint()..color = illustration.accent.withOpacity(0.2));
+    canvas.drawCircle(Offset(cx - w * 0.12, cy + h * 0.04), w * 0.03, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
+    canvas.drawCircle(Offset(cx + w * 0.12, cy + h * 0.04), w * 0.03, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
     // musical notes floating up
-    final noteP = Paint()..color = illustration.accent;
+    final noteP = Paint()..color = _dc(illustration.accent);
     // note 1
     canvas.drawCircle(Offset(cx + w * 0.15, cy - h * 0.2), w * 0.025, noteP);
-    _drawLine(canvas, cx + w * 0.175, cy - h * 0.2, cx + w * 0.175, cy - h * 0.32, Paint()..color = illustration.accent..strokeWidth = 2);
+    _drawLine(canvas, cx + w * 0.175, cy - h * 0.2, cx + w * 0.175, cy - h * 0.32, Paint()..color = _dc(illustration.accent)..strokeWidth = 2);
     // note 2
-    canvas.drawCircle(Offset(cx - w * 0.12, cy - h * 0.28), w * 0.02, Paint()..color = illustration.accent.withOpacity(0.7));
-    _drawLine(canvas, cx - w * 0.1, cy - h * 0.28, cx - w * 0.1, cy - h * 0.38, Paint()..color = illustration.accent.withOpacity(0.7)..strokeWidth = 2);
+    canvas.drawCircle(Offset(cx - w * 0.12, cy - h * 0.28), w * 0.02, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
+    _drawLine(canvas, cx - w * 0.1, cy - h * 0.28, cx - w * 0.1, cy - h * 0.38, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7))..strokeWidth = 2);
     // note 3 (double note flag)
-    canvas.drawCircle(Offset(cx + w * 0.05, cy - h * 0.35), w * 0.018, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx + w * 0.05, cy - h * 0.35), w * 0.018, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
   }
 
   // ── white: 白色（云朵）─────────────────────────────────────────────────
   void _drawWhite(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final cloudP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final cloudP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     // cloud shape from overlapping circles
     canvas.drawCircle(Offset(cx - w * 0.1, cy + h * 0.02), w * 0.12, cloudP);
     canvas.drawCircle(Offset(cx + w * 0.05, cy - h * 0.04), w * 0.14, cloudP);
@@ -8182,7 +8287,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawWild(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.5;
-    final wolfP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final wolfP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     // wolf body silhouette
     final bodyPath = Path()
       ..moveTo(w * 0.15, cy + h * 0.1)   // tail
@@ -8205,7 +8310,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(bodyPath, wolfP);
     // eye
-    canvas.drawCircle(Offset(w * 0.74, cy - h * 0.14), w * 0.015, Paint()..color = illustration.bg.withOpacity(0.8));
+    canvas.drawCircle(Offset(w * 0.74, cy - h * 0.14), w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.8)));
   }
 
   // ── win a competition: 赢得比赛（奖杯）─────────────────────────────────
@@ -8219,50 +8324,50 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.15, cy + h * 0.05)
       ..lineTo(cx + w * 0.12, cy - h * 0.2)
       ..close();
-    canvas.drawPath(cupPath, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(cupPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // cup rim
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy - h * 0.2), width: w * 0.24, height: h * 0.05), Paint()..color = illustration.accent.withOpacity(0.7));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy - h * 0.2), width: w * 0.24, height: h * 0.05), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
     // handles
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx - w * 0.2, cy - h * 0.1), width: w * 0.12, height: h * 0.18),
       pi * 0.3, pi * 0.6, false,
-      Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 3,
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 3,
     );
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx + w * 0.2, cy - h * 0.1), width: w * 0.12, height: h * 0.18),
       -pi * 0.9, pi * 0.6, false,
-      Paint()..color = illustration.accent.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 3,
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 3,
     );
     // stem
-    canvas.drawRect(Rect.fromLTWH(cx - w * 0.03, cy + h * 0.05, w * 0.06, h * 0.1), Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawRect(Rect.fromLTWH(cx - w * 0.03, cy + h * 0.05, w * 0.06, h * 0.1), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     // base
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - w * 0.12, cy + h * 0.15, w * 0.24, h * 0.06), Radius.circular(w * 0.02)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
     // star
-    _drawStarShape(canvas, cx, cy - h * 0.08, w * 0.05, w * 0.025, 5, Paint()..color = illustration.bg.withOpacity(0.6));
+    _drawStarShape(canvas, cx, cy - h * 0.08, w * 0.05, w * 0.025, 5, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
   }
 
   // ── windy: 有风的（风旋+叶子）──────────────────────────────────────────
   void _drawWindy(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     // wind swirl lines
-    final windP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final windP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final y = h * (0.25 + i * 0.18);
       final waveOff = sin(t * pi * 2 + i * 1.2) * w * 0.04;
       canvas.drawArc(
         Rect.fromLTWH(w * 0.1 + waveOff, y, w * 0.5, h * 0.08),
-        0, pi, false, windP..color = illustration.accent.withOpacity(0.45 - i * 0.1),
+        0, pi, false, windP..color = illustration.accent.withOpacity(_minOp(0.45 - i * 0.1)),
       );
       canvas.drawArc(
         Rect.fromLTWH(w * 0.35 + waveOff, y + h * 0.04, w * 0.45, h * 0.07),
-        0, pi, false, windP..color = illustration.accent.withOpacity(0.35 - i * 0.08),
+        0, pi, false, windP..color = illustration.accent.withOpacity(_minOp(0.35 - i * 0.08)),
       );
     }
     // blown leaves
-    final leafP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final leafP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     for (int i = 0; i < 4; i++) {
       final lx = w * (0.2 + i * 0.2) + sin(t * pi * 2 + i * 1.5) * w * 0.06;
       final ly = h * (0.3 + i * 0.12) + cos(t * pi * 2 + i) * h * 0.03;
@@ -8279,15 +8384,15 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(w * 0.25, h * 0.65)
       ..lineTo(w * 0.3, h * 0.58)
       ..close();
-    canvas.drawPath(tailPath, Paint()..color = illustration.accent.withOpacity(0.25));
+    canvas.drawPath(tailPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25)));
     // star head
-    _drawStarShape(canvas, w * 0.78, h * 0.17, w * 0.06, w * 0.03, 5, Paint()..color = illustration.accent);
+    _drawStarShape(canvas, w * 0.78, h * 0.17, w * 0.06, w * 0.03, 5, Paint()..color = _dc(illustration.accent));
     // small sparkle stars
-    _drawStarShape(canvas, w * 0.15, h * 0.2, w * 0.02, w * 0.01, 4, Paint()..color = illustration.accent.withOpacity(0.4));
-    _drawStarShape(canvas, w * 0.6, h * 0.35, w * 0.015, w * 0.008, 4, Paint()..color = illustration.accent.withOpacity(0.3));
-    _drawStarShape(canvas, w * 0.4, h * 0.5, w * 0.018, w * 0.009, 4, Paint()..color = illustration.accent.withOpacity(0.35));
+    _drawStarShape(canvas, w * 0.15, h * 0.2, w * 0.02, w * 0.01, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    _drawStarShape(canvas, w * 0.6, h * 0.35, w * 0.015, w * 0.008, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    _drawStarShape(canvas, w * 0.4, h * 0.5, w * 0.018, w * 0.009, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
     // glow at star head
-    canvas.drawCircle(Offset(w * 0.78, h * 0.17), w * 0.08, Paint()..color = illustration.accent.withOpacity(0.12));
+    canvas.drawCircle(Offset(w * 0.78, h * 0.17), w * 0.08, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.12)));
   }
 
   // ── wonderful: 精彩的（烟花/星星爆炸）──────────────────────────────────
@@ -8303,10 +8408,10 @@ class WordIllustrationPainter extends CustomPainter {
       final sy = cy + sin(angle) * dist;
       final starR = w * (0.015 + rng.nextDouble() * 0.025);
       final opacity = 0.3 + rng.nextDouble() * 0.5;
-      _drawStarShape(canvas, sx, sy, starR, starR * 0.5, 4, Paint()..color = illustration.accent.withOpacity(opacity));
+      _drawStarShape(canvas, sx, sy, starR, starR * 0.5, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(opacity)));
     }
     // trailing sparks
-    final sparkP = Paint()..color = illustration.accent.withOpacity(0.25)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final sparkP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4 + 0.2;
       final r1 = w * 0.22;
@@ -8314,7 +8419,7 @@ class WordIllustrationPainter extends CustomPainter {
       _drawLine(canvas, cx + cos(angle) * r1, cy + sin(angle) * r1, cx + cos(angle) * r2, cy + sin(angle) * r2, sparkP);
     }
     // center glow
-    canvas.drawCircle(Offset(cx, cy), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.2));
+    canvas.drawCircle(Offset(cx, cy), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
   }
 
   // ── worried: 担心的（担心脸+汗滴）──────────────────────────────────────
@@ -8322,16 +8427,16 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // face
-    canvas.drawCircle(Offset(cx, cy), w * 0.22, Paint()..color = illustration.accent.withOpacity(0.35));
+    canvas.drawCircle(Offset(cx, cy), w * 0.22, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
     // worried eyebrows (angled)
-    final browP = Paint()..color = illustration.bg.withOpacity(0.6)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final browP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.14, cy - h * 0.04, cx - w * 0.05, cy - h * 0.08, browP);
     _drawLine(canvas, cx + w * 0.14, cy - h * 0.04, cx + w * 0.05, cy - h * 0.08, browP);
     // worried eyes
-    canvas.drawCircle(Offset(cx - w * 0.09, cy - h * 0.01), w * 0.025, Paint()..color = illustration.bg.withOpacity(0.5));
-    canvas.drawCircle(Offset(cx + w * 0.09, cy - h * 0.01), w * 0.025, Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx - w * 0.09, cy - h * 0.01), w * 0.025, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(cx + w * 0.09, cy - h * 0.01), w * 0.025, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     // wobbly mouth
-    final mouthP = Paint()..color = illustration.bg.withOpacity(0.5)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final mouthP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.12), width: w * 0.12, height: h * 0.04),
       pi * 0.2, pi * 0.6, false, mouthP,
@@ -8342,7 +8447,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(cx + w * 0.24, cy - h * 0.02, cx + w * 0.2, cy + h * 0.02)
       ..quadraticBezierTo(cx + w * 0.16, cy - h * 0.02, cx + w * 0.2, cy - h * 0.12)
       ..close();
-    canvas.drawPath(sweatPath, Paint()..color = illustration.accent.withOpacity(0.5));
+    canvas.drawPath(sweatPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
   }
 
   // ── worse: 更糟的（向下箭头+减号）──────────────────────────────────────
@@ -8350,7 +8455,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // downward arrow
-    final arrowP = Paint()..color = illustration.accent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy - h * 0.2, cx, cy + h * 0.12, arrowP);
     // arrow head (pointing down)
     final headPath = Path()
@@ -8358,10 +8463,10 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx - w * 0.08, cy + h * 0.1)
       ..lineTo(cx + w * 0.08, cy + h * 0.1)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent);
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent));
     // minus sign
     _drawLine(canvas, cx - w * 0.12, cy - h * 0.26, cx + w * 0.12, cy - h * 0.26,
-      Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = 3..strokeCap = StrokeCap.round);
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = 3..strokeCap = StrokeCap.round);
   }
 
   // ── worst: 最糟的（断裂向下箭头）───────────────────────────────────────
@@ -8369,10 +8474,10 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.4;
     // broken arrow shaft (two segments with gap)
-    final arrowP = Paint()..color = illustration.accent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    final arrowP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy - h * 0.22, cx, cy - h * 0.05, arrowP);
     // gap / crack lines
-    final crackP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final crackP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.04, cy - h * 0.03, cx + w * 0.04, cy + h * 0.03, crackP);
     _drawLine(canvas, cx + w * 0.03, cy + h * 0.0, cx - w * 0.02, cy + h * 0.06, crackP);
     // lower segment
@@ -8383,9 +8488,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx - w * 0.08, cy + h * 0.12)
       ..lineTo(cx + w * 0.08, cy + h * 0.12)
       ..close();
-    canvas.drawPath(headPath, Paint()..color = illustration.accent.withOpacity(0.8));
+    canvas.drawPath(headPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.8)));
     // X marks
-    final xP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final xP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.15, cy - h * 0.28, cx - w * 0.08, cy - h * 0.22, xP);
     _drawLine(canvas, cx - w * 0.08, cy - h * 0.28, cx - w * 0.15, cy - h * 0.22, xP);
   }
@@ -8395,14 +8500,14 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // heart
-    _drawHeartShape(canvas, cx - w * 0.05, cy, w * 0.2, h * 0.2, Paint()..color = illustration.accent.withOpacity(0.6));
+    _drawHeartShape(canvas, cx - w * 0.05, cy, w * 0.2, h * 0.2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // wish star above heart
-    _drawStarShape(canvas, cx + w * 0.15, cy - h * 0.2, w * 0.04, w * 0.02, 5, Paint()..color = illustration.accent);
+    _drawStarShape(canvas, cx + w * 0.15, cy - h * 0.2, w * 0.04, w * 0.02, 5, Paint()..color = _dc(illustration.accent));
     // small sparkle stars
-    _drawStarShape(canvas, cx + w * 0.22, cy - h * 0.12, w * 0.02, w * 0.01, 4, Paint()..color = illustration.accent.withOpacity(0.5));
-    _drawStarShape(canvas, cx - w * 0.2, cy - h * 0.18, w * 0.015, w * 0.008, 4, Paint()..color = illustration.accent.withOpacity(0.4));
+    _drawStarShape(canvas, cx + w * 0.22, cy - h * 0.12, w * 0.02, w * 0.01, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    _drawStarShape(canvas, cx - w * 0.2, cy - h * 0.18, w * 0.015, w * 0.008, 4, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
     // dotted line from heart to star
-    final dotP = Paint()..color = illustration.accent.withOpacity(0.3);
+    final dotP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3));
     for (int i = 0; i < 4; i++) {
       final t2 = i / 4;
       final dx = cx + w * (0.05 + t2 * 0.1);
@@ -8417,9 +8522,9 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     // circle
     canvas.drawCircle(Offset(cx, cy), w * 0.22,
-      Paint()..color = illustration.accent.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 4);
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 4);
     // X mark
-    final xP = Paint()..color = illustration.accent..strokeWidth = 4..strokeCap = StrokeCap.round;
+    final xP = Paint()..color = _dc(illustration.accent)..strokeWidth = 4..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.1, cy - h * 0.1, cx + w * 0.1, cy + h * 0.1, xP);
     _drawLine(canvas, cx + w * 0.1, cy - h * 0.1, cx - w * 0.1, cy + h * 0.1, xP);
   }
@@ -8429,11 +8534,11 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // sun body
-    canvas.drawCircle(Offset(cx, cy), w * 0.14, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawCircle(Offset(cx, cy), w * 0.14, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // sun glow
-    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = illustration.accent.withOpacity(0.15));
+    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
     // rays
-    final rayP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final rayP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4;
       _drawLine(canvas,
@@ -8443,12 +8548,12 @@ class WordIllustrationPainter extends CustomPainter {
       );
     }
     // face on sun
-    canvas.drawCircle(Offset(cx - w * 0.05, cy - h * 0.02), w * 0.015, Paint()..color = illustration.bg.withOpacity(0.5));
-    canvas.drawCircle(Offset(cx + w * 0.05, cy - h * 0.02), w * 0.015, Paint()..color = illustration.bg.withOpacity(0.5));
+    canvas.drawCircle(Offset(cx - w * 0.05, cy - h * 0.02), w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(cx + w * 0.05, cy - h * 0.02), w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
     canvas.drawArc(
       Rect.fromCenter(center: Offset(cx, cy + h * 0.04), width: w * 0.08, height: h * 0.04),
       0.1, pi - 0.2, false,
-      Paint()..color = illustration.bg.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 2,
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 2,
     );
   }
 
@@ -8457,9 +8562,9 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.6;
     // soil mound
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.12), width: w * 0.4, height: h * 0.1), Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.12), width: w * 0.4, height: h * 0.1), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
     // stem
-    final stemP = Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final stemP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy + h * 0.08, cx, cy - h * 0.15, stemP);
     // left leaf
     final leafPath1 = Path()
@@ -8467,16 +8572,16 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(cx - w * 0.15, cy - h * 0.12, cx - w * 0.1, cy - h * 0.2)
       ..quadraticBezierTo(cx - w * 0.05, cy - h * 0.1, cx, cy - h * 0.05)
       ..close();
-    canvas.drawPath(leafPath1, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawPath(leafPath1, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
     // right leaf
     final leafPath2 = Path()
       ..moveTo(cx, cy - h * 0.12)
       ..quadraticBezierTo(cx + w * 0.14, cy - h * 0.18, cx + w * 0.1, cy - h * 0.26)
       ..quadraticBezierTo(cx + w * 0.04, cy - h * 0.16, cx, cy - h * 0.12)
       ..close();
-    canvas.drawPath(leafPath2, Paint()..color = illustration.accent.withOpacity(0.55));
+    canvas.drawPath(leafPath2, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55)));
     // tiny bud at top
-    canvas.drawCircle(Offset(cx, cy - h * 0.18), w * 0.025, Paint()..color = illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(cx, cy - h * 0.18), w * 0.025, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
   }
 
   // ── your: 你的（手指向观众）────────────────────────────────────────────
@@ -8484,7 +8589,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // pointing hand (palm)
-    final palmP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final palmP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.32, h * 0.3, w * 0.22, h * 0.28), Radius.circular(w * 0.04)),
       palmP,
@@ -8492,10 +8597,10 @@ class WordIllustrationPainter extends CustomPainter {
     // index finger pointing up/out
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.48, h * 0.15, w * 0.06, h * 0.22), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.65),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.65)),
     );
     // other curled fingers
-    final fingerP = Paint()..color = illustration.accent.withOpacity(0.45);
+    final fingerP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45));
     for (int i = 0; i < 3; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(w * (0.34 + i * 0.055), h * 0.48, w * 0.05, h * 0.1), Radius.circular(w * 0.02)),
@@ -8505,10 +8610,10 @@ class WordIllustrationPainter extends CustomPainter {
     // thumb
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(w * 0.3, h * 0.34, w * 0.06, h * 0.12), Radius.circular(w * 0.03)),
-      Paint()..color = illustration.accent.withOpacity(0.5),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)),
     );
     // pointer direction lines
-    final dirP = Paint()..color = illustration.bg.withOpacity(0.35)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final dirP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.35))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, w * 0.52, h * 0.12, w * 0.52, h * 0.05, dirP);
     _drawLine(canvas, w * 0.49, h * 0.08, w * 0.52, h * 0.05, dirP);
     _drawLine(canvas, w * 0.55, h * 0.08, w * 0.52, h * 0.05, dirP);
@@ -8518,7 +8623,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawStay(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.48;
-    final p = Paint()..color = illustration.accent;
+    final p = Paint()..color = _dc(illustration.accent);
     canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.06), width: w * 0.32, height: h * 0.24), p);
     final roofPath = Path()
       ..moveTo(cx - w * 0.22, cy - h * 0.06)
@@ -8526,14 +8631,14 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.22, cy - h * 0.06)
       ..close();
     canvas.drawPath(roofPath, p);
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.12), width: w * 0.08, height: h * 0.12), Paint()..color = illustration.bg.withOpacity(0.5));
-    canvas.drawCircle(Offset(cx, cy - h * 0.28), w * 0.035, Paint()..color = illustration.accent);
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.12), width: w * 0.08, height: h * 0.12), Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(cx, cy - h * 0.28), w * 0.035, Paint()..color = _dc(illustration.accent));
     final pinPath = Path()
       ..moveTo(cx, cy - h * 0.245)
       ..lineTo(cx - w * 0.015, cy - h * 0.21)
       ..lineTo(cx + w * 0.015, cy - h * 0.21)
       ..close();
-    canvas.drawPath(pinPath, Paint()..color = illustration.accent);
+    canvas.drawPath(pinPath, Paint()..color = _dc(illustration.accent));
   }
 
   // ── stop: 八角形停车标志 ──
@@ -8549,18 +8654,18 @@ class WordIllustrationPainter extends CustomPainter {
       if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
     }
     path.close();
-    canvas.drawPath(path, Paint()..color = illustration.bg);
-    canvas.drawPath(path, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3);
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.22, height: h * 0.04), Paint()..color = illustration.accent);
+    canvas.drawPath(path, Paint()..color = _dc(illustration.bg));
+    canvas.drawPath(path, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3);
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.22, height: h * 0.04), Paint()..color = _dc(illustration.accent));
   }
 
   // ── straight: 直尺+箭头 ──
   void _drawStraight(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    final p = Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.28, cy, cx + w * 0.28, cy, p);
-    final tickP = Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final tickP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     for (int i = -3; i <= 3; i++) {
       final x = cx + i * w * 0.08;
       final len = (i == 0) ? h * 0.06 : h * 0.03;
@@ -8571,14 +8676,14 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.2, cy - h * 0.04)
       ..lineTo(cx + w * 0.2, cy + h * 0.04)
       ..close();
-    canvas.drawPath(arrowPath, Paint()..color = illustration.accent);
+    canvas.drawPath(arrowPath, Paint()..color = _dc(illustration.accent));
   }
 
   // ── strange: 问号+旋涡 ──
   void _drawStrange(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.42;
-    final p = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
     final qPath = Path()
       ..moveTo(cx - w * 0.04, cy + h * 0.12)
       ..quadraticBezierTo(cx - w * 0.16, cy + h * 0.08, cx - w * 0.1, cy - h * 0.02)
@@ -8586,8 +8691,8 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(cx + w * 0.12, cy - h * 0.1, cx + w * 0.08, cy - h * 0.02)
       ..quadraticBezierTo(cx + w * 0.02, cy + h * 0.02, cx, cy + h * 0.06);
     canvas.drawPath(qPath, p);
-    canvas.drawCircle(Offset(cx, cy + h * 0.16), w * 0.025, Paint()..color = illustration.accent);
-    final swirlP = Paint()..color = illustration.accent.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy + h * 0.16), w * 0.025, Paint()..color = _dc(illustration.accent));
+    final swirlP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final startAngle = i * pi * 0.7;
       final sr = w * 0.06 + i * w * 0.03;
@@ -8602,21 +8707,21 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
     final rRect = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.4, height: h * 0.35), Radius.circular(w * 0.05));
-    canvas.drawRRect(rRect, Paint()..color = illustration.bg.withOpacity(0.5));
-    final stripeP = Paint()..color = illustration.accent..strokeWidth = w * 0.035..strokeCap = StrokeCap.round;
+    canvas.drawRRect(rRect, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
+    final stripeP = Paint()..color = _dc(illustration.accent)..strokeWidth = w * 0.035..strokeCap = StrokeCap.round;
     for (int i = -3; i <= 3; i++) {
       final y = cy + i * h * 0.05;
       final halfW = w * 0.16;
       _drawLine(canvas, cx - halfW, y, cx + halfW, y, stripeP);
     }
-    canvas.drawRRect(rRect, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 2);
+    canvas.drawRRect(rRect, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 2);
   }
 
   // ── sunny: 太阳+光芒 ──
   void _drawSunny(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    final rayP = Paint()..color = illustration.accent..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final rayP = Paint()..color = _dc(illustration.accent)..strokeWidth = 3..strokeCap = StrokeCap.round;
     for (int i = 0; i < 12; i++) {
       final angle = i * pi / 6;
       final inner = w * 0.14;
@@ -8627,35 +8732,35 @@ class WordIllustrationPainter extends CustomPainter {
         rayP,
       );
     }
-    canvas.drawCircle(Offset(cx, cy), w * 0.12, Paint()..color = illustration.accent);
-    _drawFace(canvas, cx, cy, w * 0.1, illustration.bg.withOpacity(0.5), smileFactor: 0.8);
+    canvas.drawCircle(Offset(cx, cy), w * 0.12, Paint()..color = _dc(illustration.accent));
+    _drawFace(canvas, cx, cy, w * 0.1, illustration.bg.withOpacity(_minOp(0.5)), smileFactor: 0.8);
   }
 
   // ── sure: 勾+圆圈 ──
   void _drawSure(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = illustration.bg.withOpacity(0.3));
-    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4);
+    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
+    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4);
     final checkPath = Path()
       ..moveTo(cx - w * 0.1, cy)
       ..lineTo(cx - w * 0.02, cy + h * 0.08)
       ..lineTo(cx + w * 0.12, cy - h * 0.08);
-    canvas.drawPath(checkPath, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 5..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round);
+    canvas.drawPath(checkPath, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 5..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round);
   }
 
   // ── surprised: 惊讶的脸 ──
   void _drawSurprised(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = illustration.accent);
-    final eyeP = Paint()..color = illustration.bg;
+    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = _dc(illustration.accent));
+    final eyeP = Paint()..color = _dc(illustration.bg);
     canvas.drawCircle(Offset(cx - w * 0.08, cy - h * 0.04), w * 0.04, eyeP);
     canvas.drawCircle(Offset(cx + w * 0.08, cy - h * 0.04), w * 0.04, eyeP);
     canvas.drawCircle(Offset(cx - w * 0.08, cy - h * 0.04), w * 0.02, Paint()..color = Colors.white);
     canvas.drawCircle(Offset(cx + w * 0.08, cy - h * 0.04), w * 0.02, Paint()..color = Colors.white);
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.08), width: w * 0.08, height: h * 0.06), Paint()..color = illustration.bg);
-    final browP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.08), width: w * 0.08, height: h * 0.06), Paint()..color = _dc(illustration.bg));
+    final browP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.13, cy - h * 0.1, cx - w * 0.04, cy - h * 0.12, browP);
     _drawLine(canvas, cx + w * 0.04, cy - h * 0.12, cx + w * 0.13, cy - h * 0.1, browP);
   }
@@ -8664,7 +8769,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawTakeOff(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    final bodyP = Paint()..color = illustration.accent;
+    final bodyP = Paint()..color = _dc(illustration.accent);
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.35, height: h * 0.06), bodyP);
     final wingPath = Path()
       ..moveTo(cx - w * 0.04, cy)
@@ -8684,7 +8789,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx - w * 0.12, cy)
       ..close();
     canvas.drawPath(tailPath, bodyP);
-    final trailP = Paint()..color = illustration.accent.withOpacity(0.3)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final trailP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final ox = cx - w * 0.24 - i * w * 0.06;
       canvas.drawCircle(Offset(ox, cy + h * 0.01), w * 0.015 + i * w * 0.005, trailP);
@@ -8695,7 +8800,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawTerrible(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.35;
-    final cloudP = Paint()..color = illustration.accent;
+    final cloudP = Paint()..color = _dc(illustration.accent);
     canvas.drawCircle(Offset(cx - w * 0.08, cy), w * 0.1, cloudP);
     canvas.drawCircle(Offset(cx + w * 0.08, cy), w * 0.1, cloudP);
     canvas.drawCircle(Offset(cx, cy - h * 0.04), w * 0.1, cloudP);
@@ -8709,14 +8814,14 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx, cy + h * 0.14)
       ..lineTo(cx + w * 0.06, cy + h * 0.06)
       ..close();
-    canvas.drawPath(boltPath, Paint()..color = illustration.accent);
+    canvas.drawPath(boltPath, Paint()..color = _dc(illustration.accent));
   }
 
   // ── thank: 双手合十 ──
   void _drawThank(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    final p = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+    final p = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
     final leftHand = Path()
       ..moveTo(cx - w * 0.02, cy + h * 0.18)
       ..quadraticBezierTo(cx - w * 0.14, cy + h * 0.12, cx - w * 0.12, cy - h * 0.02)
@@ -8727,9 +8832,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(cx + w * 0.14, cy + h * 0.12, cx + w * 0.12, cy - h * 0.02)
       ..quadraticBezierTo(cx + w * 0.1, cy - h * 0.12, cx + w * 0.04, cy - h * 0.16);
     canvas.drawPath(rightHand, p);
-    final fillP = Paint()..color = illustration.accent.withOpacity(0.2);
+    final fillP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2));
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy + h * 0.02), width: w * 0.12, height: h * 0.2), Radius.circular(w * 0.04)), fillP);
-    _drawHeartShape(canvas, cx, cy - h * 0.22, w * 0.05, w * 0.05, Paint()..color = illustration.accent);
+    _drawHeartShape(canvas, cx, cy - h * 0.22, w * 0.05, w * 0.05, Paint()..color = _dc(illustration.accent));
   }
 
   // ── their: 一群人 ──
@@ -8739,7 +8844,7 @@ class WordIllustrationPainter extends CustomPainter {
     _drawStickFigure(canvas, w * 0.3, cy, w * 0.06, illustration.accent);
     _drawStickFigure(canvas, w * 0.5, cy - h * 0.03, w * 0.07, illustration.accent);
     _drawStickFigure(canvas, w * 0.7, cy, w * 0.06, illustration.accent);
-    final arcP = Paint()..color = illustration.accent.withOpacity(0.25)..style = PaintingStyle.stroke..strokeWidth = 2;
+    final arcP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.25))..style = PaintingStyle.stroke..strokeWidth = 2;
     canvas.drawArc(Rect.fromCenter(center: Offset(w * 0.5, cy - h * 0.06), width: w * 0.4, height: h * 0.08), pi * 0.1, pi * 0.8, false, arcP);
   }
 
@@ -8747,11 +8852,11 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawThin(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2;
-    final barP = Paint()..color = illustration.accent.withOpacity(0.3);
+    final barP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3));
     canvas.drawRect(Rect.fromCenter(center: Offset(cx - w * 0.12, h * 0.45), width: w * 0.08, height: h * 0.35), barP);
-    final thinP = Paint()..color = illustration.accent..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final thinP = Paint()..color = _dc(illustration.accent)..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + w * 0.04, h * 0.22, cx + w * 0.04, h * 0.68, thinP);
-    final arrP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final arrP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + w * 0.12, h * 0.32, cx + w * 0.04, h * 0.35, arrP);
     _drawLine(canvas, cx + w * 0.12, h * 0.58, cx + w * 0.04, h * 0.55, arrP);
   }
@@ -8760,17 +8865,17 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawThird(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    canvas.drawCircle(Offset(cx, cy + h * 0.04), w * 0.16, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(cx, cy + h * 0.04), w * 0.16, Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 3);
-    canvas.drawCircle(Offset(cx, cy + h * 0.04), w * 0.11, Paint()..color = illustration.bg.withOpacity(0.3));
-    final threeP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy + h * 0.04), w * 0.16, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(cx, cy + h * 0.04), w * 0.16, Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 3);
+    canvas.drawCircle(Offset(cx, cy + h * 0.04), w * 0.11, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
+    final threeP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
     final threePath = Path()
       ..moveTo(cx - w * 0.04, cy - h * 0.04)
       ..quadraticBezierTo(cx + w * 0.06, cy - h * 0.06, cx + w * 0.04, cy)
       ..quadraticBezierTo(cx + w * 0.02, cy + h * 0.02, cx + w * 0.06, cy + h * 0.04)
       ..quadraticBezierTo(cx + w * 0.06, cy + h * 0.08, cx - w * 0.04, cy + h * 0.06);
     canvas.drawPath(threePath, threeP);
-    final ribbonP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final ribbonP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final ribbon1 = Path()
       ..moveTo(cx - w * 0.06, cy - h * 0.12)
       ..lineTo(cx - w * 0.12, cy - h * 0.26)
@@ -8795,17 +8900,17 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.07, cy + h * 0.12)
       ..lineTo(cx + w * 0.1, cy - h * 0.14)
       ..close();
-    canvas.drawPath(glassPath, Paint()..color = illustration.accent.withOpacity(0.3));
-    canvas.drawPath(glassPath, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 2.5);
+    canvas.drawPath(glassPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    canvas.drawPath(glassPath, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 2.5);
     final waterPath = Path()
       ..moveTo(cx - w * 0.06, cy + h * 0.02)
       ..lineTo(cx - w * 0.065, cy + h * 0.11)
       ..lineTo(cx + w * 0.065, cy + h * 0.11)
       ..lineTo(cx + w * 0.06, cy + h * 0.02)
       ..close();
-    canvas.drawPath(waterPath, Paint()..color = illustration.accent.withOpacity(0.5));
-    _drawWaterDrop(canvas, cx + w * 0.16, cy - h * 0.1, w * 0.025, Paint()..color = illustration.accent);
-    _drawWaterDrop(canvas, cx - w * 0.18, cy - h * 0.02, w * 0.02, Paint()..color = illustration.accent);
+    canvas.drawPath(waterPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    _drawWaterDrop(canvas, cx + w * 0.16, cy - h * 0.1, w * 0.025, Paint()..color = _dc(illustration.accent));
+    _drawWaterDrop(canvas, cx - w * 0.18, cy - h * 0.02, w * 0.02, Paint()..color = _dc(illustration.accent));
   }
 
   void _drawWaterDrop(Canvas canvas, double x, double y, double r, Paint paint) {
@@ -8823,10 +8928,10 @@ class WordIllustrationPainter extends CustomPainter {
     for (int i = 0; i < 4; i++) {
       final y = cy - i * h * 0.06;
       final bw = w * (0.25 - i * 0.01);
-      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, y), width: bw, height: h * 0.045), Radius.circular(2)), Paint()..color = illustration.accent);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, y), width: bw, height: h * 0.045), Radius.circular(2)), Paint()..color = _dc(illustration.accent));
     }
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy - h * 0.27), width: w * 0.06, height: h * 0.16), Radius.circular(2)), Paint()..color = illustration.accent.withOpacity(0.7));
-    final shelfP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy - h * 0.27), width: w * 0.06, height: h * 0.16), Radius.circular(2)), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
+    final shelfP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.2, cy + h * 0.1, cx + w * 0.2, cy + h * 0.1, shelfP);
   }
 
@@ -8834,7 +8939,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawTouch(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    final p = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+    final p = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
     final handPath = Path()
       ..moveTo(cx - w * 0.12, cy + h * 0.1)
       ..quadraticBezierTo(cx - w * 0.16, cy, cx - w * 0.1, cy - h * 0.06)
@@ -8847,9 +8952,9 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.06, cy + h * 0.04)
       ..quadraticBezierTo(cx + w * 0.04, cy + h * 0.1, cx - w * 0.04, cy + h * 0.1);
     canvas.drawPath(handPath, p);
-    canvas.drawCircle(Offset(cx + w * 0.18, cy - h * 0.06), w * 0.06, Paint()..color = illustration.accent.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 2);
-    canvas.drawCircle(Offset(cx + w * 0.18, cy - h * 0.06), w * 0.025, Paint()..color = illustration.accent.withOpacity(0.4));
-    final reachP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx + w * 0.18, cy - h * 0.06), w * 0.06, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 2);
+    canvas.drawCircle(Offset(cx + w * 0.18, cy - h * 0.06), w * 0.025, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)));
+    final reachP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + w * 0.08, cy - h * 0.02, cx + w * 0.13, cy - h * 0.04, reachP);
   }
 
@@ -8857,13 +8962,13 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawTravel(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = illustration.accent.withOpacity(0.3));
-    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 2);
-    final lineP = Paint()..color = illustration.accent.withOpacity(0.4)..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
+    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 2);
+    final lineP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..style = PaintingStyle.stroke..strokeWidth = 1.5;
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.36, height: h * 0.1), lineP);
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.28, height: h * 0.18), lineP);
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.14, height: h * 0.36), lineP);
-    final ap = Paint()..color = illustration.accent;
+    final ap = Paint()..color = _dc(illustration.accent);
     final ax = cx + w * 0.16, ay = cy - h * 0.14;
     final planePath = Path()
       ..moveTo(ax + w * 0.06, ay)
@@ -8878,7 +8983,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawTurn(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    final arcP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
+    final arcP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.32, height: h * 0.28), -pi * 0.3, pi * 1.6, false, arcP);
     final endAngle = pi * 1.3 - pi * 0.3;
     final ar = w * 0.16;
@@ -8890,17 +8995,17 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(ax + cos(endAngle) * w * 0.06, ay + sin(endAngle) * h * 0.06)
       ..lineTo(ax - cos(tangent) * w * 0.04, ay - sin(tangent) * h * 0.04)
       ..close();
-    canvas.drawPath(arrowPath, Paint()..color = illustration.accent);
-    canvas.drawCircle(Offset(cx, cy), w * 0.02, Paint()..color = illustration.accent);
+    canvas.drawPath(arrowPath, Paint()..color = _dc(illustration.accent));
+    canvas.drawCircle(Offset(cx, cy), w * 0.02, Paint()..color = _dc(illustration.accent));
   }
 
   // ── turn off: 电源按钮 ──
   void _drawTurnOff(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = illustration.accent.withOpacity(0.2));
-    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3);
-    final lineP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.2)));
+    canvas.drawCircle(Offset(cx, cy), w * 0.18, Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3);
+    final lineP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy - h * 0.02, cx, cy + h * 0.1, lineP);
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.2, height: h * 0.18), pi * 0.8, pi * 1.4, false, lineP);
   }
@@ -8909,11 +9014,11 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawTurnOn(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.42;
-    canvas.drawCircle(Offset(cx, cy - h * 0.02), w * 0.22, Paint()..color = illustration.accent.withOpacity(0.15));
-    canvas.drawCircle(Offset(cx, cy - h * 0.02), w * 0.12, Paint()..color = illustration.accent);
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.12), width: w * 0.1, height: h * 0.06), Paint()..color = illustration.accent.withOpacity(0.6));
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.16), width: w * 0.12, height: h * 0.03), Paint()..color = illustration.accent.withOpacity(0.6));
-    final filP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy - h * 0.02), w * 0.22, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.15)));
+    canvas.drawCircle(Offset(cx, cy - h * 0.02), w * 0.12, Paint()..color = _dc(illustration.accent));
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.12), width: w * 0.1, height: h * 0.06), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
+    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy + h * 0.16), width: w * 0.12, height: h * 0.03), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
+    final filP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
     final filPath = Path()
       ..moveTo(cx - w * 0.03, cy + h * 0.04)
       ..lineTo(cx - w * 0.02, cy - h * 0.04)
@@ -8921,7 +9026,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.02, cy - h * 0.04)
       ..lineTo(cx + w * 0.03, cy + h * 0.04);
     canvas.drawPath(filPath, filP);
-    final rayP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final rayP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 2..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4;
       _drawLine(canvas,
@@ -8936,49 +9041,49 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawUgly(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = illustration.accent);
-    final mouthP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = _dc(illustration.accent));
+    final mouthP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy + h * 0.1), width: w * 0.14, height: h * 0.06), pi * 0.15, pi * 0.7, false, mouthP);
-    final eyeP = Paint()..color = illustration.bg;
+    final eyeP = Paint()..color = _dc(illustration.bg);
     canvas.drawCircle(Offset(cx - w * 0.08, cy - h * 0.03), w * 0.025, eyeP);
     canvas.drawCircle(Offset(cx + w * 0.08, cy - h * 0.03), w * 0.025, eyeP);
-    final browP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    final browP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.13, cy - h * 0.06, cx - w * 0.04, cy - h * 0.09, browP);
     _drawLine(canvas, cx + w * 0.04, cy - h * 0.09, cx + w * 0.13, cy - h * 0.06, browP);
-    canvas.drawCircle(Offset(cx + w * 0.12, cy + h * 0.04), w * 0.02, Paint()..color = illustration.bg.withOpacity(0.5));
-    canvas.drawCircle(Offset(cx - w * 0.1, cy + h * 0.06), w * 0.015, Paint()..color = illustration.bg.withOpacity(0.4));
+    canvas.drawCircle(Offset(cx + w * 0.12, cy + h * 0.04), w * 0.02, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(cx - w * 0.1, cy + h * 0.06), w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
   }
 
   // ── unfriendly: 皱眉+交叉手臂 ──
   void _drawUnfriendly(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.42;
-    canvas.drawCircle(Offset(cx, cy - h * 0.06), w * 0.12, Paint()..color = illustration.accent);
-    final mouthP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy - h * 0.06), w * 0.12, Paint()..color = _dc(illustration.accent));
+    final mouthP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy + h * 0.0), width: w * 0.1, height: h * 0.04), pi * 0.2, pi * 0.6, false, mouthP);
-    final eyeP = Paint()..color = illustration.bg;
+    final eyeP = Paint()..color = _dc(illustration.bg);
     canvas.drawCircle(Offset(cx - w * 0.05, cy - h * 0.08), w * 0.018, eyeP);
     canvas.drawCircle(Offset(cx + w * 0.05, cy - h * 0.08), w * 0.018, eyeP);
-    final armP = Paint()..color = illustration.accent..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    final armP = Paint()..color = _dc(illustration.accent)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.16, cy + h * 0.12, cx + w * 0.08, cy + h * 0.06, armP);
     _drawLine(canvas, cx + w * 0.16, cy + h * 0.12, cx - w * 0.08, cy + h * 0.06, armP);
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.18), width: w * 0.2, height: h * 0.12), Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.18), width: w * 0.2, height: h * 0.12), Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
   }
 
   // ── unhappy: 悲伤的脸 ──
   void _drawUnhappy(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w / 2, cy = h * 0.45;
-    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = illustration.accent);
-    final mouthP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy), w * 0.2, Paint()..color = _dc(illustration.accent));
+    final mouthP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy + h * 0.1), width: w * 0.14, height: h * 0.08), pi * 0.2, pi * 0.6, false, mouthP);
-    final eyeP = Paint()..color = illustration.bg;
+    final eyeP = Paint()..color = _dc(illustration.bg);
     canvas.drawCircle(Offset(cx - w * 0.07, cy - h * 0.03), w * 0.025, eyeP);
     canvas.drawCircle(Offset(cx + w * 0.07, cy - h * 0.03), w * 0.025, eyeP);
-    final browP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+    final browP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.12, cy - h * 0.08, cx - w * 0.04, cy - h * 0.06, browP);
     _drawLine(canvas, cx + w * 0.04, cy - h * 0.06, cx + w * 0.12, cy - h * 0.08, browP);
-    _drawWaterDrop(canvas, cx - w * 0.09, cy + h * 0.02, w * 0.015, Paint()..color = illustration.bg.withOpacity(0.5));
+    _drawWaterDrop(canvas, cx - w * 0.09, cy + h * 0.02, w * 0.015, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
   }
 
   // ── unkind: 碎心 ──
@@ -8991,15 +9096,15 @@ class WordIllustrationPainter extends CustomPainter {
       ..quadraticBezierTo(cx - w * 0.22, cy - h * 0.16, cx - w * 0.16, cy - h * 0.02)
       ..lineTo(cx - w * 0.02, cy + h * 0.12)
       ..close();
-    canvas.drawPath(leftPath, Paint()..color = illustration.accent);
+    canvas.drawPath(leftPath, Paint()..color = _dc(illustration.accent));
     final rightPath = Path()
       ..moveTo(cx + w * 0.04, cy - h * 0.02)
       ..quadraticBezierTo(cx + w * 0.04, cy - h * 0.14, cx + w * 0.14, cy - h * 0.18)
       ..quadraticBezierTo(cx + w * 0.22, cy - h * 0.18, cx + w * 0.18, cy - h * 0.02)
       ..lineTo(cx + w * 0.04, cy + h * 0.14)
       ..close();
-    canvas.drawPath(rightPath, Paint()..color = illustration.accent.withOpacity(0.7));
-    final crackP = Paint()..color = illustration.bg..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
+    canvas.drawPath(rightPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.7)));
+    final crackP = Paint()..color = _dc(illustration.bg)..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round;
     final crackPath = Path()
       ..moveTo(cx - w * 0.02, cy - h * 0.04)
       ..lineTo(cx + w * 0.01, cy + h * 0.02)
@@ -9025,23 +9130,23 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     final r = w * 0.16;
-    final bulbP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final bulbP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     canvas.drawCircle(Offset(cx, cy - r * 0.3), r, bulbP);
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - r * 0.45, cy + r * 0.5, r * 0.9, r * 0.35), Radius.circular(r * 0.1)),
-      Paint()..color = illustration.accent.withOpacity(0.4),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4)),
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromLTWH(cx - r * 0.35, cy + r * 0.8, r * 0.7, r * 0.2), Radius.circular(r * 0.08)),
-      Paint()..color = illustration.accent.withOpacity(0.35),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)),
     );
-    final rayP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.8..strokeCap = StrokeCap.round;
+    final rayP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.8..strokeCap = StrokeCap.round;
     for (int i = 0; i < 8; i++) {
       final a = i * pi / 4;
       _drawLine(canvas, cx + cos(a) * r * 1.2, cy - r * 0.3 + sin(a) * r * 1.2,
           cx + cos(a) * r * 1.55, cy - r * 0.3 + sin(a) * r * 1.55, rayP);
     }
-    final filP = Paint()..color = illustration.bg.withOpacity(0.5)..strokeWidth = 1.5..style = PaintingStyle.stroke;
+    final filP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5))..strokeWidth = 1.5..style = PaintingStyle.stroke;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy - r * 0.3), width: r * 0.6, height: r * 0.5), -0.3, pi + 0.6, false, filP);
   }
 
@@ -9049,12 +9154,12 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawRepair(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final p = Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = w * 0.04..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final p = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = w * 0.04..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy + h * 0.2, cx, cy - h * 0.05, p);
-    final jawP = Paint()..color = illustration.accent.withOpacity(0.55)..strokeWidth = w * 0.035..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final jawP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55))..strokeWidth = w * 0.035..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy - h * 0.1), width: w * 0.18, height: w * 0.18), -pi * 0.8, pi * 0.6, false, jawP);
     _drawLine(canvas, cx - w * 0.075, cy - h * 0.17, cx - w * 0.04, cy - h * 0.22, jawP);
-    final cogP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..style = PaintingStyle.stroke;
+    final cogP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..style = PaintingStyle.stroke;
     canvas.drawCircle(Offset(cx + w * 0.15, cy + h * 0.1), w * 0.06, cogP);
     for (int i = 0; i < 6; i++) {
       final a = i * pi / 3;
@@ -9068,7 +9173,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     final r = w * 0.18;
-    final arcP = Paint()..color = illustration.accent.withOpacity(0.55)..strokeWidth = w * 0.03..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final arcP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55))..strokeWidth = w * 0.03..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: r * 2.2, height: r * 2.2), -pi * 0.3, pi * 1.1, false, arcP);
     final endAngle = -pi * 0.3 + pi * 1.1;
     final ax = cx + cos(endAngle) * r * 1.1;
@@ -9085,13 +9190,13 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawRich(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final coinP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final coinP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     for (int i = 0; i < 3; i++) {
       final oy = cy + h * 0.12 - i * h * 0.06;
       canvas.drawOval(Rect.fromCenter(center: Offset(cx + i * 0.5, oy), width: w * 0.22, height: w * 0.07), coinP);
     }
-    _drawText(canvas, '\$', cx - w * 0.02, cy - h * 0.04, w * 0.1, illustration.bg.withOpacity(0.5));
-    final spP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    _drawText(canvas, '\$', cx - w * 0.02, cy - h * 0.04, w * 0.1, illustration.bg.withOpacity(_minOp(0.5)));
+    final spP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + w * 0.2, cy - h * 0.15, cx + w * 0.2, cy - h * 0.22, spP);
     _drawLine(canvas, cx + w * 0.17, cy - h * 0.185, cx + w * 0.23, cy - h * 0.185, spP);
   }
@@ -9100,10 +9205,10 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawRight(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final arrP = Paint()..color = illustration.accent.withOpacity(0.55)..strokeWidth = w * 0.035..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final arrP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55))..strokeWidth = w * 0.035..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.2, cy, cx + w * 0.15, cy, arrP);
     _drawArrowHead(canvas, cx + w * 0.15, cy, 0, w * 0.08, arrP);
-    final chkP = Paint()..color = illustration.accent.withOpacity(0.6)..strokeWidth = w * 0.03..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final chkP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6))..strokeWidth = w * 0.03..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawPath(
       Path()
         ..moveTo(cx - w * 0.1, cy + h * 0.12)
@@ -9118,17 +9223,17 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     final r = w * 0.18;
-    final outP = Paint()..color = illustration.accent.withOpacity(0.35)..strokeWidth = w * 0.025..style = PaintingStyle.stroke;
+    final outP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35))..strokeWidth = w * 0.025..style = PaintingStyle.stroke;
     canvas.drawCircle(Offset(cx, cy), r, outP);
-    canvas.drawCircle(Offset(cx, cy), r * 0.65, Paint()..color = illustration.accent.withOpacity(0.5));
-    canvas.drawCircle(Offset(cx + r * 0.85, cy - r * 0.3), w * 0.025, Paint()..color = illustration.accent.withOpacity(0.6));
+    canvas.drawCircle(Offset(cx, cy), r * 0.65, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    canvas.drawCircle(Offset(cx + r * 0.85, cy - r * 0.3), w * 0.025, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
   }
 
   // ── safe: 安全（盾牌+勾）────────────────────────────────────────────
   void _drawSafe(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
-    final shieldP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final shieldP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     final path = Path()
       ..moveTo(cx, cy - h * 0.2)
       ..lineTo(cx + w * 0.18, cy - h * 0.1)
@@ -9137,7 +9242,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx - w * 0.18, cy - h * 0.1)
       ..close();
     canvas.drawPath(path, shieldP);
-    final chkP = Paint()..color = illustration.bg.withOpacity(0.6)..strokeWidth = w * 0.025..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final chkP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6))..strokeWidth = w * 0.025..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawPath(
       Path()
         ..moveTo(cx - w * 0.07, cy + h * 0.01)
@@ -9153,30 +9258,30 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     final s = w * 0.16;
     canvas.drawRect(Rect.fromCenter(center: Offset(cx + w * 0.04, cy - h * 0.03), width: s, height: s),
-        Paint()..color = illustration.accent.withOpacity(0.3));
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
     canvas.drawRect(Rect.fromCenter(center: Offset(cx - w * 0.04, cy + h * 0.03), width: s, height: s),
-        Paint()..color = illustration.accent.withOpacity(0.5));
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     _drawLine(canvas, cx - w * 0.06, cy - h * 0.2, cx + w * 0.06, cy - h * 0.2,
-        Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
     _drawLine(canvas, cx - w * 0.06, cy - h * 0.14, cx + w * 0.06, cy - h * 0.14,
-        Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = w * 0.025..strokeCap = StrokeCap.round);
   }
 
   // ── save: 保存（软盘）────────────────────────────────────────────
   void _drawSave(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.44;
-    final bodyP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final bodyP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.32, height: w * 0.28), Radius.circular(w * 0.02)),
       bodyP,
     );
     canvas.drawRect(Rect.fromLTWH(cx - w * 0.06, cy - w * 0.14, w * 0.12, w * 0.06),
-        Paint()..color = illustration.bg.withOpacity(0.3));
+        Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3)));
     canvas.drawRect(Rect.fromLTWH(cx - w * 0.1, cy + w * 0.01, w * 0.2, w * 0.08),
-        Paint()..color = illustration.bg.withOpacity(0.2));
+        Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2)));
     canvas.drawRect(Rect.fromLTWH(cx + w * 0.09, cy - w * 0.14, w * 0.04, w * 0.05),
-        Paint()..color = illustration.bg.withOpacity(0.4));
+        Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.4)));
   }
 
   // ── scary: 恐怖（鬼脸）────────────────────────────────────────────
@@ -9184,7 +9289,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
     final r = w * 0.18;
-    final ghostP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final ghostP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final path = Path()
       ..addOval(Rect.fromCenter(center: Offset(cx, cy - h * 0.02), width: r * 2, height: r * 1.6));
     path.moveTo(cx - r, cy + r * 0.5);
@@ -9192,10 +9297,10 @@ class WordIllustrationPainter extends CustomPainter {
     path.quadraticBezierTo(cx, cy + r * 0.9, cx + r * 0.33, cy + r * 0.5);
     path.quadraticBezierTo(cx + r * 0.65, cy + r * 0.9, cx + r, cy + r * 0.5);
     canvas.drawPath(path, ghostP);
-    canvas.drawCircle(Offset(cx - r * 0.35, cy - h * 0.05), w * 0.025, Paint()..color = illustration.bg.withOpacity(0.6));
-    canvas.drawCircle(Offset(cx + r * 0.35, cy - h * 0.05), w * 0.025, Paint()..color = illustration.bg.withOpacity(0.6));
+    canvas.drawCircle(Offset(cx - r * 0.35, cy - h * 0.05), w * 0.025, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
+    canvas.drawCircle(Offset(cx + r * 0.35, cy - h * 0.05), w * 0.025, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.6)));
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.06), width: w * 0.08, height: w * 0.06),
-        Paint()..color = illustration.bg.withOpacity(0.5));
+        Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.5)));
   }
 
   // ── second: 第二（数字2+时钟）────────────────────────────────────────────
@@ -9203,20 +9308,20 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.44;
     final r = w * 0.18;
-    final clockP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = w * 0.02..style = PaintingStyle.stroke;
+    final clockP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = w * 0.02..style = PaintingStyle.stroke;
     canvas.drawCircle(Offset(cx, cy), r, clockP);
-    final handP = Paint()..color = illustration.accent.withOpacity(0.55)..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final handP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55))..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy, cx, cy - r * 0.6, handP);
     _drawLine(canvas, cx, cy, cx + r * 0.4, cy + r * 0.15, handP);
-    canvas.drawCircle(Offset(cx, cy), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.6));
-    _drawText(canvas, '2', cx + w * 0.18, cy - h * 0.15, w * 0.08, illustration.accent.withOpacity(0.4));
+    canvas.drawCircle(Offset(cx, cy), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6)));
+    _drawText(canvas, '2', cx + w * 0.18, cy - h * 0.15, w * 0.08, illustration.accent.withOpacity(_minOp(0.4)));
   }
 
   // ── send: 发送（纸飞机）────────────────────────────────────────────
   void _drawSend(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final planeP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final planeP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final path = Path()
       ..moveTo(cx - w * 0.2, cy + h * 0.08)
       ..lineTo(cx + w * 0.15, cy - h * 0.1)
@@ -9224,7 +9329,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.05, cy + h * 0.15)
       ..close();
     canvas.drawPath(path, planeP);
-    final trailP = Paint()..color = illustration.accent.withOpacity(0.3)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    final trailP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.2, cy + h * 0.08, cx - w * 0.28, cy + h * 0.12, trailP);
     _drawLine(canvas, cx - w * 0.18, cy + h * 0.12, cx - w * 0.25, cy + h * 0.17, trailP);
   }
@@ -9245,7 +9350,7 @@ class WordIllustrationPainter extends CustomPainter {
     for (int i = 0; i < positions.length; i++) {
       final s = w * (0.03 + (i % 3) * 0.008);
       canvas.drawCircle(Offset(positions[i][0], positions[i][1]), s,
-          Paint()..color = illustration.accent.withOpacity(0.4 + (i % 3) * 0.1));
+          Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4 + (i % 3) * 0.1)));
     }
   }
 
@@ -9253,7 +9358,7 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawShop(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.44;
-    final awnP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final awnP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     final awnPath = Path()
       ..moveTo(cx - w * 0.2, cy - h * 0.05)
       ..lineTo(cx + w * 0.2, cy - h * 0.05)
@@ -9261,13 +9366,13 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx - w * 0.18, cy + h * 0.02)
       ..close();
     canvas.drawPath(awnPath, awnP);
-    final stripeP = Paint()..color = illustration.bg.withOpacity(0.2)..strokeWidth = w * 0.015..style = PaintingStyle.stroke;
+    final stripeP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2))..strokeWidth = w * 0.015..style = PaintingStyle.stroke;
     for (int i = -2; i <= 2; i++) {
       _drawLine(canvas, cx + i * w * 0.06, cy - h * 0.05, cx + i * w * 0.06 - w * 0.01, cy + h * 0.02, stripeP);
     }
     canvas.drawRect(Rect.fromLTWH(cx - w * 0.05, cy + h * 0.02, w * 0.1, h * 0.16),
-        Paint()..color = illustration.accent.withOpacity(0.35));
-    _drawText(canvas, 'SHOP', cx - w * 0.1, cy - h * 0.17, w * 0.06, illustration.accent.withOpacity(0.5));
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
+    _drawText(canvas, 'SHOP', cx - w * 0.1, cy - h * 0.17, w * 0.06, illustration.accent.withOpacity(_minOp(0.5)));
   }
 
   // ── silver: 银色（银条/闪亮）────────────────────────────────────────────
@@ -9280,17 +9385,17 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx + w * 0.16, cy - h * 0.1)
       ..lineTo(cx + w * 0.08, cy - h * 0.04)
       ..close();
-    canvas.drawPath(topPath, Paint()..color = illustration.accent.withOpacity(0.65));
+    canvas.drawPath(topPath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.65)));
     canvas.drawRect(Rect.fromLTWH(cx - w * 0.14, cy - h * 0.04, w * 0.22, h * 0.1),
-        Paint()..color = illustration.accent.withOpacity(0.5));
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
     final sidePath = Path()
       ..moveTo(cx + w * 0.08, cy - h * 0.04)
       ..lineTo(cx + w * 0.16, cy - h * 0.1)
       ..lineTo(cx + w * 0.16, cy + h * 0.02)
       ..lineTo(cx + w * 0.08, cy + h * 0.06)
       ..close();
-    canvas.drawPath(sidePath, Paint()..color = illustration.accent.withOpacity(0.35));
-    final spP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+    canvas.drawPath(sidePath, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)));
+    final spP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = 1.5..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx + w * 0.12, cy - h * 0.18, cx + w * 0.12, cy - h * 0.24, spP);
     _drawLine(canvas, cx + w * 0.095, cy - h * 0.21, cx + w * 0.145, cy - h * 0.21, spP);
   }
@@ -9299,34 +9404,34 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawSoft(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final cloudP = Paint()..color = illustration.accent.withOpacity(0.55);
+    final cloudP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55));
     canvas.drawCircle(Offset(cx - w * 0.1, cy), w * 0.08, cloudP);
     canvas.drawCircle(Offset(cx + w * 0.05, cy - h * 0.04), w * 0.1, cloudP);
     canvas.drawCircle(Offset(cx + w * 0.15, cy + h * 0.01), w * 0.07, cloudP);
     canvas.drawCircle(Offset(cx - w * 0.02, cy + h * 0.04), w * 0.07, cloudP);
     canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.02, cy + h * 0.03), width: w * 0.34, height: w * 0.12), cloudP);
-    _drawText(canvas, 'z', cx + w * 0.2, cy - h * 0.15, w * 0.06, illustration.accent.withOpacity(0.35));
-    _drawText(canvas, 'z', cx + w * 0.26, cy - h * 0.21, w * 0.05, illustration.accent.withOpacity(0.25));
+    _drawText(canvas, 'z', cx + w * 0.2, cy - h * 0.15, w * 0.06, illustration.accent.withOpacity(_minOp(0.35)));
+    _drawText(canvas, 'z', cx + w * 0.26, cy - h * 0.21, w * 0.05, illustration.accent.withOpacity(_minOp(0.25)));
   }
 
   // ── sore: 疼痛（创可贴）────────────────────────────────────────────
   void _drawSore(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final bandP = Paint()..color = illustration.accent.withOpacity(0.55);
+    final bandP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55));
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.36, height: w * 0.14), Radius.circular(w * 0.03)),
       bandP,
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.12, height: w * 0.1), Radius.circular(w * 0.015)),
-      Paint()..color = illustration.accent.withOpacity(0.35),
+      Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35)),
     );
     for (int i = -1; i <= 1; i++) {
       for (int j = -1; j <= 1; j++) {
         if (i == 0 && j == 0) continue;
         canvas.drawCircle(Offset(cx + i * w * 0.1, cy + j * w * 0.035), w * 0.01,
-            Paint()..color = illustration.bg.withOpacity(0.2));
+            Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2)));
       }
     }
   }
@@ -9336,7 +9441,7 @@ class WordIllustrationPainter extends CustomPainter {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
     // bowed figure: head tilted down
-    final bodyP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = w * 0.025..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final bodyP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = w * 0.025..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     // head (lower than normal, tilted forward)
     canvas.drawCircle(Offset(cx + w * 0.03, cy - h * 0.02), w * 0.045, bodyP);
     // body (leaning forward)
@@ -9348,16 +9453,16 @@ class WordIllustrationPainter extends CustomPainter {
     _drawLine(canvas, cx, cy + h * 0.15, cx - w * 0.06, cy + h * 0.22, bodyP);
     _drawLine(canvas, cx, cy + h * 0.15, cx + w * 0.06, cy + h * 0.22, bodyP);
     // apology bubble
-    final bubP = Paint()..color = illustration.accent.withOpacity(0.35);
+    final bubP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35));
     canvas.drawOval(Rect.fromCenter(center: Offset(cx + w * 0.18, cy - h * 0.18), width: w * 0.16, height: w * 0.08), bubP);
-    _drawText(canvas, 'sorry', cx + w * 0.1, cy - h * 0.2, w * 0.05, illustration.bg.withOpacity(0.5));
+    _drawText(canvas, 'sorry', cx + w * 0.1, cy - h * 0.2, w * 0.05, illustration.bg.withOpacity(_minOp(0.5)));
   }
 
   // ── sound: 声音（声波）────────────────────────────────────────────
   void _drawSound(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.38, cy = h * 0.45;
-    final spkP = Paint()..color = illustration.accent.withOpacity(0.55);
+    final spkP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55));
     canvas.drawRect(Rect.fromLTWH(cx - w * 0.06, cy - h * 0.06, w * 0.06, h * 0.12), spkP);
     final conePath = Path()
       ..moveTo(cx, cy - h * 0.06)
@@ -9366,7 +9471,7 @@ class WordIllustrationPainter extends CustomPainter {
       ..lineTo(cx, cy + h * 0.06)
       ..close();
     canvas.drawPath(conePath, spkP);
-    final waveP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = w * 0.02..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final waveP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = w * 0.02..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     for (int i = 1; i <= 3; i++) {
       canvas.drawArc(
         Rect.fromCenter(center: Offset(cx + w * 0.08, cy), width: w * 0.1 * i, height: h * 0.12 * i),
@@ -9378,11 +9483,11 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawSpeak(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final mouthP = Paint()..color = illustration.accent.withOpacity(0.5);
+    final mouthP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5));
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.2, height: w * 0.1), mouthP);
     canvas.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: w * 0.2, height: w * 0.1), 0.2, pi - 0.4, false,
-        Paint()..color = illustration.bg.withOpacity(0.3)..strokeWidth = 1.5..style = PaintingStyle.stroke);
-    final spP = Paint()..color = illustration.accent.withOpacity(0.4)..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
+        Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.3))..strokeWidth = 1.5..style = PaintingStyle.stroke);
+    final spP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4))..strokeWidth = w * 0.015..strokeCap = StrokeCap.round;
     for (int i = 0; i < 3; i++) {
       final angle = -pi * 0.5 + (i - 1) * 0.4;
       final sx = cx + cos(angle) * w * 0.14;
@@ -9395,24 +9500,24 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawSpecial(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final starP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final starP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     _drawStarShape(canvas, cx, cy, w * 0.18, w * 0.08, 5, starP);
-    final spP = Paint()..color = illustration.accent.withOpacity(0.35);
+    final spP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35));
     _drawStarShape(canvas, cx - w * 0.2, cy - h * 0.12, w * 0.05, w * 0.02, 4, spP);
     _drawStarShape(canvas, cx + w * 0.22, cy + h * 0.05, w * 0.04, w * 0.015, 4, spP);
     _drawStarShape(canvas, cx + w * 0.1, cy - h * 0.2, w * 0.035, w * 0.012, 4, spP);
-    canvas.drawCircle(Offset(cx - w * 0.15, cy + h * 0.12), w * 0.015, Paint()..color = illustration.accent.withOpacity(0.3));
+    canvas.drawCircle(Offset(cx - w * 0.15, cy + h * 0.12), w * 0.015, Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.3)));
   }
 
   // ── spend: 花费（硬币+向下箭头）────────────────────────────────────────────
   void _drawSpend(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.42;
-    final coinP = Paint()..color = illustration.accent.withOpacity(0.55);
+    final coinP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55));
     canvas.drawCircle(Offset(cx, cy - h * 0.04), w * 0.12, coinP);
-    canvas.drawCircle(Offset(cx, cy - h * 0.04), w * 0.09, Paint()..color = illustration.bg.withOpacity(0.2));
-    _drawText(canvas, '\$', cx - w * 0.015, cy - h * 0.07, w * 0.07, illustration.bg.withOpacity(0.4));
-    final arrP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
+    canvas.drawCircle(Offset(cx, cy - h * 0.04), w * 0.09, Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.2)));
+    _drawText(canvas, '\$', cx - w * 0.015, cy - h * 0.07, w * 0.07, illustration.bg.withOpacity(_minOp(0.4)));
+    final arrP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx, cy + h * 0.04, cx, cy + h * 0.18, arrP);
     _drawArrowHead(canvas, cx, cy + h * 0.18, pi / 2, w * 0.06, arrP);
   }
@@ -9421,13 +9526,13 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawSpotted(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.45;
-    final bodyP = Paint()..color = illustration.accent.withOpacity(0.4);
+    final bodyP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.4));
     canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy + h * 0.02), width: w * 0.28, height: w * 0.18), bodyP);
     canvas.drawCircle(Offset(cx + w * 0.14, cy - h * 0.06), w * 0.07, bodyP);
-    final earP = Paint()..color = illustration.accent.withOpacity(0.35);
+    final earP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35));
     canvas.drawCircle(Offset(cx + w * 0.12, cy - h * 0.13), w * 0.025, earP);
     canvas.drawCircle(Offset(cx + w * 0.18, cy - h * 0.13), w * 0.025, earP);
-    final spotP = Paint()..color = illustration.accent.withOpacity(0.6);
+    final spotP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.6));
     final spots = [
       [cx - w * 0.08, cy - h * 0.02],
       [cx + w * 0.02, cy + h * 0.05],
@@ -9438,7 +9543,7 @@ class WordIllustrationPainter extends CustomPainter {
     for (final s in spots) {
       canvas.drawCircle(Offset(s[0], s[1]), w * 0.02, spotP);
     }
-    final tailP = Paint()..color = illustration.accent.withOpacity(0.35)..strokeWidth = w * 0.02..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final tailP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.35))..strokeWidth = w * 0.02..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawArc(Rect.fromLTWH(cx - w * 0.22, cy - h * 0.05, w * 0.1, h * 0.15), pi * 0.3, pi * 1.2, false, tailP);
   }
 
@@ -9448,11 +9553,11 @@ class WordIllustrationPainter extends CustomPainter {
     final cx = w * 0.5, cy = h * 0.45;
     final s = w * 0.28;
     canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: s, height: s),
-        Paint()..color = illustration.accent.withOpacity(0.5));
-    final gridP = Paint()..color = illustration.bg.withOpacity(0.25)..strokeWidth = 1.2;
+        Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5)));
+    final gridP = Paint()..color = _dc(illustration.bg).withOpacity(_minOp(0.25))..strokeWidth = 1.2;
     _drawLine(canvas, cx - s / 2, cy, cx + s / 2, cy, gridP);
     _drawLine(canvas, cx, cy - s / 2, cx, cy + s / 2, gridP);
-    final markP = Paint()..color = illustration.accent.withOpacity(0.65)..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
+    final markP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.65))..strokeWidth = w * 0.02..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - s / 2, cy - s / 2, cx - s / 2 + w * 0.04, cy - s / 2, markP);
     _drawLine(canvas, cx - s / 2, cy - s / 2, cx - s / 2, cy - s / 2 + w * 0.04, markP);
     _drawLine(canvas, cx + s / 2, cy + s / 2, cx + s / 2 - w * 0.04, cy + s / 2, markP);
@@ -9463,16 +9568,16 @@ class WordIllustrationPainter extends CustomPainter {
   void _drawStart(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
     final cx = w * 0.5, cy = h * 0.44;
-    final poleP = Paint()..color = illustration.accent.withOpacity(0.5)..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
+    final poleP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.5))..strokeWidth = w * 0.025..strokeCap = StrokeCap.round;
     _drawLine(canvas, cx - w * 0.04, cy - h * 0.22, cx - w * 0.04, cy + h * 0.15, poleP);
-    final flagP = Paint()..color = illustration.accent.withOpacity(0.55);
+    final flagP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.55));
     final flagPath = Path()
       ..moveTo(cx - w * 0.04, cy - h * 0.22)
       ..lineTo(cx + w * 0.14, cy - h * 0.17)
       ..lineTo(cx - w * 0.04, cy - h * 0.12)
       ..close();
     canvas.drawPath(flagPath, flagP);
-    final chevP = Paint()..color = illustration.accent.withOpacity(0.45)..strokeWidth = w * 0.02..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    final chevP = Paint()..color = _dc(illustration.accent).withOpacity(_minOp(0.45))..strokeWidth = w * 0.02..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
     canvas.drawPath(
       Path()
         ..moveTo(cx - w * 0.12, cy + h * 0.08)
@@ -9489,7 +9594,7 @@ class WordIllustrationPainter extends CustomPainter {
     // blonde person: head + hair
     final skin = Paint()..color = const Color(0xFFFFDBAC);
     final hair = Paint()..color = const Color(0xFFFFD700);
-    final body = Paint()..color = illustration.accent;
+    final body = Paint()..color = _dc(illustration.accent);
     // body
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -9531,7 +9636,7 @@ class WordIllustrationPainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, paint);
     // center hole
-    canvas.drawCircle(Offset(cx, cy), r * 0.2, Paint()..color = illustration.bg);
+    canvas.drawCircle(Offset(cx, cy), r * 0.2, Paint()..color = _dc(illustration.bg));
   }
 
   void _drawArrowLine(Canvas canvas, double x1, double y1, double x2, double y2, Paint paint) {
@@ -9564,7 +9669,15 @@ class WordIllustrationPainter extends CustomPainter {
     final petalPaint = Paint()..color = color;
     for (int i = 0; i < 5; i++) {
       final angle = i * 2 * pi / 5 - pi / 2;
-      canvas.drawCircle(Offset(cx + cos(angle) * r * 0.7, cy + sin(angle) * r * 0.7), r * 0.5, petalPaint);
+      final px = cx + cos(angle) * r * 0.7;
+      final py = cy + sin(angle) * r * 0.7;
+      if (isDark) {
+        canvas.drawCircle(Offset(px, py), r * 0.52, _outlineP);
+      }
+      canvas.drawCircle(Offset(px, py), r * 0.5, petalPaint);
+    }
+    if (isDark) {
+      canvas.drawCircle(Offset(cx, cy), r * 0.37, _outlineP);
     }
     canvas.drawCircle(Offset(cx, cy), r * 0.35, Paint()..color = Colors.yellow);
   }
@@ -9572,14 +9685,18 @@ class WordIllustrationPainter extends CustomPainter {
   // ── fallback: 默认圆形 ────────────────────────────────────────────────────
   void _drawFallback(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
+    final r = w * 0.18;
+    if (isDark) {
+      canvas.drawCircle(Offset(w / 2, h * 0.45), r, _outlineP);
+    }
     canvas.drawCircle(
       Offset(w / 2, h * 0.45),
-      w * 0.18,
-      Paint()..color = illustration.bg.withOpacity(0.6),
+      r,
+      Paint()..color = _dc(illustration.bg).withOpacity(_minOp(isDark ? 0.8 : 0.6)),
     );
   }
 
   @override
   bool shouldRepaint(covariant WordIllustrationPainter old) =>
-      old.t != t || old.word != word || old.illustration != illustration;
+      old.t != t || old.word != word || old.illustration != illustration || old.isDark != isDark;
 }
