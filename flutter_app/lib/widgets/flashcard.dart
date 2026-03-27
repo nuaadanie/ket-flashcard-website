@@ -105,9 +105,8 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
           ? MainAxisAlignment.spaceEvenly
           : MainAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildTag(widget.word.level, levelColor, tagFontSize, tagHPad, tagVPad),
             _buildTag(widget.word.topic, stichSecondary, tagFontSize, tagHPad, tagVPad),
@@ -118,7 +117,9 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
           style: TextStyle(
             fontFamily: 'RobotoMono',
             fontSize: phoneticSize,
-            color: Colors.grey[500],
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[400]
+                : Colors.grey[500],
           ),
         ),
         Text(
@@ -138,7 +139,9 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
             '释义',
             style: TextStyle(
               fontSize: meaningSize - 4,
-              color: Colors.grey[400],
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[500]
+                  : Colors.grey[400],
             ),
             textAlign: TextAlign.center,
           ),
@@ -146,7 +149,9 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
             widget.word.meaning,
             style: TextStyle(
               fontSize: meaningSize - 4,
-              color: Colors.grey[700],
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[300]
+                  : Colors.grey[700],
             ),
             textAlign: TextAlign.center,
           ),
@@ -164,7 +169,9 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
             widget.word.example,
             style: TextStyle(
               fontSize: meaningSize - 4,
-              color: Colors.grey[500],
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[400]
+                  : Colors.grey[500],
               fontStyle: FontStyle.italic,
             ),
             textAlign: TextAlign.center,

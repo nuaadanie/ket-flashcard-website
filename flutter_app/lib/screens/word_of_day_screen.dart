@@ -153,7 +153,9 @@ class _WordOfDayScreenState extends State<WordOfDayScreen> {
                       style: TextStyle(
                         fontFamily: 'RobotoMono',
                         fontSize: 16,
-                        color: Colors.grey[500],
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[500],
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -193,7 +195,7 @@ class _WordOfDayScreenState extends State<WordOfDayScreen> {
                     // 释义
                     Text(
                       w.meaning,
-                      style: TextStyle(fontSize: 20, color: Colors.grey[700]),
+                      style: TextStyle(fontSize: 20, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey[700]),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -216,7 +218,7 @@ class _WordOfDayScreenState extends State<WordOfDayScreen> {
                         children: [
                           const Icon(Icons.format_quote, color: stichTertiary, size: 20),
                           const SizedBox(width: 6),
-                          Text('例句', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                          Text('例句', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600])),
                           const Spacer(),
                           GestureDetector(
                             onTap: () => _play(w.example),
@@ -252,7 +254,7 @@ class _WordOfDayScreenState extends State<WordOfDayScreen> {
           const Spacer(),
           Text(
             '${DateTime.now().month}月${DateTime.now().day}日',
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 13, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600]),
           ),
         ],
       ),
