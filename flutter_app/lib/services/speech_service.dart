@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:path_provider/path_provider.dart';
+import 'speech_stub.dart'
+    if (dart.library.html) 'speech_web.dart';
 
 /// 统一 TTS 服务，使用百度翻译发音接口
 /// accent: 'us' 美式(lan=en), 'uk' 英式(lan=uk)
@@ -17,8 +17,7 @@ class SpeechService {
   bool get isSpeaking => _isSpeaking;
 
   Future<void> init() async {
-    final dir = await getTemporaryDirectory();
-    _tempDir = dir.path;
+    _tempDir = await getPlatformTempDir();
 
     _audioPlayer.onPlayerComplete.listen((_) {
       _isSpeaking = false;
@@ -46,40 +45,16 @@ class SpeechService {
       final url =
           'https://fanyi.baidu.com/gettts?lan=$lan&text=$encoded&spd=3&source=web&per=$voice';
 
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 10);
-      final request = await client.getUrl(Uri.parse(url));
-      request.headers.set('User-Agent', 'Mozilla/5.0');
-      request.headers.set('Referer', 'https://fanyi.baidu.com/');
-      final response = await request.close();
+      await playTts(_audioPlayer, url, _tempDir);
 
-      if (response.statusCode == 200) {
-        final filePath =
-            '${_tempDir ?? "/tmp"}/tts_${DateTime.now().millisecondsSinceEpoch}.mp3';
-        final file = File(filePath);
-        final bytes = await response.fold<List<int>>(
-            [], (prev, chunk) => prev..addAll(chunk));
-        await file.writeAsBytes(bytes);
-
-        if (bytes.length > 100) {
-          await _audioPlayer.play(DeviceFileSource(filePath));
-          final timeoutSec = (text.length * 0.2 + 8).toInt();
-          await _speakCompleter?.future.timeout(
-            Duration(seconds: timeoutSec),
-            onTimeout: () {
-              _isSpeaking = false;
-              _completeSpeaking();
-            },
-          );
-        } else {
+      final timeoutSec = (text.length * 0.2 + 8).toInt();
+      await _speakCompleter?.future.timeout(
+        Duration(seconds: timeoutSec),
+        onTimeout: () {
           _isSpeaking = false;
           _completeSpeaking();
-        }
-      } else {
-        _isSpeaking = false;
-        _completeSpeaking();
-      }
-      client.close();
+        },
+      );
     } catch (e) {
       _isSpeaking = false;
       _completeSpeaking();

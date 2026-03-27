@@ -81,7 +81,7 @@ class _WordVisualPainter extends CustomPainter {
 
     // 绘制静态形状
     for (final shape in visual.shapes) {
-      _drawShape(canvas, w, h, shape, 1.0, 0.0);
+      _drawShape(canvas, w, h, shape, 1.0, 1.0);
     }
 
     // 绘制动画形状

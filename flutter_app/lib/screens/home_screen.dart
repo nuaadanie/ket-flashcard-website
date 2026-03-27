@@ -110,9 +110,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   late Animation<Offset> _cardSlideAnim;
   late Animation<double> _cardRotationAnim;
 
-  // Shake animation for "unknown" action
-  late AnimationController _shakeController;
-  late Animation<double> _shakeAnim;
 
   @override
   void initState() {
@@ -135,35 +132,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       CurvedAnimation(parent: _cardAnimController, curve: kAnimCurve),
     );
 
-    // Shake animation (for unknown)
-    _shakeController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-    _shakeAnim = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: -0.06), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -0.06, end: 0.06), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 0.06, end: -0.03), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -0.03, end: 0.0), weight: 1),
-    ]).animate(CurvedAnimation(parent: _shakeController, curve: Curves.easeOut));
 
     _init();
   }
 
   Future<void> _init() async {
-    await _storage.init();
-    await _speech.init();
-    _speech.accent = _storage.accent;
-    _speech.voice = _storage.voice;
-    await _loadWords();
-    _currentMode = _storage.lastMode;
-    _currentLevel = _storage.lastLevel;
-    _currentTopic = _storage.lastTopic;
-    _statsFilter = _storage.statsFilter;
-    _filterWords();
-    _cachedWordOfDay = _getWordOfDay();
-    _cardAnimController.forward();
-    setState(() {});
+    try {
+      await _storage.init();
+      await _speech.init();
+      _speech.accent = _storage.accent;
+      _speech.voice = _storage.voice;
+      await _loadWords();
+      _currentMode = _storage.lastMode;
+      _currentLevel = _storage.lastLevel;
+      _currentTopic = _storage.lastTopic;
+      _statsFilter = _storage.statsFilter;
+      _filterWords();
+      _cachedWordOfDay = _getWordOfDay();
+      _cardAnimController.forward();
+      setState(() {});
+    } catch (e, st) {
+      debugPrint('[HomeScreen] init error: $e\n$st');
+    }
   }
 
   @override
@@ -227,11 +217,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     _storage.save();
   }
 
-  Future<void> _animateCard(VoidCallback action, {bool shake = false}) async {
-    if (shake) {
-      await _shakeController.forward();
-      _shakeController.reset();
-    }
+  void _animateCard(VoidCallback action) {
     action();
   }
 
@@ -358,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         }
         _saveProgress();
       });
-    }, shake: true);
+    });
     return;
   }
 
@@ -600,7 +586,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cardAnimController.dispose();
-    _shakeController.dispose();
     _speech.dispose();
     super.dispose();
   }
@@ -784,11 +769,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _statChip('✅ ${stats['mastered']}', 'mastered', knowText, knowBg),
+          _statChip('✅ ${stats['mastered']}', 'mastered', knowText, _adaptiveStatBg(knowBg)),
           const SizedBox(width: 8),
-          _statChip('❌ ${stats['unknown']}', 'unknown', unknownText, unknownBg),
+          _statChip('❌ ${stats['unknown']}', 'unknown', unknownText, _adaptiveStatBg(unknownBg)),
           const SizedBox(width: 8),
-          _statChip('📝 ${stats['unlearned']}', 'unlearned', Colors.grey[700]!, Colors.grey[200]!),
+          _statChip('📝 ${stats['unlearned']}', 'unlearned', Colors.grey[700]!, _adaptiveStatBg(Colors.grey[200]!)),
         ],
       ),
     );
@@ -839,11 +824,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               style: TextStyle(fontFamily: 'Quicksand', fontSize: titleSize, fontWeight: FontWeight.bold, color: stichPrimary)),
           const SizedBox(width: 12),
           // 横屏统计合并到顶栏
-          _statChip('✅${stats['mastered']}', 'mastered', knowText, knowBg),
+          _statChip('✅${stats['mastered']}', 'mastered', knowText, _adaptiveStatBg(knowBg)),
           const SizedBox(width: 4),
-          _statChip('❌${stats['unknown']}', 'unknown', unknownText, unknownBg),
+          _statChip('❌${stats['unknown']}', 'unknown', unknownText, _adaptiveStatBg(unknownBg)),
           const SizedBox(width: 4),
-          _statChip('📝${stats['unlearned']}', 'unlearned', Colors.grey[700]!, Colors.grey[200]!),
+          _statChip('📝${stats['unlearned']}', 'unlearned', Colors.grey[700]!, _adaptiveStatBg(Colors.grey[200]!)),
           const SizedBox(width: 4),
           StreakBadge(
             currentStreak: _storage.currentStreak,
@@ -962,6 +947,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   // ==================== 选择器 ====================
+
+  /// Dark mode下降低背景色亮度，避免白色色块突兀
+  Color _adaptiveStatBg(Color lightColor) {
+    if (Theme.of(context).brightness == Brightness.dark) {
+      return Color.alphaBlend(lightColor.withOpacity(0.15), darkSurface);
+    }
+    return lightColor;
+  }
   Widget _buildModeSelector() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -996,7 +989,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: active ? stichPrimary : Colors.grey[200],
+          color: active ? stichPrimary : surfaceColor(context),
           borderRadius: BorderRadius.circular(kBorderRadius),
           border: active ? null : Border.fromBorderSide(microBorder(context)),
         ),
@@ -1039,7 +1032,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
                   borderRadius: BorderRadius.circular(kBorderRadius),
                   border: active
                       ? Border.all(color: Colors.white.withOpacity(0.4), width: 2)
-                      : null,
+                      : Border.all(color: Colors.white.withOpacity(0.12), width: 1),
                 ),
                 transform: active ? (Matrix4.identity()..scale(1.05)) : Matrix4.identity(),
                 child: Text(level,
@@ -1114,7 +1107,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
               borderRadius: BorderRadius.circular(kBorderRadius),
               border: active
                   ? Border.all(color: Colors.white.withOpacity(0.4), width: 2)
-                  : null,
+                  : Border.all(color: Colors.white.withOpacity(0.12), width: 1),
             ),
             child: Text(level,
                 textAlign: TextAlign.center,
@@ -1350,21 +1343,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: AnimatedBuilder(
-          animation: _shakeAnim,
-          builder: (context, child) {
-            return RotationTransition(
-              turns: _shakeAnim,
-              child: child,
-            );
-          },
-          child: FlashcardWidget(
-                  word: _filteredWords[_currentIndex],
-                  isPlaying: _isPlaying,
-                  onPlay: _playWord,
-                  expandVertical: shouldExpand,
-                  isPad: isPad,
-          ),
+        child: FlashcardWidget(
+          word: _filteredWords[_currentIndex],
+          isPlaying: _isPlaying,
+          onPlay: _playWord,
+          expandVertical: shouldExpand,
+          isPad: isPad,
         ),
       ),
     );

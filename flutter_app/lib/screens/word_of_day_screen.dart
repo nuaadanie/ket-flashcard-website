@@ -5,8 +5,8 @@ import '../models/word.dart';
 import '../models/app_theme.dart';
 import '../services/storage_service.dart';
 import '../services/speech_service.dart';
-import '../data/word_visuals.dart';
-import '../widgets/word_animated_painter.dart';
+import '../data/word_illustrations.dart';
+import '../widgets/word_illustration_widget.dart';
 
 class WordOfDayScreen extends StatefulWidget {
   final StorageService storage;
@@ -47,18 +47,18 @@ class _WordOfDayScreenState extends State<WordOfDayScreen> {
 
   void _pickWord() {
     if (_allWords.isEmpty) return;
-    final today = DateTime.now();
-    final seed = today.year * 10000 + today.month * 100 + today.day;
-
-    // 只选动词和形容词
-    final verbAdj = _allWords.where((w) =>
-      w.topic.startsWith('Verbs') || w.topic.startsWith('Adjectives')
-    ).toList();
-
-    // 优先从不会单词中选
-    final unknownPool = verbAdj.where((w) => widget.storage.isUnknown(w.id)).toList();
-    final pool = unknownPool.isNotEmpty ? unknownPool : verbAdj;
-    _word = pool[seed % pool.length];
+    // Pick a random verb or adjective that has an illustration
+    final candidates = _allWords
+        .where((w) =>
+            (w.topic.startsWith('Verbs') || w.topic.startsWith('Adjectives')) &&
+            wordIllustrations.containsKey(w.word.toLowerCase()))
+        .toList();
+    if (candidates.isEmpty) {
+      _word = _allWords.first;
+      return;
+    }
+    candidates.shuffle();
+    _word = candidates.first;
   }
 
   Future<void> _play(String text) async {
@@ -94,7 +94,7 @@ class _WordOfDayScreenState extends State<WordOfDayScreen> {
   Widget _buildContent() {
     final w = _word!;
     final levelColor = levelColors[w.level] ?? Colors.grey;
-    final visual = wordVisuals[w.word.toLowerCase()];
+    final illustration = wordIllustrations[w.word.toLowerCase()];
 
     return Column(
       children: [
@@ -103,11 +103,12 @@ class _WordOfDayScreenState extends State<WordOfDayScreen> {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             children: [
-              // 单词插画（CustomPaint动画）
-              if (visual != null)
+              // 单词插画（手绘CustomPaint动画）
+              if (illustration != null)
                 Center(
-                  child: WordAnimatedIllustration(
-                    visual: visual,
+                  child: WordIllustrationWidget(
+                    illustration: illustration,
+                    word: w.word.toLowerCase(),
                     size: 200,
                   ),
                 ),

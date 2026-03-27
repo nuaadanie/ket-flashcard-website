@@ -105,11 +105,12 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
           ? MainAxisAlignment.spaceEvenly
           : MainAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
           children: [
             _buildTag(widget.word.level, levelColor, tagFontSize, tagHPad, tagVPad),
-            Flexible(child: _buildTag(widget.word.topic, stichSecondary, tagFontSize, tagHPad, tagVPad)),
+            _buildTag(widget.word.topic, stichSecondary, tagFontSize, tagHPad, tagVPad),
           ],
         ),
         Text(
