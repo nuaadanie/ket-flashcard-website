@@ -123,28 +123,26 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
                 : Colors.grey[500],
           ),
         ),
-        SizedBox(height: isLandscape ? 2 : 4),
-        SizedBox(
-          height: wordSize + 12,
-          child: Center(
-            child: Text(
-              widget.word.word,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: wordSize,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.2,
-                color: onSurfaceColor(context),
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+        SizedBox(height: isLandscape ? 4 : 6),
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: isLandscape ? 4 : 2),
+          child: Text(
+            widget.word.word,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: wordSize,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1.2,
+              color: onSurfaceColor(context),
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         // Meaning: tap to reveal — fixed height to prevent layout shift
         SizedBox(
-          height: meaningSize + 8,
+          height: meaningSize * 1.3,
           child: Center(
             child: AnimatedCrossFade(
               firstChild: Text(
@@ -178,7 +176,7 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
         ),
         // Example on double-tap — fixed height to prevent layout shift
         SizedBox(
-          height: meaningSize + 8,
+          height: meaningSize * 1.3,
           child: AnimatedOpacity(
             opacity: _showLevel == 2 ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 250),
@@ -245,7 +243,6 @@ class FlashcardWidgetState extends State<FlashcardWidget> with SingleTickerProvi
         borderRadius: BorderRadius.circular(kBorderRadius), // 28.0
         border: Border.fromBorderSide(microBorder(context)), // 0.8px @ 4% opacity
       ),
-      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: padding,
         child: content,
