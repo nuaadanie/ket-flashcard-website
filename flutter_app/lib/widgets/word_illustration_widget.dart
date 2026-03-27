@@ -84,13 +84,19 @@ class WordIllustrationPainter extends CustomPainter {
   /// Boost opacity for dark mode visibility
   double _dop(double opacity) => isDark ? (opacity * 1.6).clamp(0.0, 1.0) : opacity;
 
-  /// Dark-boosted color: lighter + more opaque (neon-like glow on dark)
+  /// Adjusted color for contrast: lighten on dark bg, darken on light bg
   Color _dc(Color c) {
-    if (!isDark) return c;
-    // Shift 60% toward white for strong luminance contrast on dark backgrounds
-    final r = c.red + ((255 - c.red) * 0.6).round();
-    final g = c.green + ((255 - c.green) * 0.6).round();
-    final b = c.blue + ((255 - c.blue) * 0.6).round();
+    if (isDark) {
+      // Dark mode: shift 60% toward white for luminance on dark backgrounds
+      final r = c.red + ((255 - c.red) * 0.6).round();
+      final g = c.green + ((255 - c.green) * 0.6).round();
+      final b = c.blue + ((255 - c.blue) * 0.6).round();
+      return Color.fromARGB(255, r.clamp(0, 255), g.clamp(0, 255), b.clamp(0, 255));
+    }
+    // Light mode: shift 25% toward black for contrast on light backgrounds
+    final r = (c.red * 0.75).round();
+    final g = (c.green * 0.75).round();
+    final b = (c.blue * 0.75).round();
     return Color.fromARGB(255, r.clamp(0, 255), g.clamp(0, 255), b.clamp(0, 255));
   }
 
@@ -116,9 +122,13 @@ class WordIllustrationPainter extends CustomPainter {
     ..strokeWidth = 3.0
     ..strokeCap = StrokeCap.round;
 
-  /// Minimum opacity in dark mode to ensure visibility
+  /// Minimum opacity to ensure visibility on any background
   /// Preserves 0 opacity (intentional transparency, e.g. gradient endpoints)
-  double _minOp(double opacity) => (isDark && opacity > 0) ? opacity.clamp(0.4, 1.0) : opacity;
+  double _minOp(double opacity) {
+    if (opacity == 0) return 0;
+    if (isDark) return opacity.clamp(0.4, 1.0);
+    return opacity.clamp(0.5, 1.0);
+  }
 
   // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -156,8 +166,8 @@ class WordIllustrationPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          illustration.bg.withOpacity(_minOp(bgOpacity1)),
-          illustration.accent.withOpacity(_minOp(bgOpacity2)),
+          _dc(illustration.bg).withOpacity(bgOpacity1),
+          _dc(illustration.accent).withOpacity(bgOpacity2),
         ],
       ).createShader(Rect.fromLTWH(0, 0, w, h));
     canvas.drawRRect(
@@ -174,7 +184,7 @@ class WordIllustrationPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(w / 2, h / 2), w * (0.36 + ringPhase * 0.02),
       Paint()
-        ..color = illustration.bg.withOpacity(_minOp(ringOpacity + ringPhase * 0.04))
+        ..color = _dc(illustration.bg).withOpacity(ringOpacity + ringPhase * 0.04)
         ..style = PaintingStyle.stroke
         ..strokeWidth = isDark ? 2.0 : 1.5,
     );
@@ -184,7 +194,7 @@ class WordIllustrationPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(w / 2, h / 2), w * 0.42,
         Paint()
-          ..color = illustration.accent.withOpacity(_minOp(0.06))
+          ..color = _dc(illustration.accent).withOpacity(0.06)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3.0,
       );
