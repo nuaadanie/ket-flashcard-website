@@ -1,0 +1,45 @@
+Translate the following English transcript segment from Journey to the West (ep105) into Chinese.
+
+IMPORTANT:
+1. There are exactly 10 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 10 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 10 sections to translate:
+
+[Section ①]
+  We need to the west, the Thunder-Clapped Monster. The travelers walked up the spirit mountain. The mountain slopes were covered in pine trees, bamboo and flowers. Birds sang and small animals ran by. The tang monk stopped walking and turned to his companions. I want to thank you all.
+
+[Section ②]
+  Said the monk. You have helped me to reach the western paradise. You saved me from demons countless times. I couldn't have gotten here without you. Who conged last? You don't need to thank us, Master.
+
+[Section ③]
+  We all help each other. You helped me to be good. Now I will learn forgiveness for the evil things I did long ago. Wooching nodded. And I will learn forgiveness for breaking that glass in heaven. I will learn forgiveness for causing trouble in heaven too.
+
+[Section ④]
+  Added Bajie. He waved a hand toward the horse. And remember that horse is really a dragon. He accidentally sent Mired to his father's palace. He too will earn forgiveness. Wooching smiled.
+
+[Section ⑤]
+  See, Master. We are all thankful. They continued up the mountain and were soon surrounded by clouds. Bryce liked shown from the Thunder-Clapped Monster above. The travelers arrived at any northern state where two guards stood. Beyond the gate, the Thunder-Clapped Monastery towers and archers sparkles with bright light.
+
+[Section ⑥]
+  Greetings. Said the monk to the guards. I am the Tang monk. And I am here to receive the true scriptures from Buddha. You may answer. Said one of the guards.
+
+[Section ⑦]
+  The Tang monk and his companions reached a large hall. Buddha sat at the opposite end of the hall. Other Buddhas and Bodhisattvas stood behind him. Gwaniin was standing next to Buddha and smiling. The travelers bowed. Congratulations.
+
+[Section ⑧]
+  Said Buddha. You have all traveled far and faced many challenges. You have done well. Wukong's heart's swell. He wiped his tears from his eye. Thank you.
+
+[Section ⑨]
+  Said the Tang monk. It was an honor to make the journey. Servings brought a meal to the travelers. When the travelers were done eating, a guard led them to a large room filled with magical light and mist. Wouldn't chefs lie in the walls. Inside the chests were countless rolls. marvelous.
+
+[Section ⑩]
+  The time monk murmured. The true scriptures are written on these scrolls. said the guard. He picked out three scrolls and handed them to the time monk. speechless. the monk gazed at the scrolls. Then he handed them to Wu Jing and Bajie. The two spirits carefully wrapped the scrolls and placed them in a bag. again the travelers bowed before Buddha. Take the true scriptures back to the tying empire. said Buddha. another long journey.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

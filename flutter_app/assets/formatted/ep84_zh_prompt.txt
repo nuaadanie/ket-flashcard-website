@@ -1,0 +1,51 @@
+Translate the following English transcript segment from Journey to the West (ep84) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  To the west, the sad king. I wish I had money. Bajie moaned. All this food looks so good! The travelers were walking through a city in the Scarlet Kingdom. The streets were lined with people selling food in other goods. Stop thinking about food, Bajie. Sid Woojin.
+
+[Section ②]
+  What's going on over there? After the Tang monk, he pointed to a crowd of people reading a sign on a wall. The travelers walked over to the crowd. The sign read, the king of the Scarlet Kingdom is seeking help. Anyone who can defeat demons must report to the royal palace. The Tang monk side. I don't want to delay our journey. But you three can defeat demons.
+
+[Section ③]
+  We must report to the palace. Don't worry, master. Sid Wukong. I'm great at defeating demons. This won't take long. I hope they're food at the palace. Sid Bajie. I'm starving.
+
+[Section ④]
+  The travelers arrived at the palace gates. They spoke with a guard who then led them into the court. The king sat on his throne, looking very sad. Your majesty said the guard, the Tang monk is here to see you. He says his companions can defeat demons. The king looked up but didn't say anything. The guard whispered to the travelers. His majesty is very upset.
+
+[Section ⑤]
+  If you can help him, please do. Who Kong walked up to the king? Greetings, Your Majesty. I am Sun Wukong, King of the Fruit and Flower Mountain. You need someone who can defeat demons. Well, here I am. Suddenly the king covered his face with his hands and burst out crying. Oh, it's terrible.
+
+[Section ⑥]
+  Cry the king. I have no hope anymore. Who Kong scraps to head? What's wrong? The queen, my wife. Cry the king. I'll never fall into terrible. Who Kong frowned?
+
+[Section ⑦]
+  Your majesty stop crying. Who Kong? Hiss the Tang monk. Show some respect. Who conquered Northamunk and looked at the king? I realize you're upset, but if you want my help, you must stay calm and explain everything to me. The king snift and sat up straight. You're right.
+
+[Section ⑧]
+  He pulled out a hanker chef and blew his nose. I will tell you what happened. Three years ago, the demon of power attacked Arkendum. The demon kidnapped the queen. I sent soldiers to fight the demon and bring back my life. But the demon was too powerful. Where is the demon? Asked Wukong.
+
+[Section ⑨]
+  The king got up and walked to a window. He pointed to a mountain in the distance. The demon lives on that mountain. Wukong collapsed the king on the back. You can stop being sad now, your majesty. I will rescue the queen. In the meantime, please take care of my companions. I think Bajie is hungry.
+
+[Section ⑩]
+  Wukong landed on the mountain. Wukong landed on the demon's mountain. Several small demons were standing outside a cave entrance. Return the queen or I'll destroy all of you. Shout at the monkey. Kried the small demons as they ran into the cave. Wukong heard another voice inside the cave. What's going on?
+
+[Section ⑪]
+  It said, Master! Kried one demon. There's a monkey outside. We must return the queen or he'll destroy all of us. A large demon with broad shoulders came out of the cave. She wore three bells. I am the demon of power. Shout at the demon.
+
+[Section ⑫]
+  Get off of my mountain. Wukong was furious. See you know who I am? I'm the.. Misch! Bling shot all over. Smoke fell the air and sanded with fast Wukong. The monkey coughed as sand in the water's nose.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

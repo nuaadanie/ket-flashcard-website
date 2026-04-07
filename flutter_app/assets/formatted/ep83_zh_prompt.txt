@@ -1,0 +1,51 @@
+Translate the following English transcript segment from Journey to the West (ep83) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  The West, the Melan Field. Are you sure you can help? We'll call and ask the Buddha, my Traia. Yellow Browse is powerful. He captured everyone with a magic cloth. He trapped me in a pair of symbols. I can defeat Yellow Browse. Said my Traia.
+
+[Section ②]
+  He used to be my student. The cloth and symbols are precious Buddhist treasures that he stole from me. Who congled? Sorry, but I destroyed the symbols. My Traia smiled. Don't worry about that. We must capture Yellow Browse. I'll tell you my plan.
+
+[Section ③]
+  Who congled up to the monastery to Oregon? Yellow Browse! He shouted. Return my friends are all smash your entire mountain. The door flew open and Yellow Browse stepped out. How dare you threaten me? Do you know how powerful I am? You're not powerful, said the monkey.
+
+[Section ④]
+  You just thank you, because you have that cloth. I bet you're too scared to put me without it. I'm not scared of you. Said the demon. He went back inside and came back a moment later. He was holding a heavy wooden club. Who congled out his iron bar as the demon rushed toward him? When?
+
+[Section ⑤]
+  Their weapons smashed together again and again. As he fought the demon, who congled took small steps backward? Slowly, he moved the fight away from the monastery. Soon they were fighting in the valley at the bottom of the mountain. Who congled took another swing at Yellow Browse and then pretended to be scared? You are too powerful. Cryed the monkey. I can't fight you anymore.
+
+[Section ⑥]
+  He turned it ran away. Ray! Yellow Yellow Browse. Good back here, child. The demon ran after Wukong. The monkey ran through some woods and into a melon field. Yellow Browse chased him. Where are you Wukong?
+
+[Section ⑦]
+  He shouted. Then the demon noticed all the melons. He looked his lips. The smelly. He said to himself, a farmer was working nearby. He had a big belly. Hey, farmer. Call Yellow Browse.
+
+[Section ⑧]
+  Give me one of your melons. The farmer put down his right and smiled. He walked over to the demon. I'll find a nice right melon for you. The farmer searched the ground. Finally, he held up a ripe melon. Here you go. Yellow Browse lifted the melon to take a bite.
+
+[Section ⑨]
+  Suddenly, the melon shrank to the size of a berry. It leaped out of his hand and went right down his throat. Gold? The demon fell to his knees. Yeah. What was wrong with that melon? Inside the demon, who conched and chipped? Poof, how?
+
+[Section ⑩]
+  Poof, how? Fried Yellow Browse. Then he noticed the farmer was gone. Instead, my tray is stood over him. My tray agglared at the demon. Give me my magic cloth. Yep, yes, master. Yellow Browse pulled the cloth from his robe and handed it to my tray.
+
+[Section ⑪]
+  You may come out now, who con? Said my tray. A tiny wool con leaped from the demon's nose. My tray is through the cloth that Yellow Browse. It wrapped around the demon and became small. My tray put the bundle into a pocket. Wool con returned to his normal size. He and my tray are went to the monastery.
+
+[Section ⑫]
+  My tray are recited to spell and the symbols repair themselves. He smiled at Wool con. Good luck. Then he vanished. Wool con untied his companions and the other spirits. The dragon, the turtle and the serpent thanked the monkey and flew away. Thank you Wool con. Said the tang monk.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

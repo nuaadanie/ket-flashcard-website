@@ -1,0 +1,54 @@
+Translate the following English transcript segment from Journey to the West (ep78) into Chinese.
+
+IMPORTANT:
+1. There are exactly 13 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 13 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 13 sections to translate:
+
+[Section ①]
+  Who the West? Trit again and again. The night. KONNO! Who Kong looked at the fan? This fan doesn't work! The iron immortal must have tricked me! The travelers back to way is the fire burned hotter.
+
+[Section ②]
+  What will we do? Ask the Tang monk. We can't go through that fire. Ba J. through his hands up. Let's just go home. We'll write a letter to Buddha explaining what happened. Fajie, we can't do that. The Tang monk scolded.
+
+[Section ③]
+  Who Kong spoke up. I used to be friends with the iron immortal's husband. The Bull demon king. I have an idea. The iron immortal was in her cave when she heard a knock. Oh no! She said to herself. That monkey is back.
+
+[Section ④]
+  She walked quietly to the door and peaked outside. When she saw the Bull demon king, she smiled and opened the door. I'm glad you're back. Said the iron immortal. Sun Boong was here. I used to be friends with him. The demon smiled. They wouldn't be nice to see him again.
+
+[Section ⑤]
+  His wife was confused. What do you mean? You told me that you never really liked him. Oh really? Said the demon. He was very rude. Said the woman. He demanded I let him borrow my fan.
+
+[Section ⑥]
+  You didn't give it to him. Did you? Ask the demon. Of course not. Said his wife. I gave him a fake fan that looks just like the real one. The demon began pacing. Who called his very smart and very powerful?
+
+[Section ⑦]
+  He said. He'll realize you tricked him and then he'll come back here. What should we do? Ask the iron immortal. Give me the fan. Said the demon. I'll keep it safe. The iron immortal opened a chest and took out the fan.
+
+[Section ⑧]
+  She handed it to her husband. Suddenly, light sparkles and Woo-Kong stood in front of her. I tricked you! The monkey laughed and ran out of the cave. The irony mortal stamped her foot. She was still angry when her husband came home. Hello, dear. Said the bold demon king that the big smile?
+
+[Section ⑨]
+  But then his smile faded. What wrong? Your friend Sun Woo-Kong was here, she snapped. He's the my friend. Said the demon. Even before he defeated Red Boy, I never really liked him. Well, you'll like him even less now, said the irony mortal. He stole my fan.
+
+[Section ⑩]
+  The demon looks surprised. The friend's wind magic is powerful. How did the monkey steal it? He tricked me into giving it to him. Said his wife. He made himself look like you! The demon's face turned red. How dare he do that?
+
+[Section ⑪]
+  He took a deep breath. Don't worry, I will find that rotten monkey. I'll get your fan back. The bold demon king stomped out of the cave. Woo-Kong walked along the road, carrying the plantain leaf fan. He was still laughing about how he tripped the irony mortal. Then he saw Bajiea approaching. Bajiea?
+
+[Section ⑫]
+  Cried Woo-Kong? What are you doing here? I was coming to help, Bill. Said the pig. Thanks, but I don't need help. Woo-Kong held up the fan. I tricked the irony mortal and got the real fan this time. God!
+
+[Section ⑬]
+  Said Bajiea? I can carry it for you. Thanks! Said Woo-Kong as he handed the fan to Bajiea. The monkey patted his friend on the shoulder. Now let's get back to Master. We need to.. Suddenly there was a flash of light.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

@@ -1,0 +1,57 @@
+Translate the following English transcript segment from Journey to the West (ep94) into Chinese.
+
+IMPORTANT:
+1. There are exactly 14 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 14 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 14 sections to translate:
+
+[Section ①]
+  West, Wind and Farg. I hope we reach the western paradise soon. Said the Tang monk. This journey has been very dangerous. Bajie nodded. That was three demons tried to pick on me! Everybody laughed, even Bajie. Wookong, what happened to those demons?
+
+[Section ②]
+  Asked Woozing. Boota took them away. Said Wookong. I'm sure they were punished. Thank you again for saving us. Said the Tang monk. Wookong waved his hand. It was nothing, Master.
+
+[Section ③]
+  Boota did most of the work. The group fell the strong wind below down from the mountains up ahead. A dark fog filled the sky and then disappeared. The Tang monk was nervous. Wookong, what caused that wind and fog? Relax, Master. Said Wookong. I'm sure it was something harmless.
+
+[Section ④]
+  Maybe some small demons. I'll check. The monk walked up the road and around a bend. He heard laughter and looked up. High above the road, a fat monster was sitting on the edge of a cliff. Several little demons sat next to the monster. Wookong flew up to get a closer look. The fat monster appeared to be concentrating.
+
+[Section ⑤]
+  Suddenly a burp as loud as thunder blew down the mountain. The demons kickled and laughed. That was your best burp yet! Cried one demon. The monster padded his belly. Yes, I'm proud of that one. Choose the full goodong. Said another demon.
+
+[Section ⑥]
+  Coming right up. Said the monster. He covered one nostril with a finger. Close his eyes and be apart. Dark fog poured out of his other nostril. The demons clapped and sheared. The monster smiled and then.. More wind blew down the mountain.
+
+[Section ⑦]
+  There was a roar of laughter. One demon nearly fell off the cliff. Who Kong shook his head? I'm not worried about these demons. He said to himself. They're disgusting, but not dangerous. The monkey smiled. It does give me an idea, though.
+
+[Section ⑧]
+  Who Kong returned to his companions, who were waiting alongside the road? Did you see any demons? Asked Wujing. Who Kong shook his head? The road is safe. Then the monkey pulled Baja inside. Baja, he whispered. There's a village up ahead.
+
+[Section ⑨]
+  The people there are preparing a huge feast. By some vegetables, noodles, tofu, steamed buns, and all sorts of delicious food. I thought maybe you'd like to go before us and start eating. Baja licked his lips. Thank you for thinking that they will call. I am rather hungry like that. The pig turned to the Tang Monk. Master, I think I should go ahead and check them out and too.
+
+[Section ⑩]
+  I trust Wukong, of course. What we must protect you, and I'd like to be extra safe. The Tang Monk smiled. I'm impressed, Baja. Thank you for doing extra work. Baja, winked at Wukong and then headed up the road. The monster burped again and another wind blew. Then he'd be more fog from one nostril.
+
+[Section ⑪]
+  The demons laughed hysterically. Suddenly there was a loud rumbling sound and everyone was silent. The monster padded his big belly. I'm hungry. I'm hungry. I'm hungry. I'm hungry. I'm hungry.
+
+[Section ⑫]
+  I'm hungry. I'm hungry. I'm hungry. I'm hungry. I'm hungry. I'm hungry. I'm hungry. I'm hungry.
+
+[Section ⑬]
+  The demons looked at one another. I'm hungry too. Said one. It's probably time for lunch. Said another. The monster stood up. Let's go down to the road and fight some people to eat. The demons cheered and followed the monster down the mountain.
+
+[Section ⑭]
+  When they got to the road, they made themselves look like people. The monster chuckled. The next time someone comes along this road, it's lunchtime. For a few moments, they waited. Then a large pig came around the bend. Hello! Said Baja, smiling. I'm here for the feast.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

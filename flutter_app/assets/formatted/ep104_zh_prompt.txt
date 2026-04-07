@@ -1,0 +1,47 @@
+Translate the following English transcript segment from Journey to the West (ep104) into Chinese.
+
+IMPORTANT:
+1. There are exactly 10 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 10 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 10 sections to translate:
+
+[Section ①]
+  the Tang monk and the river. Wukong and his companions walked through the western paradise. The road weaves through a field of flowers and towards the spirit mountain. Fajie looked up at the huge mountain and shook his head. And while be easy to climb that. Wukong laughed. Don't ask me to carry you.
+
+[Section ②]
+  The travelers soon arrived at a river with a strong current. Waves fresh into jagged rocks, spraying water everywhere. This river looks dangerous. Seb Wu Jain. But we must cross it to get to the spirit mountain. Bajie sighed. We will never be able to cross this river safely.
+
+[Section ③]
+  Let's just go home. Nonsense. said Wukong. Look over there. The monkey pointed upstream. A thin log lay across the river. It wobbles and shook as the water rushed under it. The Tang monk looked at the log.
+
+[Section ④]
+  But don't be silly, Wukong. We can't walk across that log. It's too thin. And it looks quite slippery. But that log is the only way to reach the spirit mountain. said Wukong. You must believe that it's safe. Watch me.
+
+[Section ⑤]
+  The monkey hopped onto the log and ran across the river and back. See? He said. It's safe. Bajie snorted. You don't way much, Wukong. But if I step on that log, it will break.
+
+[Section ⑥]
+  I believe Wukong. said Wu Jain. We must walk across the log. Follow me, master. said Wukong. He pulled the Tang monk towards the log. The monk trembled with fear. Don't think he walked across that. I'll follow him to the river and drone.
+
+[Section ⑦]
+  Let's just fly over the river. suggested Bajie. We can carry master and the horse. No. insisted Wukong. The Tang monk must make the entire journey by himself. We're here to protect him. Not to carry him. Wu to won't allow master to have the tree scriptures.
+
+[Section ⑧]
+  If he doesn't take every step himself. He can't take every step himself. Just then an old man appeared in a boat. How you can take you across the river? said the man. Thank you. said the Tang monk. He walked to the river bank. My companion wanted me to walk across that log, but.. the monk dast.
+
+[Section ⑨]
+  There's something wrong with your boat. He said to the man. It has no bottom. Water is flowing right through it. The boat is safe. said the man. Please climb in. Buddha is waiting.
+
+[Section ⑩]
+  With a bit more hesitation, the Tang monk stepped into the boat. He was shocked to find that he didn't think. He sat on the edge of the boat as Wu Jing led the horse aboard. Ba J and Wukong followed. The boat glided swiftly across the river. suddenly there was a splash. The Tang monk looked at the water and saw a body floating downstream. he screamed. a man is drone.
+
+  Wukong put his hand on the monk's shoulder and smiled. it's you, master.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

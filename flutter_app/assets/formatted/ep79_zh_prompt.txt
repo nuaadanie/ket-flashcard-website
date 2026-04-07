@@ -1,0 +1,48 @@
+Translate the following English transcript segment from Journey to the West (ep79) into Chinese.
+
+IMPORTANT:
+1. There are exactly 11 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 11 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 11 sections to translate:
+
+[Section ①]
+  the mountain of flames. Who Kong was furious? The Bull Demon King tricked me! The monkey rushed back to the cave and smashed the door. Crush! The Bull Demon King ran outside. You villain! He shouted.
+
+[Section ②]
+  You destroyed my door. Give me that fan right now! Yelled Wukong. Or I'll destroy the rest of your mountain! Never! Said the demon. Wukong charged toward the demon. Who?
+
+[Section ③]
+  The demon turned into a crane and flew away. He's not the only one who can turn into other animals. Thought the monkey? He? Wukong turned into a Phoenix and shot after the crane. With his claws out, he swooped down at the crane. The crane dipped into the lower and Wukong missed. When Wukong looked back, the crane was gone.
+
+[Section ④]
+  Where did he go? Thought Wukong. He looked down and saw an antelope grazing in a field. That's him! Wukong landed and turned into a tiger. He crept through the tall grass. When he got close to the antelope, he leaped. Light blashed and the antelope turned into a huge white bull.
+
+[Section ⑤]
+  The bull flew up into the sky and Wukong followed. He had almost caught up to the bull when he heard a shout. Said back, Wukong. It was a soldier from heaven. The jade of Rosetta to help you. More soldiers rushed toward the bull. With a snort, the bull spun around and flew the other way. But other soldiers appeared and blocked the bull's path.
+
+[Section ⑥]
+  Wukong watched as soldiers surrounded the bull. They moved in closer. Their swords and spears all pointed at the bull. The bull's demon came, returned to his demon form. Please don't hurt. The irony mortal was rushing toward the soldiers. Don't harm my husband! She cried.
+
+[Section ⑦]
+  He didn't mean to be evil. One soldier lowered his sword. We won't harm you if you're truly sorry for being evil. But right now you're stopping the tagmunk from continuing his journey. Sun will call me your fan. The irony mortal handed the fan to the soldier. Here's the fan, she said. We are truly sorry.
+
+[Section ⑧]
+  My husband and I will be good Buddhist from now on. Just please don't hurt us! The soldier looked at the bull demon king. The demon nodded. We promise. Very well. Said the soldier. You two may return to your cave.
+
+[Section ⑨]
+  But you must add of trouble from now on. The demon and his wife bowed and left. The soldier handed the fan to Wukong. It's good that you'll be the one to put out the mountain flames, Wukong. Wukong was confused. Why? You're the one who caused the fire. Said the soldier.
+
+[Section ⑩]
+  It was when Lousa tried to burn you up in his pot. You laid out of the pot, disturbing the fire in his workroom. The birdy-enver fell to earth that day. Started to fire on the mountain. Wukong looked at the fan. I'll be happy to put out the fire. Wukong returned to the village. The Tang monk and his companions were at the old man's house again.
+
+[Section ⑪]
+  Once again they thanked the man and followed the road up the hill. At the top they looked at the mountain of flames. Wukong looked at the fan and waved it. Wush! Instantly the fire went out. The air pulled down and Wukong saw the valley start to turn green. Leeds grew on trees and small flowers popped up here and there. Birds sang in the branches as other animals ran through the grass.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

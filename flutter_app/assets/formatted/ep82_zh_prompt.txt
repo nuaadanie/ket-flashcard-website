@@ -1,0 +1,51 @@
+Translate the following English transcript segment from Journey to the West (ep82) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  The Magic Cloth. Oh no! Thought Wukong. Yellow Brows is coming! The monkey jumps back to his feet and ran fast out of the monastery. When he got outside, everyone was waiting for him. Where are the bags? Asked Wujing.
+
+[Section ②]
+  The monkey looked at his empty hands. He slept his forehead. I must have dropped him. He heard footsteps approaching from inside the monastery. We can't worry about the bags now. Whispered Wukong. Yellow Brows is coming! We have to go quickly!
+
+[Section ③]
+  He helped the time monk up onto the horse. The group hurried down the road. Run faster, Boshae. His Wujing. Zubashae breathed heavily. I.. Doh! Like, running!
+
+[Section ④]
+  They haven't gotten far before Yellow Brows flew over them. You can't escape from me! Shattered the demon. And you will not be going to the West. I am a true Buddhist. And I will be the one to get the true scriptures. Wukong, Boshae and Wujing pulled out their weapons. The gold dragon veered its claws.
+
+[Section ⑤]
+  Yellow Brows scoffed. Do you really think you can fight me? He reached into his robe and pulled out the cloth. Boshae lowered his rake and laughed. Ha! We have powerful weapons. And all you have is a piece of cloth. That's not an ordinary cloth.
+
+[Section ⑥]
+  Worn the dragon. Yellow Brows threw the cloth towards the group. Look out! Cried Wukong. The monkey leaped up to the side just before the cloth wrapped around his companions. Quickly, the demon grabbed the cloth with a group in it. He ran back into his monastery and slammed the door shut. Wukong sat down on a cloud to think.
+
+[Section ⑦]
+  How could he rescue his companions? I can't ask the Jd Emperor for help, thought Woo-Kong. He already sent the gold dragon who was just captured again. Maybe I can ask Juan Yen for help. As Woo-Kong was wondering what to do, two spirits approached him. One was a turtle and the other was a serpent. The two spirits each carried a sword and a shield. Where from Wu-Dang Mountain?
+
+[Section ⑧]
+  Said the turtle. We've come to help you. The serpent nodded. We heard the chain monk was captured by a demon called Yellow Browse. Thank you for coming. Said Woo-Kong. He quickly told them what had happened. Let's go to the monastery now.
+
+[Section ⑨]
+  Said the turtle. Yellow Browse will be able to fight all three of us. We are much too powerful of him. Added the serpent. Woo-Kong led the two spirits down to the monastery. Just be careful of his claws. Worn the monkey. He'll try to capture us with it.
+
+[Section ⑩]
+  Woo-Kong banged on the monastery door. Release my friends right now, Yellow Browse. If you don't, oh knock down your monastery. Then I'll smash your entire mountain. The door flew open. Yellow Browse stepped out and threw the cloth. Look out. Cried Woo-Kong.
+
+[Section ⑪]
+  The monkey jumped out of the way, but the turtle and serpent weren't fast enough. The cloth wrapped around them. Laughing. The demon grabbed the bundle and went back into the monastery. Woo-Kong flew back up into the sky. He sat on a cloud and moaned. Now what will I do? He was still thinking when he heard a voice.
+
+[Section ⑫]
+  Hello Woo-Kong. Woo-Kong looked toward the voice and saw a man with a big belly. The man was smiling. Do you know who I am? Asked a man. Woo-Kong smiled. You're the Buddha, my tray-a! Yes.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

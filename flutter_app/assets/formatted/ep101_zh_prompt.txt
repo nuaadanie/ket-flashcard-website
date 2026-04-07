@@ -1,0 +1,51 @@
+Translate the following English transcript segment from Journey to the West (ep101) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  During each of the West, rrested. This is ridiculous. Said the Tang monk. Why are we under arrest? Soldiers were bringing the travelers back to the town. You rob, Squire Coos House last night. Said one of the soldiers. What?
+
+[Section ②]
+  Cride Bajie. We would never rob somebody. Especially not the Squire. He was kind to us. You had all the stolen items. Reply the soldier. You also had the two horses that were stolen from his stable. We got everything from the real robbers.
+
+[Section ③]
+  Said the Tang monk. We were going to return it all to Squire Coos. The soldier laughed. Oh, you got everything from the real robbers. Tell me where are the real robbers now? Wukong side. I let them go. The soldier laughed again.
+
+[Section ④]
+  Oh, that was very kind of you. Wukong could tell that the soldier didn't believe him. By now they had reached the town. A crowd of people had gathered to watch. The soldiers brought the travelers into the courthouse. The judge frowned at the monk and the others. Mokthem up. This is a mistake.
+
+[Section ⑤]
+  The Tang monk pleaded. We can't go to jail. We're making an important journey to visit Pouda. The judge shook his head. Pouda doesn't allow killers in the western paradise. Killers. Said, Wujing. What are you talking about?
+
+[Section ⑥]
+  You killed Squire Coos. Said the judge. The Tang monk's face went pale. The Slyer is dead? The judge narrowed his eyes at the monk. Yes. And Lady Coos saw you do it. The travelers were shoved into a jail cell.
+
+[Section ⑦]
+  And the door was slammed shut. The monk started to cry. This is terrible. Pouda made a fist. Lady Coos framed us. Yes. Said Wujing. But why?
+
+[Section ⑧]
+  I'll find out tonight. Promise Wilcon. As you Wilcon. The Tang Monk looks grateful. We must prove our innocence. That night Wilcon turned into a bee and flew out of the jail and to Squire Koo's house. He found Lady Koo moorning over a coffin. The monkey changed the back into himself and hid behind a curtain.
+
+[Section ⑨]
+  Imitating the Squire's voice. He said, My Lady, it's me, your husband. Lady Koo's eyes went wide. That was meant. Is it really you? Yes. said Wilcon. Why did you tell the judge that the Tang Monk and his companions killed me? Lady Koo hesitated.
+
+[Section ⑩]
+  I was angry with them. You wanted them to stay here, but they insisted on leaving. That was an insult to us. You have done a terrible thing. Thunderdoukhan. The walls of the house shook. In Lady Koo trembled. The monkey continued.
+
+[Section ⑪]
+  Tomorrow you must tell the judge that the Tang Monk and his companions are innocent. If you don't, I will haunt you for the rest of your life. Tears poured from the woman's eyes. I will talk to the judge tomorrow. I promise. Please don't haunt me. Wilcon flew back to the courthouse. He saw the judge sitting at a desk reading some papers.
+
+[Section ⑫]
+  Wilcon flew over the roof. Then he turned into any enormous spirit body and lowered one foot. When the judge saw the giant foot, he gasped. The papers fell from his hands. Who cons voiced boond? I am the wandering spirit. And I will send to your bybouda. Lady Koo lied to you.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

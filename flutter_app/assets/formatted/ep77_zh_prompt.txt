@@ -1,0 +1,51 @@
+Translate the following English transcript segment from Journey to the West (ep77) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  30 to the west, the magic fan. For over a day, the wind from the fan carried Rukong. When he finally landed, he was far from the Irony Mordle's mountain. Rukong looked around and saw a mountain nearby. It looked familiar. Not Sumeru said Rukong. The boat is at a lingey lives there. Maybe he can help me deal with the Irony Mordle.
+
+[Section ②]
+  He was able to stop the great King Yellow Wins Wind Magic. The monkey went to lingey's pagoda. The boat is at fault with sitting in his garden. Greetings, Rukong. Said Rukong. Hello Rukong. Said lingey. It's good to see you again.
+
+[Section ③]
+  I was just about to have tea. Rukong and lingey sat outside drinking tea. The monkey told the boat is at fault everything that had happened with the Irony Mordle. The boat is at fault handed a small stone to Rukong. Keep this magic stone in your pocket. It will stop the wind from blowing you away. Thank you, boat is at for said the monkey. Would you like to stay for lunch?
+
+[Section ④]
+  Asklingji. No thank you. Said Rukong. I must get back to my companions. I need to get that fan from the Irony Mordle so we can continue west. Rukong returned to the Irony Mordle's cave door. Open up! He shouted.
+
+[Section ⑤]
+  I need your fan. The Irony Mordle came out and wrinkle turnows. I thought I got rid of you. She raised her fan. I'll just have to wave harder this time. The woman wades the fan furiously. A terrible wind blew past Rukong. But the monkey didn't move.
+
+[Section ⑥]
+  The Irony Mordle's eyes burned with anger. The boat is at Valinci gave me a magic stone. Said Rukong. Your fan can't blow me away now. The monkey pulled out his Iron Bar. Now give me that fan. The Irony Mordle shot back. to her work-aves. Before she could shut the door, Wukong turned into a cricket.
+
+[Section ⑦]
+  She quickly linked into the cave. silently he followed the irony mortal along a tunnel. When the woman reached the room, she sat down. She tucked the fan into her robe. Wukong is a horrible monkey. She said to herself. He forced my poor baby bread boy to become good. Then he demanded to borrow my precious fan. The irony mortal reached for a cup of water.
+
+[Section ⑧]
+  As she took a drink, Wukong leaped into the cup. Goap. Inside the irony mortal stomach, Wukong changed back into himself. Wu, pow, both pow. The monkey pushed and kicked. The irony mortal fell to her knees. What was in that water? I feel awful.
+
+[Section ⑨]
+  It was me. Shattered Wukong. I'm in your stomach now. And I won't stop punching and kicking until you give me that fan. Wu, pow. Please stop. Cry the irony mortal. You can have the fan.
+
+[Section ⑩]
+  Just don't hurt me anymore. Wukong leaped out for the woman's nose and returned to his normal size. Give me the fan. He demanded. The irony mortal climbed back to her feet. She reached into a robe and pulled out a fan. Here. Take it.
+
+[Section ⑪]
+  No leave. Wukong found his companions in the village with the old man. The monkey explained how he tripped the irony mortal. Wonderful. Said the tang monk. Now we can continue our journey. They all thanked the old man and then headed west. They came to the top of the hill and saw the mountain of flames.
+
+[Section ⑫]
+  Fire covered all the land around it. Watch this. Said Wukong. The monkey waved the fan hard. Wu shhh. A strong wind blew toward the mountain. Wukong smiled. In a moment will.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

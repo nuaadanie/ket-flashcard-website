@@ -1,0 +1,51 @@
+Translate the following English transcript segment from Journey to the West (ep106) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  Me to the West, the question. Guanyinan looked at the messenger in surprise. What is the problem she asked? It's about the Tang monk. Said the messenger. To become a Buddha, he needs the face 100 challenges. I was just looking at the list of challenges he's faced. There are only 99 challenges on the list.
+
+[Section ②]
+  He must face one more challenge to become a Buddha. We're moving so fast. Said the Tang monk, smiling. The travelers were flying back east. The guard from the Thunder-Clap Monastery was using a spell to carry them. I wish the whole journey had been this easy. Said Baja, we'll call him last. Master was still mortal before we reached the Western Paradise.
+
+[Section ③]
+  He couldn't be carried then. Who'd she look to head? We'll reach the Tang Empire soon. Just then a messenger caught up with them. The messenger whispered something in the guard's ear. The guard glanced quickly at the travelers. Then he looked back at the messenger and nodded. Instead he'd need the spell broke and the travelers fell from the sky.
+
+[Section ④]
+  Bam! They slammed into the ground next to a wide river. Who comes stood up and saw the guard and messenger flying back west? The monkey shook his head. What happened? The Tang monk stood up and brushed his mouth from his robe. Why did the guard drop us? I'll tell you why.
+
+[Section ⑤]
+  Said Baja. He's a villain. He thinks that's funny to drop people. The pig waved his fist of the guard who was now far away. Mild! Who can turn slowly to the Tang monk? I think I know why he dropped us, Master. You must face 100 challenges in order to become a Buddha.
+
+[Section ⑥]
+  He probably gets to the western paradise before you'd face all of them. Oh no! The monk trembled. So other bad things must happen now? Who congnotted? I hope there won't be too many more problems. The first problem is crossing. River said Wu Jain.
+
+[Section ⑦]
+  It looks familiar. Said the monk. We must have crossed it during the journey west. Suddenly a large foreign rose from the river. It was an enormous turtle. Greetings. Said the turtle. Do you remember me?
+
+[Section ⑧]
+  The traveler's all smiled. Yes we do. Said the tang monk. You carried us over this river many years ago. Yes. Said the turtle. And I will gladly carry you across again. Hop on to my back.
+
+[Section ⑨]
+  The traveler's climbed on and the turtle started across the river. Wu Jain and Bajie soon fell asleep while Wukong meditated. The tang monk stayed awake too. Sitting near the turtle's head. Did you reach the western paradise? After the turtle. Yes. Said the tang monk.
+
+[Section ⑩]
+  It is a wonderful place. We are now returning to the east so I can deliver the true strip-chairs. Good. Said the turtle. Did you ask Buddha when I would be reborn as a human? The monk of Bitt has lived. He had forgotten to ask the turtle's question. You are not answering.
+
+[Section ⑪]
+  Said the turtle. I'm sorry. Said the monk. I. The turtle suddenly died under the water. Don't think everyone off his back. Wukong's eyes flew open as he hit the cold water. He leaked into the air.
+
+[Section ⑫]
+  Bajie, Wu Jain and the horse quickly flew across the river. But the tang monk was harassing furiously in the rushing water. Help! Yelp the monk. Wukong cast a spell and lifted the monk and the bow from the river. When everyone was on dry land, the monkey turned the bag upside down. Water poured out, followed by the scrolls. They were soaked.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

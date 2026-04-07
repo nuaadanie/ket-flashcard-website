@@ -1,0 +1,53 @@
+Translate the following English transcript segment from Journey to the West (ep108) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  rewards. The travelers flew through the sky over the Tang Empire. Tears of happiness rolled down the Tang monks' cheeks. I see the Emperor's palace. I will wait here while you all deliver the true scriptures. Said the guard. The Tang monk and his companions went down to earth and entered the palace. The Emperor's eyes all lit up.
+
+[Section ②]
+  My brother! He embraced the monk. For many years I wondered if I'd ever see you again. Did you get the true scriptures? Yes. Said the monk. But please forgive me. The journey took much longer than I expected.
+
+[Section ③]
+  There's no need to apologize. Said the Emperor. Then he noticed the monk's companions. Who are they? We'll call them stepped forward. I am Sun Wukong, the monkey king. I once defeated heavens in tire army. And I am Zubajay.
+
+[Section ④]
+  Said the pig. My name is Sha Wujing. Said the purple spirit. They protected me during the journey. The monk explained. I couldn't have reached the western paradise without them. The Emperor bowed to Wukong and the others. The monkey laughed.
+
+[Section ⑤]
+  You don't need a bow. We were happy to help. Well, Wujing and I were. Vajay complained me in tires' time. The pigs snorted. There was a huge beast that night. The Emperor asked the monk many questions about the journey. He listened an amazement to the monk's stories.
+
+[Section ⑥]
+  I will build a magnificent pagoda. The Emperor declared. The true scriptures will be kept safe inside it. He put his hand on the monk's shoulder. You will always be remembered as the brave monk who traveled to the west. Because of you, our people won't have to suffer anymore. After the food was eaten, the Emperor asked the monk to read from the scriptures.
+
+  The Tang monks mild.
+
+[Section ⑦]
+  I would be happy to read from them. The monks sat on a platform where the scriptures have been placed in baskets. He unrolled a scroll. Suddenly, light filled the room. The Tang monk and his companions rose into the sky. We should return to the Thunderclap Monastery. Said the guard. Who days waiting for you?
+
+[Section ⑧]
+  Yes, let's go. Said the monk. The travelers were soon bowing before Buddha again. Other Buddhas and Bodhisattvas stood behind him. Buddha addressed the horse first. You carry the tang monk on the journey and earn forgiveness for your crimes. You will now be a golden dragon in heaven. Lightful ashd as a large golden dragon sword into the sky.
+
+[Section ⑨]
+  Said Buddha. You too have earned forgiveness for your past crimes. You will now be a golden deity. Waging body turned gold. The spirit bowed. Thank you Buddha. You have earned forgiveness, Bodhisattvas. Said Buddha.
+
+[Section ⑩]
+  You will be janitor of the altars and important deity who looks after Buddhist altars. Vajayabhoud. Thank you Buddha. Buddha next turn to the tang monk. Because of you, the people in the east will never have to suffer again. You made a journey that no other person could make. You are now a Buddha. Light glowed around the monk who bowed before Buddha.
+
+[Section ⑪]
+  Thank you Buddha. Said the monk. Finally Buddha turned to the monkey. And you will come. He began. Your crimes long ago were terrible. But since then you have used your tremendous powers to do good deeds. You too are now a Buddha.
+
+[Section ⑫]
+  We will come bowed. Thank you Buddha. Hey! The monkey suddenly noticed that his head felt different. The headband is gone. Buddha smiled. You don't need it anymore. Filled with joy, who conged and the tang monk joined the other Buddhas and bodhas at Fas.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

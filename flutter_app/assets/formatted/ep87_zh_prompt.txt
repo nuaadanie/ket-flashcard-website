@@ -1,0 +1,45 @@
+Translate the following English transcript segment from Journey to the West (ep87) into Chinese.
+
+IMPORTANT:
+1. There are exactly 10 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 10 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 10 sections to translate:
+
+[Section ①]
+  Need to the West. the priest plan. HELL! Cried Baja. Spider-Wet's now covered the page so we couldn't move at all. Woo-Kong quickly grew tall. He swung his iron bar furiously at the young women.
+
+[Section ②]
+  Oh no! Cried one woman. The monkey is a powerful spirit! Cried another. We must leave. Cried the third.
+
+[Section ③]
+  Both! The women vanished. Who Kong ran into the house. He saw a large form wrapped in spider webs in a corner. Master! Cried the monkey.
+
+[Section ④]
+  He quickly pulled off the webs. Thank you, Wukong. Said the monk breathlessly. Those women were planning to eat me. Those women are gone now. Said Wukong.
+
+[Section ⑤]
+  Then he smirped. Baja scared them away. The pig was a real hero. Wonderful. Said the tang monk as they went outside. Where is Baja now?
+
+[Section ⑥]
+  He's right there. Wukong pointed and laughed. Baja, the brain hero. Baja was on the ground. Still struggling to get out of the webs. He pretended too laugh.
+
+[Section ⑦]
+  Wukong, very funny. The road left the forest and headed up a mountain. The travelers arrived at a Taoist Abbey. Maybe we can rest here. Said Wujing. The group entered the Abbey.
+
+[Section ⑧]
+  An old priest was inside mixing a potion. Visitors said the priest. Coming and make yourselves at home. Thank you. Said the tang monk. The priest led them to a sitting area.
+
+[Section ⑨]
+  Your Buddhists. The priest observed as everyone sat down. Where are you going? The tang monk opened his mouth to answer. But Wukong spoke first. We're on our way to visit friends.
+
+[Section ⑩]
+  Said the monkey. That's nice. Said the priest. Would you like some tea? I have plenty of food too. I hope. are meal for us.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

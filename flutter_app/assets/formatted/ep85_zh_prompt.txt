@@ -1,0 +1,63 @@
+Translate the following English transcript segment from Journey to the West (ep85) into Chinese.
+
+IMPORTANT:
+1. There are exactly 16 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 16 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 16 sections to translate:
+
+[Section ①]
+  Magic Bells. Who comes shouted outside the cave? He shouted all kinds of insults about the demon of power. Inside the cave, the guard woke up. He ran to the demon's bedroom. That's her! Cride the guard. The monkey you back!
+
+[Section ②]
+  It's a middle of the night. Said the demon. What does he want? He said we must return the queen! Said the guard. If we don't, we'll smash our entire mountain! He also yelled some terrible things about you! Ah!
+
+[Section ③]
+  The demon of power climbed out of bed and grabbed the fake bells. As she's the monkey away with my fire smoking sand again! He tied the bells around his neck and went outside. The demon glared at Wukong. Go away! I'm sleeping! Return the queen! Shout at the monkey!
+
+[Section ④]
+  Never! Said the demon. He reached for the bells around his neck. Wukong pretended to be surprised. Oh! He said, I have bells just like those! The demon squinted at the monkey. I doubt your bells are like mine!
+
+[Section ⑤]
+  Let me see them! Wukong held up the bells. The demon feared at them for a moment. Those bells do look like mine! But my bells are magic! So am I. Said Wukong. My bells can make fire.
+
+[Section ⑥]
+  Smoke and sand! Said the demon. That's interesting! Wukong smiled. My bells can do that too. Really? The demon of power looks surprised. Let's compare bells to see who's work better.
+
+[Section ⑦]
+  Okay. Said Wukong. You go first. Ah! I was planning to! Said the demon. He shook his bells. Nothing happened.
+
+[Section ⑧]
+  He shook the bells again. Again, nothing happened. That's strange. The demon mumbled. He looks closely at the bells. These bells work fine, yes today. Wukong. I'm sorry.
+
+[Section ⑨]
+  Wukong. I'm sorry. I'm sorry. I'm sorry. I'm sorry. I'm sorry. I'm sorry. I'm sorry.
+
+[Section ⑩]
+  I'm sorry. I'm sorry. I'm sorry. I'm sorry. Try not to laugh. Let's see if my bells work. He said. The monkey shook the bells.
+
+[Section ⑪]
+  Mish! Fire smoke can sand rush towards the demon. Ah! Cryed the demon. He covered his face and fell to the ground. Wilcon pulled out his iron bar and got ready to strike. Wilcon? Stop!
+
+[Section ⑫]
+  Shattered a voice. The monkey looked up and saw Guanyin coming down from the sky. Who can't bow? Greetings, Bodhisattva. I was just going to destroy this demon. You must not harm him. Said Guanyin. He's my pet wolf.
+
+[Section ⑬]
+  He escaped from heaven. The Bodhisattva looked at the demon. Return to your true form. Light sparkled. And the demon turned into a huge wolf. Guanyin climbed onto the wolf's back. She looked at the wolf's neck and then it will come. Give me the bells, Wilcon.
+
+[Section ⑭]
+  What bells? Wilcon held the bells behind his back. My wolf wears a set of three bells. Said Guanyin. I know you have them. You could not have defeated the wolf without them. Who comes shrumped? I have no idea what you're..
+
+[Section ⑮]
+  Hand them over. Said Guanyin. Or I'll recite the tight headband spell. There's no need for that. Pride the monkey. I was just joking. Greetings sheepishly. He handed over the bells.
+
+[Section ⑯]
+  Guanyin tied the bells around the wolf's neck and then rode up into the sky. Back at the palace, the King and Queen were reunited. Thank you for rescuing the Queen, Sonwugong. Said the King. Tonight, we will hold a feast to thank you and your companions. Said the Queen. That night, the royal banquet hall was filled with people. Serbans carried trays filled with rice, vegetables, mushrooms, noodles, tofu, dumplings, and other food.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

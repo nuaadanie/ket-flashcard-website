@@ -1,0 +1,47 @@
+Translate the following English transcript segment from Journey to the West (ep69) into Chinese.
+
+IMPORTANT:
+1. There are exactly 10 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 10 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 10 sections to translate:
+
+[Section ①]
+  the stabbing pain. That woman was a demon! cried Wukong, and she kidnapped the Tang monk! He leaped into the air and Ba Jai and Wu Jeng followed. In the distance, the monkey saw the dark clouds speeding toward a mountain. That must be her! said Wukong. Quickly! said Wujing. We must catch her!
+
+[Section ②]
+  They raced after the cloud, which disappeared when it reached the mountain. They soon arrived at the mountain and found a cave. Its door was closed. Wukong pounded on the cave door. Open up! He yelled. The door flew open, and the woman came out. who are you? demanded the woman. why are you pounding on my door? release our master! shouted Wukong ignoring her questions. the woman laughed. don't tell me what to do. the monkey attacked. the woman spun around fast, blocking his iron bar and striking back his fury. you shouldn't have come here. she shouted as she fought. even through the is afraid of me.
+
+[Section ③]
+  Ba Jai tried to hit her with his rank but nest. the woman was now spinning faster and faster. she's faster than a tornado. right the pig. Wukong leaped at the woman. suddenly he felt a stabbing pain. ah ha ha! right the monkey grabbing his head. it hurts. it hurts. he ran down the mountain. Ba Jai and Wujing stared after Wukong and shook. the woman went back into her cave. what happened to Wukong? asked the pig. nothing hurts him except for the tight headband spell. i don't know. said Wujing scratching his head. they went down the mountain and found the monkey crouching by a stream. he was still holding his head. are you alright? asked Wujing. that woman stabbed me in the head. mone Wukong. the pain is horrible. bajai snorted.
+
+  You're always bragging about how tough you are. Now you're crying about getting stabbed in the head. If her! Shouted the monkey.
+
+[Section ④]
+  Wushing moved closer. Let me see where she stabbed you. Wukong lowered his hands. There was no injury. Ha ha ha. Gosh I laughed. He's fine.
+
+[Section ⑤]
+  He just wants us to feel bad for him. The monkey glared at the pig. I'm telling you it hurts. He took a deep breath. The pain is going away now though. Let's go back up there and fight her again. The three companions return to the cave.
+
+[Section ⑥]
+  Wukong, you stand back. Said Baja, laughing. I don't want you getting hurt again. Wukong clenched his teeth. The pig hit the door with his rake. Smash! The door exploded.
+
+[Section ⑦]
+  The woman ran outside. You smashed my door! She shouted. Release our master. Shouted the pig. Oh well smash your entire mountain. The woman spun around faster and faster.
+
+[Section ⑧]
+  Baja and Wujing tried to strike her with their weapons. But the woman was too fast. Wukong raised his iron bar, waiting for a good moment to strike. Suddenly Baja cried out. He covered his nose and ran back down the mountain. The woman spun toward Wukong and Wujing. They turned and ran back down the mountain.
+
+[Section ⑨]
+  Baja was huddled on the ground. Tears streaming from his eyes. It hurt so badly. Wukong laughed. No laughing, baby. Cryed Baja. She stopped by nose.
+
+[Section ⑩]
+  You deserved it. Said the monkey. You didn't believe me when I got hurt. Stop arguing. Said Wujing. We still have to save the Tang monk. You're right.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

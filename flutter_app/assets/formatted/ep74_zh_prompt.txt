@@ -1,0 +1,51 @@
+Translate the following English transcript segment from Journey to the West (ep74) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  curious ear. Guanyin recited the tight headband spell. Both will come spell to the ground, howling and pain. We spell! They cried. Guanyin stopped reciting the spell, and the two monkeys stood back up. The boat is up, off-ground. I still don't know which of you is a real Wukong.
+
+[Section ②]
+  You should both go to heaven. The real Wukong used to live there. Maybe the Jade Emperor can tell who is who. Good idea. Said one Wukong. He pointed at the other. The Jade Emperor will see that this monkey is a fake. I'm not a fake.
+
+[Section ③]
+  Cry the other monkey. You are! He tried to strike the other Wukong, but that one dodged the blow and swung back. The two monkeys were still fighting when they arrived at the southern gate of heaven. The guard narrowed his eyes. Wukong, is that you? Yes, it's me. Said both of the Wukong's.
+
+[Section ④]
+  I must speak with the Jade Emperor. Said one monkey. He pointed at the other monkey. He's a fake Wukong. I'm not a fake Wukong. Said the other monkey. I'm the real one. I must speak with the Jade Emperor.
+
+[Section ⑤]
+  The guard allowed both Wukong's to enter heaven. Cry! Cry! Bang! Spirit think God's led as the two Wukong fought all over heaven. The monkeys knocked over statues and trees. Still fighting, they stormed into the cloud palace. When the Jade Emperor saw them, he was furious.
+
+[Section ⑥]
+  What's going on? He boomed. Your majesty said one of the Wukong's. Please punish this monkey. He's pretending to be me. Punish him! Cry the other. He's pretending to be me.
+
+[Section ⑦]
+  Stand still of both of you. Said the Jade Emperor. Let me get it. Look at you. The two who cons stood still as the Jade Emperor looked carefully at them. Finally, the Emperor shrugged. You look exactly alike. I can't tell who is who.
+
+[Section ⑧]
+  One of the will cons swung at the other with his iron bar. I'm the real will cons. No. The other will cons blocked the bar and swung back. I'm the real will cons. Both of you leave at once. Thunder at the Jade Emperor? One will cons is bad enough.
+
+[Section ⑨]
+  I don't want two of you around. You get fight somewhere else. The two monkeys kept fighting as they headed out of the palace. The spirit of the planet Venus followed them. Who cons went? Said the spirit. Both monkeys stopped to look at him. Go to the Land of Darkness.
+
+[Section ⑩]
+  Said Venus? Maybe the judge of the dead can tell you apart. Soon the two will cons were standing before the judge of the dead. The judge shook his head. You look exactly alike! Check the directory. Said one of the will cons. Maybe it will have some information about the fake Sun Wukong.
+
+[Section ⑪]
+  Yes! Said the other will cons. Check the directory. The judge nodded and opened the directory. He turned the pages of the giant book reading carefully. Finally, he closed it. There's no fake Sun Wukong in the directory. Said the judge.
+
+[Section ⑫]
+  I'm sorry. But I have no idea which one of you is the real Wilkong. A spirit was sitting in a nearby desk. I believe my pet beast, curious ear can help. Said the spirit. He took a step back and a small beast crept out from under the desk. Curious ear can tell the true from the false. Said the spirit.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

@@ -1,0 +1,57 @@
+Translate the following English transcript segment from Journey to the West (ep92) into Chinese.
+
+IMPORTANT:
+1. There are exactly 14 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 14 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 14 sections to translate:
+
+[Section ①]
+  The two the West, a problem for the lion demon. The elephant and the raptor stared at the lion. The moon cognizalive inside you. Said the raptor? I'd do worried. The lion sat down on his throne. I'm worried about what? Well, said the raptor.
+
+[Section ②]
+  The monkey is talking inside you. Doesn't that bother you? Let him talk. Said the lion defiantly. It doesn't bother me at all. What shall I talk about? Who concold? Who wants to hear a story?
+
+[Section ③]
+  The elephant shook his head slowly. What if the monkey never stops talking? You'll never get any sleep. Said the lion? That would be bad. He thought for a moment. I know what to do. I'll stop eating.
+
+[Section ④]
+  What will that do? Ask the elephant. Yes, said Woo-Kong. What will that do? If I don't eat, Woo-Kong doesn't eat. Said the lion. I'll make him star. Woo-Kong laughed.
+
+[Section ⑤]
+  Nice trial, lion. But I'll just turn one of my hairs into a stove. I'll cook a nice meal in here. Now, dear. The raptor shook his head. It ain't my defiance. I'm a stove. It will make you very hot.
+
+[Section ⑥]
+  Plus, it will create lots of smoke. The smoke will fill your head. And you're never stop sleeping. At last, the lion was starting to look nervous. That would be terrible. He said. I'd run a call for Woo-Kong. The lion went to the middle of the room.
+
+[Section ⑦]
+  He bent over and coughed. Woo-Kong laughed. Ha ha. I'm still in here. The lion coughed again. But still, Woo-Kong stayed inside him. I'm going to practice my fighting skills. Announce the monkey.
+
+[Section ⑧]
+  Woo-Kong's cow. Woo-Kong's punch and kicked inside the lion. The lion fell to his knees. No! He moaned. Hey, hurts, and hurts! Welcome, please stop! Let's make a deal. said Wukong.
+
+[Section ⑨]
+  I'll come out if you promise to let us cross the mountain safely. The lion looked up at the raptor and the elephant. They both nodded. Hello. We promise. The lion moaned again. Okay then. said Wukong. I'm coming out.
+
+[Section ⑩]
+  Wukong started the climb up the lion's throat. Just as he reached the lion's mouth, Wukong heard whispering. Lion, I have a plan. whispered the elephant. When Wukong tries to come out of your mouth, bite him. I don't know. whispered the lion. Wukong is very strong. My belly still hurts. Jump in quickly before he can fight back. whispered the elephant.
+
+[Section ⑪]
+  Okay. said the lion. Those dumb demons thought Wukong. Don't they realize I can hear them? He pulled out his iron bar. Shall I come out now? Ask the monkey. Um, yes. said the lion. Wukong heard the three demons snickering.
+
+[Section ⑫]
+  Okay. said Wukong. I'm coming out. He held out the iron bar. The lion bit down hard on the bar. Correct. A tooth shattered into tiny pieces. Oh, oh, oh. The lion howled and peen.
+
+[Section ⑬]
+  Tears stream down this face. He rolled around on the floor, holding his paws over his mouth. You villains. Wukong shouted. I heard you whispering. I'm sorry. The lion was still crying. I will try to bite you again.
+
+[Section ⑭]
+  Please don't hurt me anymore. Wukong hesitated. I'm coming out now. You better not try any more tricks. We won't. said the elephant. We ran it. said the raptor. Wukong popped out of the lion's nose. He glared at the demons for a moment and then walked out of the cave.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

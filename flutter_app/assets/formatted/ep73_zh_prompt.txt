@@ -1,0 +1,45 @@
+Translate the following English transcript segment from Journey to the West (ep73) into Chinese.
+
+IMPORTANT:
+1. There are exactly 10 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 10 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 10 sections to translate:
+
+[Section ①]
+  two Wukons. Wujing watched as the fake Wujing fed the horse some hay. I don't know how you made fake versions of a swooncon. Said the purple spirit. But if you won't get the true scriptures without the real Tang monk. Wukong followed his arms. Oh yes I will.
+
+[Section ②]
+  Wujing leaped into the air and flew south. I'll tell the photos up on what Wukong is doing. He thought. She could stop him. When Wujing arrived at Mount Podelaka, he was even more shocked. Wukong was meditating in the Baudhisattva's garden. Wukong!
+
+[Section ③]
+  Pride Wujing? How did you get here so fast? What are you talking about? Asked the monkey? Guanyin came out of her pagoda. Wujing, what are you doing here? The purple spirit bowed.
+
+[Section ④]
+  Baudhisattva, I must speak with you. Wukong has made fake versions of me, barjay, and the Tang monk. He's planning to make the journey without us. What? Shattered Wukong. Wujing glanced at the monkey. Like just saw him on the fruiting flower mountain.
+
+[Section ⑤]
+  I don't know how he got here before me. You're lying, Yelled Wukong. Guanyin smiled. You're mistaken, Wujing. Wukong has been here the whole time. Wujing was surprised. He has.
+
+[Section ⑥]
+  Guanyin nodded. Wukong made a fist. Someone is pretending to be me. And he's living on my mountain. I'm going there right now. I'm going to destroy him. I'll go with you.
+
+[Section ⑦]
+  Said Wujing. Wukong and Wujing soon arrived on the fruiting flower mountain. The monkey's eyes turned with anger when he saw the fake Wukong. Who are you? Demanded Wukong. Who are you? Ask the fake Wukong.
+
+[Section ⑧]
+  I am Sun Wukong. King of the fruiting flower mountain. No. Said the other monkey. I am Sun Wukong. King of the fruiting. Here it is,oty På karate The other Wukong blocked the bar and swung back.
+
+[Section ⑨]
+  Sam! Yeah! Wu Jing helped me! cried one Wukong. Wu Jing raised his spear and was about to enter the fight. The other Wukong shouted. No Wu Jing helped me! Wu Jing looked from one Wukong to the other.
+
+[Section ⑩]
+  Who is the real Wukong? I am! shouted one Wukong as he struck at the other. No! shouted the other Wukong blocking the first one's attack. I am! Don't listen to him! cried one monkey. Don't listen to him! cried the other. Wu Jing stamped his foot. stop fighting! he shouted. instantly in both monkeys stopped fighting. they looked at the purple spirit.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

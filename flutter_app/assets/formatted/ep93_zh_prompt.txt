@@ -1,0 +1,51 @@
+Translate the following English transcript segment from Journey to the West (ep93) into Chinese.
+
+IMPORTANT:
+1. There are exactly 12 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 12 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 12 sections to translate:
+
+[Section ①]
+  The Elephant Demon The Lion Demon rubbed his aching mouth. Let's leave the tag muggle home. We'll gong his dangerous. The Raptor nodded. The Elephant Demon waved his hand. I'm not afraid of that silly monkey. I have a perfect plan to defeat him and capture the tag muggle. The Lion shook his head.
+
+[Section ②]
+  The last time you had a blind, I wound up with a broken tooth. The Elephant snorted. Just leave everything to me. We'll con return to his companions. He heard Ba-Shay and Wu-Jay arguing. We can't go home. Shouted Wu-Jay. We're on an important journey.
+
+[Section ③]
+  But Wu-Gong got eaten by the Lion Demon. Said Ba-Shay. Without Wu-Gong, we'll never get to the West's new paradise. Here I am. Said the monkey. Everyone spun around. You're alive! Crime the tag muggle.
+
+[Section ④]
+  Yes, I am. Said Wu-Gong. I beat up that lion's insides and broke one of his teeth. The demons are scared of me now. They promised to let us cross their mountain safely. That's wonderful. Said the tag muggle. Wu-Jay helped the monkey climb onto the horse.
+
+[Section ⑤]
+  The other travelers started walking. They hadn't gone far. When they saw a large figure ahead blocking the road. That's the elephant demon. Said Wu-Gong with a frown. What's he doing here? We want the tag muggle. Shouted the elephant.
+
+[Section ⑥]
+  The tag muggle. Wu-Gong turned to Ba-Shay. I've been dealing with these demons all day. It's your turn to fight them. Ba-Shay's side. Okay. Waving his rate, the big charge toward the elephant. You'll never harm my master.
+
+[Section ⑦]
+  The elephant blocked the rate. Spun around and stroke back. Ba-Shay jumped out of the way. The elephant jerked his head and his tongue shot out. Before Ba-Shay could duck. Kong grabbed tightly around his body, as the elephant ran off with Baja, who Kong grown. The monkey turned to his companions. You two wait here, while go save the pig.
+
+[Section ⑧]
+  Who Kong returned to the demon's cave and turned into a fly. He found Baja deep inside the cave. The pig was tied up, floating in a tub of salt water. Who Kong changed back into himself and untied his companion. I do. Said Baja. Those demons were planning to prickly. You're welcome Baja.
+
+[Section ⑨]
+  Said Wukong. Now let's go. The elephant's trunk wrapped tightly around Wukong's chest. Then the elephant stepped out of a dark corner. I knew you'd come to save your friend. Said the elephant. Now you can't protect the Tang monk. My truck is very strong.
+
+[Section ⑩]
+  Wukong's arms were still free. He pulled out his iron bar, which instantly grew. With all his strength, he slammed it down on the elephant's trunk. Oh, oh, oh. The elephant cried. He released Wukong and fell backwards. His trunk had a horrible purple bruise. Wukong moved toward the elephant.
+
+[Section ⑪]
+  His iron bar raised high. The elephant's eyes went wide. Please don't hurt me anymore. We'll let the Tang monk cross the mountain. The monkey glared at the elephant for a moment. Then he put the iron bar away. You'd better not trick us again. Wukong embarras a left-the-cave and returned to their companions.
+
+[Section ⑫]
+  The group continued over the mountain. As the travelers came around to bend, they saw the lion and the elephant. The two demons were blocking the road. Wukong stopped toward them. What are you doing? You promised to. Wukong help us. We'll provide the Tang monk.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

@@ -1,0 +1,54 @@
+Translate the following English transcript segment from Journey to the West (ep81) into Chinese.
+
+IMPORTANT:
+1. There are exactly 13 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 13 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 13 sections to translate:
+
+[Section ①]
+  He to the west, help from a dragon. Bauche and Wu Xing swam their weapons at the demon. Ah! The demon laughed. I much too powerful for you! From inside the symbols, Wukong heard the fight. He heard grunts and the sounds of weapons collashing. The Tang monk cried.
+
+[Section ②]
+  No! Then there was silence. What happened out there? Shutted Wukong. There was no answer. The monkey punched and kicked the inside of the symbols for hours. But the two symbols would not come apart. This is terrible.
+
+[Section ③]
+  He said to himself. How will I get out of here? The monkey was about to strike the symbols again when he heard a voice. Wukong, are you in there? Who is that? Wukong asked? I'm the gold dragon. Said the voice.
+
+[Section ④]
+  The Jade Emperor sent me to help you. I'll wich my horn between the symbols and prize them apart. Poetry said, Wukong. Slowly the dragons horned Pope through. But the symbols were still tightly clasped together. Wukong groan. I can't escape. Maybe we could find another way to pry the symbols apart.
+
+[Section ⑤]
+  Said the dragon. Actually, I have a different idea. Said the monkey. Wukong turned his iron bar into a drill. the monkey. We'll conquer his iron bar into a drill. She made a hole in the dragon's horn. Then she made himself time and climbed into the hole. Pull your horn out now!
+
+[Section ⑥]
+  Segubu Kong. The dragon pulled and pulled and finally got his horn out. The monkey jumped out of the hole and returned to his normal size. Thank you, said Wukong. Now we must free my friends! We have to be quiet. Said the dragon. The demon is sleeping.
+
+[Section ⑦]
+  Wukong nodded. Then he turned toward the symbols and raced his iron bar. The symbols shattered. You do that. Cry the dragon. Who Kong shrubbed? I was angry. The demon stormed into the room.
+
+[Section ⑧]
+  Sun will Kong. How did you escape? Who are you? Demanded who Kong? How do you know my name? My name is Yellow Browse. Said the demon. I've been waiting for you in the Tang monk to pass by my mountain.
+
+[Section ⑨]
+  Who Kong narrowed his eyes? Why? I'm a Buddhist. Said the demon. I plan to go to the western paradise and get the true scriptures myself. You can't do that. Shout his little Kong. The monkey and the dragon charge toward the demon.
+
+[Section ⑩]
+  The demon pulled a cloth from his robe and threw it. The cloth wrapped around little Kong and the dragon. And then became very small. Soon they were tied up in a room. The Tang monk, Baja and Wu Shang were also in the room. Their bags were lying in a corner. I'm sorry for not believing you will Kong. Said the Tang monk.
+
+[Section ⑪]
+  You suspected this place was dangerous. Don't worry about that, master. Said the monkey. We must escape as soon as the demon goes back to sleep. He plans to get the true scriptures himself. The group waited for a while. Finally, Wukong made himself tiny and slipped out from his ropes. He untied his companions and the dragon.
+
+[Section ⑫]
+  Let's go. The monkey whispered. Baja, get the bags. Everyone, be quiet. The dragon warned. They tipped toward the monastery and were soon outside. Wukong looked at Baja and frowned. Where are the bags?
+
+[Section ⑬]
+  The pig moaned. Ah, I forgot them. Master Special Robis in one of those bags. Wukong side. Uh. Wait here. I'll go back and get them. The monkey quietly hurried back to the room and grabbed the bags.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

@@ -1,0 +1,57 @@
+Translate the following English transcript segment from Journey to the West (ep90) into Chinese.
+
+IMPORTANT:
+1. There are exactly 14 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 14 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 14 sections to translate:
+
+[Section ①]
+  To the West, the demon officers. The demon general looked at Bu-Kong, who was still in disguise. The Tang monk is heading toward our mountain. The general asked? Yes! Said Bu-Kong. That is great news! Said a demon captain.
+
+[Section ②]
+  Unfortunately, there's also some bad news. Bu-Kong pretended to look worried. The Tang monk has three companions. One is a big purple fellow. Another is a pig who appears to be quite lazy. The general narrowed his eyes at Bu-Kong. And the third companion. The third companion is a monkey.
+
+[Section ③]
+  Said Bu-Kong. I believe he is Sun Bu-Kong. I was afraid that monkey was traveling with the monk. The general grumbled. What does Sun Bu-Kong look like? He's huge! Bu-Kong pretended to shiver. He has fiery red eyes and sharp things!
+
+[Section ④]
+  Oh dear. Said a captain. There's no need to worry about Sun's silly monkey. Said the Colonel? I don't care what he did 500 years ago. We have a powerful army! I heard the monkey talking. Said Bu-Kong.
+
+[Section ⑤]
+  He said he hopes there's an entire demon army on this mountain. What? The general looked confused. He hopes there's an army? Bu-Kong nodded. He said destroying demons is good exercise. He has a magic iron bar. He can make it big enough to crush our entire army with one strike.
+
+[Section ⑥]
+  But he doesn't plan to do that. No. A captain gulped. What does he plan to do? He pledged to crush one demon at a time. Said Bu-Kong. That way he'll get more exercise. The demon's face is went pale.
+
+[Section ⑦]
+  This is bad news. Said the general. The other demons nodded in agreement. You can ask, get around if you want to. Said Bu-Kong. But I'm leaving. A captain looks surprised. What about eating the Tang monk?
+
+[Section ⑧]
+  Don't you want to live forever? Bu-Kong shook his head. I heard our three leaders talking privately. They don't do that. to share the Tang monk with us. They're going to eat him themselves. The officers grew angry. That's not fair. Said the Colonel.
+
+[Section ⑨]
+  It's terrible. Said a captain. The general bit his lip. If our leaders won't share the Tang monk with us, they can catch him themselves. Let's gather the troops and leave this place. Soon, Wukong could see the demon army marching away in the valley below. The monkey smiled. I'd get rid of the army.
+
+[Section ⑩]
+  Now I'll deal with the three demon leaders. Still into Stiles, Wukong entered the cave. He came to a large room. Three huge demons, a lion, an elephant, and a raptor sat on thrones. The Tang monk is heading toward the mountain. Wukong announced. Aargh's learned. Said the lion.
+
+[Section ⑪]
+  Tell the troops to capture him. The troops left. Said Wukong. Why? Shouted the raptor. Why? The Tang monk is travelling with Sun Wukong. Said the monkey.
+
+[Section ⑫]
+  The troops were afraid of the monkey. So it's true that Sun Wukong is with the monk. Said the elephant. That monkey is powerful. We should leave the Tang monk alone. He's heard the lion. Said the lion. We don't need an army to fight a monkey.
+
+[Section ⑬]
+  We'll capture the Tang monk ourselves. Your crazy. Said the elephant. Sun Wukong defeated heavens and tyroir army. North homey crazy. Shouted at the lion. The chowd at me. Shouted at the elephant.
+
+[Section ⑭]
+  I don't shout at anyone I want to. Shout at the lion. As the two demons argued, Wukong began to laugh. Soon he was laughing hard. The demons stopped arguing and stared at him. The monkey looked down and saw that his disguise was gone. We gulp. The oak.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

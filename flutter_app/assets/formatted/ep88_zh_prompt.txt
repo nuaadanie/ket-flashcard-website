@@ -1,0 +1,45 @@
+Translate the following English transcript segment from Journey to the West (ep88) into Chinese.
+
+IMPORTANT:
+1. There are exactly 10 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 10 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 10 sections to translate:
+
+[Section ①]
+  many eyes. Who congedasted as his companions began to look ill. The time monks head bobbed forward and his tea cup dropped from his hand. And then, some. The monk toppled to the floor. A moment later, Wu Jing and Ba J had passed out too. Who conged jumped to his feet and pulled out his iron bar. The priest backed away.
+
+[Section ②]
+  Just then, a door burst open and the three women ran into the room. You again cried the monkey. He leaped out of the way as the women shot wedged at him. He jumped up, did a flip in the air and landed directly behind the women. Furiously, he slammed his iron bar down. WAM! There was a puff of smoke. When it cleared, a dead spider lay where one of the women had been.
+
+[Section ③]
+  The other two women stared in horror. He destroyed our sister! cried one. He's a monster! cried the other. Wukong charged toward them. He knocked blind wedged out of his way and then. Wack! Bam! Both women were gone.
+
+[Section ④]
+  In their places, lay dead spiders. Those spider spirits were my dear friends. cried the priest. His eyes burned with fury. You regret destroying them. The priest opened his rope, revealing a body covered in eyes. Suddenly blinding light shut from the many eyes. The light is too bright! cried the monkey. He covered his own eyes and ran all over the room.
+
+[Section ⑤]
+  But he couldn't escape the blinding light. Finally, he clammed his iron bar into the abby stone floor. A huge hole opened up. The monkey jumped in and turned into a mole. Using his claws, he tunneled until he was sure he was far from the abby. When Wukong stopped up out of the ground. She turned back into himself. Bright light was shining from the adease.
+
+[Section ⑥]
+  Even from far away, the light burned the monkey's eyes. Wukong turned away. What will I do? I have no way to save my friends. But pre-slight is too powerful. She sobbed and sobbed until he heard a voice say, But don't cry, Rukong. The monkey looked up. A tall woman was standing over him.
+
+[Section ⑦]
+  I am the boat as that far pro-lumbra, said the woman. That priest is a centipede spirit called the demon Lord of many eyes. I am the only one who can defeat him. Pro-lumbra pulled a small needle from her sleeve. Turning she threw the needle into the beams of light. Crack! The sound fundered in the sky and the beams of light vanished. Wukong and Pro-lumbra returned to the abbey.
+
+[Section ⑧]
+  The free-sleece shaking on the floor. All of his eyes were squeezed shut. Pro-lumbra pointed her finger at the priest and he turned into a giant centipede. Pro-lumbra took a bottle out of her sleeve. Here, Rukong, said the boat is at far. These pills will cure your companions. I will take the centipede with me to be punished. Rukong bound.
+
+[Section ⑨]
+  Thank you, boat is at far. The journey continued and many weeks went by. The journey has been easy lately. Let's at the Tang monk one day. Fahjai snorted. That's true. Said Wujing. It's been weeks since any demons tried to eat Master.
+
+[Section ⑩]
+  The Western paradise is still far away. Wukong warned the others. We'll face many more dangers before we get there. The Tang monk smiled. Relax Wukong. And enjoy the beautiful day. There is no danger here. Just then a man appeared up ahead.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

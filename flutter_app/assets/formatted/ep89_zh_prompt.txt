@@ -1,0 +1,54 @@
+Translate the following English transcript segment from Journey to the West (ep89) into Chinese.
+
+IMPORTANT:
+1. There are exactly 13 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 13 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 13 sections to translate:
+
+[Section ①]
+  The Demon's Plan. The man on the road continued to wave a warning. Travelling with fear, the time monk fell from his horse. Wushing rushed over to help and stand up. I'll be right back, said Wukong. I'll ask that man what sort of danger is up ahead. The monkey walked toward the man. Looking closely, Wukong could tell that he was not an ordinary man.
+
+[Section ②]
+  Hello Venus. Sid Wukong with a smile. The man smiled back. Yes, it's me. The spirit of the planet Venus. I came and disguised the warn you Wukong. There are three powerful demons on the mountain up ahead. The first is a lion demon.
+
+[Section ③]
+  The second is an elephant demon. And the third is a raptor demon. The monkey shrugged. Thanks for the warning Venus. But I'm not worried about three silly demons. Venus shook his head. You should be worried. The three demons command a demon army.
+
+[Section ④]
+  Wukong rubbed his chin. Once again, thank you for the warning. But even an entire army of demons, doesn't worry me. Venus nodded. Very well, Wukong. Good luck. The spirit vanished. The monkey walked back to his companions.
+
+[Section ⑤]
+  Wow. Sid Baja. What did the man say? Is there danger up ahead? Are there demons? Asked the time monk still scared. Actually, yes. Sid Wukong.
+
+[Section ⑥]
+  There's an army of demons. But I'm not worried. The time monk's jaw dropped. How can you not be worried? Wukong laughed. Master, have you forgotten? I once defeated Heaven's entire army. Wushing, frowned.
+
+[Section ⑦]
+  Yes, we all know about that Wukong. But this is different. The time monk is with us. We must keep him safe. Baja nodded. Yes. And I'd like to be safe too. Wukong side.
+
+[Section ⑧]
+  You're right. We can't let the demons harm Master. He gave a sideways glance at Bajie and smirked. Or the pig. Bajie snored at. You all wait here. Said Wukong. I'll check out the mountains to see how big the demon army is.
+
+[Section ⑨]
+  The monkey flew to the mountain. Several demons were talking in front of a cave. They were dressed like military officers. Wukong spied on them from behind a rock. The Tang monk will be coming over our mountain soon. Said a demon general. Our leaders want all the troops to watch for him. I hope we catch the Tang monk.
+
+[Section ⑩]
+  Said a captain. I've heard that anyone who eats him will live forever. Wukong was furious. How dare they plan to eat Master? The demons were still talking. But who will get to eat the monk? Asked another captain. There are thousands of troops in our army.
+
+[Section ⑪]
+  We'll all get to eat him. Said the general. Our leaders promised to share him with the entire army. The other officers nodded and smiled. That was very kind of our leaders. Said a captain. We must be careful though. Warren the general.
+
+[Section ⑫]
+  Why? Asked a Colonel. The monk is just a man. He can't possibly stop us. I've heard that the Tang monk isn't alone. Said the general. Sun Wukong is with him. Everyone grew quiet.
+
+[Section ⑬]
+  He's the spirit who defeated Heaven's entire army with Spurdy Captain. Another captain nodded. He is quite powerful. Wukong beamed proudly when he heard that. Don't worry about Sun Wukong. Said the general. Just tell the troops to watch for the Tang monk. Yes, General.
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.

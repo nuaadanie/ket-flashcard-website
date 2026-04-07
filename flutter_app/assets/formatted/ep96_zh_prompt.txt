@@ -1,0 +1,54 @@
+Translate the following English transcript segment from Journey to the West (ep96) into Chinese.
+
+IMPORTANT:
+1. There are exactly 13 sections marked with circled numbers (①②③④⑤⑥⑦⑧⑨⑩⑪⑫).
+2. You MUST produce exactly 13 Chinese sections, in the same order.
+3. For EACH section:
+   - Dialogue lines (starting with > ") should be translated as: > "中文对话"
+   - Narrative lines (starting with two spaces) should be translated as: 中文旁白段落
+4. Do NOT add any "中文翻译" header or other extra titles.
+5. The Chinese section should start directly with ## ① and have the same number of sub-sections.
+6. Keep the same dialogue/narrative separation as the English.
+
+Here are the 13 sections to translate:
+
+[Section ①]
+  Me to the west, three fights. Wukong and his companions walked on the mountain road. The monkey watched carefully for the monster in demons. Suddenly a demon charged toward the group. Stay here, everyone. Shattered Bajie. How fight this demon? The pigs who won his reign.
+
+[Section ②]
+  The demon stepped off the road and headed down the slope of the mountain. Bajie raced after the demon and was soon out of sight. Wukong heard grunts and clashing weapons. But he couldn't see the fight. A moment later, the demon climbed back onto the road. Stay here, Wu Jeng. Shouted Wukong. Protect the king, Mug.
+
+[Section ③]
+  The monkey charged toward the demon. Fly. Their weapons collapsed. Wukong fought with all his strength. Again, the demon left the road and headed down the mountain. Wukong chased him. The monkey and the demon disappeared down the slope of the mountain. Do you think Wukong can defeat that demon?
+
+[Section ④]
+  After Tang Monk nervously. Definitely. Said Wu Jeng. I wonder what happened to Bajie though. I hope he's okay. Suddenly, the demon was back. Wu Jeng was shocked. How did you get past Wukong?
+
+[Section ⑤]
+  Without waiting for an answer, Wu Jeng raised his spear and attacked the demon. The two fought, kicking up dust and rocks. Wu Jeng struck the demon across the road. The demon tumbled down the mountainside. Wu Jeng ran after him. The Tang Monk stood in the road. For a moment, everything was quiet. Then, he heard footsteps behind him.
+
+[Section ⑥]
+  The monk turned around and fell. A huge, fat monster was smiling wickedly at him. When Wukong returned to the road, he found Bajie alone. The pig looked upset. Where are mastering Wu Jeng? As the monkey? Bajie scratched his head. I don't know.
+
+[Section ⑦]
+  I defeated that demon and then came back here. Everyone was gone. You didn't defeat the demon. Said Wukong. You passed you. He came back here and I had to fight him. What? Shotted Bajie?
+
+[Section ⑧]
+  You're crazy. I was fighting with the demon until just a few moments ago. Wukong scoffed. Do you really expect me to believe that? I was just fighting with the demon. Wukong returned to the road annoyed. How did that demon get past you, too? He wasn't that powerful?
+
+[Section ⑨]
+  Wukong was confused. The demon didn't get past me. I was fighting with him until just a moment ago. That's impossible. Said Wukong. After you chased him down the slope, he returned. Where's Master? Wukong made a test.
+
+[Section ⑩]
+  How could we be so stupid? There wasn't just one demon. There were three. They lure us away one by one. Then another demon probably that fat monster. Grab Master while we were gone. Bajie fused. You're right!
+
+[Section ⑪]
+  That monster must have a cave nearby. Said Wujing. Let's fight it. The three companions searched the mountain. They soon found a cave. Its door was shut. Do you think this is the monster's cave? Asked Wujing.
+
+[Section ⑫]
+  Don't find out. Said Bajie. He raised his rake and knocked the hole in the door. Then he shouted into the hole. Release the tank, monk! A demon inside the cave shrieked and ran into a kitchen. The monster was grinding spices with a mortar and pestle. That big is here!
+
+[Section ⑬]
+  Cried the demon. The monster kept grinding. Who cares? I'm only afraid of Wukong. I'm here too! Shattered Wukong through the hole. The monster dropped the mortar and pestle. Wukong!
+
+Please output ONLY the Chinese translation, numbered sections starting from ## ①, in the exact same format as the English.
