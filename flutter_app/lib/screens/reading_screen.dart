@@ -30,7 +30,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   List<Article> _xyjChapters = [];
   List<Word> _allWords = [];
   String _currentLevel = '黑1';
-  int _tabIndex = 0; // 0 = KET文章, 1 = 西游记
+  int _tabIndex = 1; // 0 = KET文章, 1 = 西游记
 
   @override
   void initState() {
