@@ -16,6 +16,7 @@ class StorageService {
   Map<String, int> topicProgress = {};
   bool hasSeenMeaningTip = false;
   List<int> readArticles = [];
+  List<int> readXyjChapters = [];
   String accent = 'us'; // 'us' 美式, 'uk' 英式
   int voice = 0; // 0=女声, 1=男声, 3=情感男声, 4=情感女声
   String? statsFilter; // 当前统计筛选状态
@@ -72,6 +73,10 @@ class StorageService {
               ?.map((e) => e as int)
               .toList() ??
           [];
+      readXyjChapters = (data['readXyjChapters'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          [];
       accent = data['accent'] as String? ?? 'us';
       voice = data['voice'] as int? ?? 0;
       statsFilter = data['statsFilter'] as String?;
@@ -99,6 +104,7 @@ class StorageService {
       'topicProgress': topicProgress,
       'hasSeenMeaningTip': hasSeenMeaningTip,
       'readArticles': readArticles,
+      'readXyjChapters': readXyjChapters,
       'accent': accent,
       'voice': voice,
       'statsFilter': statsFilter,

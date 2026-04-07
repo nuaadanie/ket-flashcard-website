@@ -11,6 +11,7 @@ class ArticleReaderScreen extends StatefulWidget {
   final SpeechService speech;
   final int themeIndex;
   final List<Word> words;
+  final String readListKey; // 'article' or 'xyj'
 
   const ArticleReaderScreen({
     super.key,
@@ -19,6 +20,7 @@ class ArticleReaderScreen extends StatefulWidget {
     required this.speech,
     required this.themeIndex,
     required this.words,
+    this.readListKey = 'article',
   });
 
   @override
@@ -38,8 +40,11 @@ class _ArticleReaderScreenState extends State<ArticleReaderScreen> {
     for (final w in widget.words) {
       _wordMap[w.word.toLowerCase()] = w;
     }
-    if (!widget.storage.readArticles.contains(widget.article.id)) {
-      widget.storage.readArticles.add(widget.article.id);
+    final readList = widget.readListKey == 'xyj'
+        ? widget.storage.readXyjChapters
+        : widget.storage.readArticles;
+    if (!readList.contains(widget.article.id)) {
+      readList.add(widget.article.id);
       widget.storage.save();
     }
   }

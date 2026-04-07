@@ -29,6 +29,7 @@ flutter:
   assets:
     - assets/words.json
     - assets/articles.json
+    - assets/xyj.json
     - assets/illustrations/
     - assets/fonts/
   fonts:

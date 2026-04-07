@@ -20,6 +20,7 @@ class Paragraph {
 class Article {
   final int id;
   final String title;
+  final String titleZh;
   final String level;
   final List<String> topics;
   final List<Paragraph> paragraphs;
@@ -27,6 +28,7 @@ class Article {
   Article({
     required this.id,
     required this.title,
+    this.titleZh = '',
     required this.level,
     this.topics = const [],
     this.paragraphs = const [],
@@ -36,6 +38,7 @@ class Article {
     return Article(
       id: json['id'] as int,
       title: json['title'] as String? ?? '',
+      titleZh: json['titleZh'] as String? ?? '',
       level: json['level'] as String? ?? '黑1',
       topics: (json['topics'] as List<dynamic>?)
               ?.map((e) => e.toString())
